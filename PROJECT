@@ -1,0 +1,10 @@
+domain: k8s.io
+repo: github.com/wtxue/kube-on-kube-operator
+resources:
+- group: devops
+  kind: Cluster
+  version: v1
+- group: devops
+  kind: Machine
+  version: v1
+version: "3"
