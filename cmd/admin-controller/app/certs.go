@@ -67,7 +67,7 @@ func TryRun() error {
 		PublicKeyAlgorithm: x509.RSA,
 		Config: certutil.Config{
 			CommonName:   "kubernetes",
-			Organization: []string{"gostship"},
+			Organization: []string{"k8s"},
 			Usages:       []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		},
 	}
