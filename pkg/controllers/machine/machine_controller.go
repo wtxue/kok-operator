@@ -1,3 +1,19 @@
+/*
+Copyright 2020 wtxue.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package machine
 
 import (
@@ -12,6 +28,7 @@ import (
 
 	"github.com/pkg/errors"
 	devopsv1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/devops/v1"
+	"github.com/wtxue/kube-on-kube-operator/pkg/gmanager"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
@@ -25,6 +42,7 @@ type machineReconciler struct {
 	Log    logr.Logger
 	Mgr    manager.Manager
 	Scheme *runtime.Scheme
+	*gmanager.GManager
 }
 
 type manchineContext struct {
@@ -35,12 +53,13 @@ type manchineContext struct {
 	*devopsv1.ClusterCredential
 }
 
-func Add(mgr manager.Manager) error {
+func Add(mgr manager.Manager, pMgr *gmanager.GManager) error {
 	reconciler := &machineReconciler{
-		Client: mgr.GetClient(),
-		Mgr:    mgr,
-		Log:    ctrl.Log.WithName("controllers").WithName("machine"),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Mgr:      mgr,
+		Log:      ctrl.Log.WithName("controllers").WithName("machine"),
+		Scheme:   mgr.GetScheme(),
+		GManager: pMgr,
 	}
 
 	err := reconciler.SetupWithManager(mgr)
@@ -57,8 +76,8 @@ func (r *machineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// +kubebuilder:rbac:groups=devops.k8s.io,resources=virtulclusters,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=devops.k8s.io,resources=virtulclusters/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=devops.gostship.io,resources=virtulclusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=devops.gostship.io,resources=virtulclusters/status,verbs=get;update;patch
 
 func (r *machineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()

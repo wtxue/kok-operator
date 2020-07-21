@@ -1,0 +1,19 @@
+apiVersion: devops.gostship.io/v1
+kind: Machine
+metadata:
+  labels:
+    name: 10.248.224.171
+    clusterName: hosted-cluster
+  name: 10.248.224.171
+  namespace: hosted-cluster
+spec:
+  clusterName: hosted-cluster
+  type: Hosted
+  machine:
+    ip: 10.248.224.171
+    port: 22
+    username: root
+    password: "UVK4AfcSuEQTK-LH-Lk1Fy"
+  feature:
+    hooks:
+      installType: kubeadm

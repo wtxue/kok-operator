@@ -55,6 +55,7 @@ type Interface interface {
 	CopyFile(src, dst string) error
 	WriteFile(src io.Reader, dst string) error
 	ReadFile(filename string) ([]byte, error)
+	Exist(filename string) (bool, error)
 	Stat(p string) (os.FileInfo, error)
 
 	LookPath(file string) (string, error)
@@ -343,6 +344,15 @@ func (s *SSH) Stat(p string) (os.FileInfo, error) {
 	defer sftpClient.Close()
 
 	return sftpClient.Stat(p)
+}
+
+func (s *SSH) Exist(filename string) (bool, error) {
+	_, _, exit, err := s.Execf("ls %s", filename)
+	if err != nil {
+		return false, fmt.Errorf("ssh exec error: %w", err)
+	}
+
+	return exit == 0, nil
 }
 
 func (s *SSH) ReadFile(filename string) ([]byte, error) {

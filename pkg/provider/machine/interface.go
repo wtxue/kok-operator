@@ -1,3 +1,19 @@
+/*
+Copyright 2020 wtxue.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package machine
 
 import (
@@ -11,17 +27,18 @@ import (
 	"github.com/thoas/go-funk"
 
 	devopsv1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/devops/v1"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider"
+	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/klog"
 )
 
 const (
-	ReasonFailedProcess     = "FailedProcess"
-	ReasonWaitingProcess    = "WaitingProcess"
-	ReasonSuccessfulProcess = "SuccessfulProcess"
-	ReasonSkipProcess       = "SkipProcess"
+	ReasonWaiting      = "Waiting"
+	ReasonSkip         = "Skip"
+	ReasonFailedInit   = "FailedInit"
+	ReasonFailedUpdate = "FailedUpdate"
+	ReasonFailedDelete = "FailedDelete"
 
 	ConditionTypeDone = "EnsureDone"
 )
@@ -36,14 +53,14 @@ type Provider interface {
 	PreCreate(machine *devopsv1.Machine) error
 	AfterCreate(machine *devopsv1.Machine) error
 
-	OnCreate(ctx context.Context, machine *devopsv1.Machine, cluster *provider.Cluster) error
-	OnUpdate(ctx context.Context, machine *devopsv1.Machine, cluster *provider.Cluster) error
-	OnDelete(ctx context.Context, machine *devopsv1.Machine, cluster *provider.Cluster) error
+	OnCreate(ctx context.Context, machine *devopsv1.Machine, cluster *common.Cluster) error
+	OnUpdate(ctx context.Context, machine *devopsv1.Machine, cluster *common.Cluster) error
+	OnDelete(ctx context.Context, machine *devopsv1.Machine, cluster *common.Cluster) error
 }
 
 var _ Provider = &DelegateProvider{}
 
-type Handler func(context.Context, *devopsv1.Machine, *provider.Cluster) error
+type Handler func(context.Context, *devopsv1.Machine, *common.Cluster) error
 
 type DelegateProvider struct {
 	ProviderName string
@@ -62,6 +79,15 @@ func (p *DelegateProvider) Name() string {
 		return "unknown"
 	}
 	return p.ProviderName
+}
+
+func (h Handler) Name() string {
+	name := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
+	i := strings.Index(name, "Ensure")
+	if i == -1 {
+		return ""
+	}
+	return strings.TrimSuffix(name[i:], "-fm")
 }
 
 func (p *DelegateProvider) Validate(machine *devopsv1.Machine) field.ErrorList {
@@ -88,7 +114,7 @@ func (p *DelegateProvider) AfterCreate(machine *devopsv1.Machine) error {
 	return nil
 }
 
-func (p *DelegateProvider) OnCreate(ctx context.Context, machine *devopsv1.Machine, cluster *provider.Cluster) error {
+func (p *DelegateProvider) OnCreate(ctx context.Context, machine *devopsv1.Machine, cluster *common.Cluster) error {
 	condition, err := p.getCreateCurrentCondition(machine)
 	if err != nil {
 		return err
@@ -102,26 +128,28 @@ func (p *DelegateProvider) OnCreate(ctx context.Context, machine *devopsv1.Machi
 			Status:             devopsv1.ConditionTrue,
 			LastProbeTime:      now,
 			LastTransitionTime: now,
-			Reason:             ReasonSkipProcess,
+			Reason:             ReasonSkip,
+			Message:            "Skip current condition",
 		})
 	} else {
 		f := p.getCreateHandler(condition.Type)
 		if f == nil {
 			return fmt.Errorf("can't get handler by %s", condition.Type)
 		}
-		klog.Infof("machineName: %s OnCreate handler: %s", machine.Name, f.Name())
+		handlerName := f.Name()
+		klog.Infof("machineName: %s OnCreate handler: %s", machine.Name, handlerName)
 		err = f(ctx, machine, cluster)
 		if err != nil {
+			klog.Errorf("cluster: %s OnCreate handler: %s err: %+v", cluster.Name, handlerName, err)
 			machine.SetCondition(devopsv1.MachineCondition{
 				Type:          condition.Type,
 				Status:        devopsv1.ConditionFalse,
 				LastProbeTime: now,
 				Message:       err.Error(),
-				Reason:        ReasonFailedProcess,
+				Reason:        ReasonFailedInit,
 			})
-			machine.Status.Reason = ReasonFailedProcess
-			machine.Status.Message = err.Error()
-			return nil
+
+			return err
 		}
 
 		machine.SetCondition(devopsv1.MachineCondition{
@@ -129,7 +157,6 @@ func (p *DelegateProvider) OnCreate(ctx context.Context, machine *devopsv1.Machi
 			Status:             devopsv1.ConditionTrue,
 			LastProbeTime:      now,
 			LastTransitionTime: now,
-			Reason:             ReasonSuccessfulProcess,
 		})
 	}
 
@@ -142,14 +169,14 @@ func (p *DelegateProvider) OnCreate(ctx context.Context, machine *devopsv1.Machi
 			Status:             devopsv1.ConditionUnknown,
 			LastProbeTime:      now,
 			LastTransitionTime: now,
-			Message:            "waiting process",
-			Reason:             ReasonWaitingProcess,
+			Message:            "waiting execute",
+			Reason:             ReasonWaiting,
 		})
 	}
 	return nil
 }
 
-func (p *DelegateProvider) OnUpdate(ctx context.Context, machine *devopsv1.Machine, cluster *provider.Cluster) error {
+func (p *DelegateProvider) OnUpdate(ctx context.Context, machine *devopsv1.Machine, cluster *common.Cluster) error {
 	for _, f := range p.UpdateHandlers {
 		klog.Infof("machineName: %s OnUpdate handler: %s", machine.Name, f.Name())
 		err := f(ctx, machine, cluster)
@@ -158,10 +185,12 @@ func (p *DelegateProvider) OnUpdate(ctx context.Context, machine *devopsv1.Machi
 		}
 	}
 
+	machine.Status.Reason = ""
+	machine.Status.Message = ""
 	return nil
 }
 
-func (p *DelegateProvider) OnDelete(ctx context.Context, machine *devopsv1.Machine, cluster *provider.Cluster) error {
+func (p *DelegateProvider) OnDelete(ctx context.Context, machine *devopsv1.Machine, cluster *common.Cluster) error {
 	for _, f := range p.DeleteHandlers {
 		klog.Infof("machineName: %s OnDelete handler: %s", machine.Name, f.Name())
 		err := f(ctx, machine, cluster)
@@ -171,15 +200,6 @@ func (p *DelegateProvider) OnDelete(ctx context.Context, machine *devopsv1.Machi
 	}
 
 	return nil
-}
-
-func (h Handler) Name() string {
-	name := runtime.FuncForPC(reflect.ValueOf(h).Pointer()).Name()
-	i := strings.Index(name, "Ensure")
-	if i == -1 {
-		return ""
-	}
-	return strings.TrimSuffix(name[i:], "-fm")
 }
 
 func (p *DelegateProvider) getNextConditionType(conditionType string) string {
@@ -225,7 +245,7 @@ func (p *DelegateProvider) getCreateCurrentCondition(c *devopsv1.Machine) (*devo
 			Status:        devopsv1.ConditionUnknown,
 			LastProbeTime: metav1.Now(),
 			Message:       "waiting process",
-			Reason:        ReasonWaitingProcess,
+			Reason:        ReasonWaiting,
 		}, nil
 	}
 

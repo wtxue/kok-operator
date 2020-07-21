@@ -1,3 +1,19 @@
+/*
+Copyright 2020 wtxue.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package machine
 
 import (
@@ -7,8 +23,7 @@ import (
 	"time"
 
 	devopsv1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/devops/v1"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider"
-	machineprovider "github.com/wtxue/kube-on-kube-operator/pkg/provider/machine"
+	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
 )
 
 const (
@@ -20,14 +35,16 @@ const (
 )
 
 func (r *machineReconciler) onCreate(ctx context.Context, rc *manchineContext) error {
-	p, err := machineprovider.GetProvider(rc.Cluster.Spec.Type)
+	p, err := r.MpManager.GetProvider(rc.Cluster.Spec.Type)
 	if err != nil {
 		return err
 	}
 
-	clusterWrapper := &provider.Cluster{
+	clusterWrapper := &common.Cluster{
 		Cluster:           rc.Cluster,
 		ClusterCredential: rc.ClusterCredential,
+		Client:            r.Client,
+		ClusterManager:    r.ClusterManager,
 	}
 	err = p.OnCreate(ctx, rc.Machine, clusterWrapper)
 	if err != nil {
@@ -56,25 +73,27 @@ func (r *machineReconciler) onCreate(ctx context.Context, rc *manchineContext) e
 }
 
 func (r *machineReconciler) onUpdate(ctx context.Context, rc *manchineContext) error {
-	p, err := machineprovider.GetProvider(rc.Cluster.Spec.Type)
+	p, err := r.MpManager.GetProvider(rc.Cluster.Spec.Type)
 	if err != nil {
 		return err
 	}
 
-	clusterWrapper := &provider.Cluster{
+	clusterWrapper := &common.Cluster{
 		Cluster:           rc.Cluster,
 		ClusterCredential: rc.ClusterCredential,
+		Client:            r.Client,
+		ClusterManager:    r.ClusterManager,
 	}
 
 	err = p.OnUpdate(ctx, rc.Machine, clusterWrapper)
 	if err != nil {
-		clusterWrapper.Status.Message = err.Error()
-		clusterWrapper.Status.Reason = reasonFailedUpdate
+		clusterWrapper.Cluster.Status.Message = err.Error()
+		clusterWrapper.Cluster.Status.Reason = reasonFailedUpdate
 		r.Client.Status().Update(ctx, rc.Cluster)
 		return err
 	}
-	clusterWrapper.Status.Message = ""
-	clusterWrapper.Status.Reason = ""
+	clusterWrapper.Cluster.Status.Message = ""
+	clusterWrapper.Cluster.Status.Reason = ""
 	r.Client.Status().Update(ctx, clusterWrapper.ClusterCredential)
 	r.Client.Status().Update(ctx, clusterWrapper.Cluster)
 	return nil
@@ -89,12 +108,9 @@ func (r *machineReconciler) reconcile(ctx context.Context, rc *manchineContext) 
 	case devopsv1.MachineRunning:
 		rc.Logger.Info("onUpdate")
 		err = r.onUpdate(ctx, rc)
-		if err == nil {
-			// c.ensureHealthCheck(ctx, key, cluster) // after update to avoid version conflict
-		}
 	default:
 		err = fmt.Errorf("no handler for %q", rc.Cluster.Status.Phase)
 	}
 
-	return nil
+	return err
 }

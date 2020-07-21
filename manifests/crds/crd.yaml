@@ -36,6 +36,11 @@ spec:
         certificateKey:
           description: For kubeadm init or join
           type: string
+        certsBinaryData:
+          additionalProperties:
+            format: byte
+            type: string
+          type: object
         clientCert:
           description: For kube-apiserver X509 auth
           format: byte
@@ -59,11 +64,23 @@ spec:
         etcdCAKey:
           format: byte
           type: string
+        extData:
+          additionalProperties:
+            type: string
+          type: object
         kind:
           description: 'Kind is a string value representing the REST resource this
             object represents. Servers may infer this from the endpoint the client
             submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
           type: string
+        kubeData:
+          additionalProperties:
+            type: string
+          type: object
+        manifestsData:
+          additionalProperties:
+            type: string
+          type: object
         metadata:
           type: object
         tenantID:

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"reflect"
 
+	"github.com/banzaicloud/k8s-objectmatcher/patch"
 	"github.com/go-logr/logr"
 	"github.com/goph/emperror"
 	corev1 "k8s.io/api/core/v1"
@@ -12,8 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	runtimeClient "sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/banzaicloud/k8s-objectmatcher/patch"
 )
 
 type DesiredState string

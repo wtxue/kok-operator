@@ -1,4 +1,4 @@
-domain: k8s.io
+domain: gostship.io
 repo: github.com/wtxue/kube-on-kube-operator
 resources:
 - group: devops
@@ -7,4 +7,4 @@ resources:
 - group: devops
   kind: Machine
   version: v1
-version: "3"
+version: "2"

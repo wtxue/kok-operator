@@ -5,10 +5,11 @@ kube-on-kube-operator 是一个自动化部署高可用kubernetes的operator
 # 特性
 
 - 云原生架构，crd+controller，采用声明式api描述一个集群的最终状态
+- 支持裸金属和master组件托管两种方式部署集群
 - 可以启用一个fake-cluster，解决裸金属第一次部署集群没有元集群问题
-- 无坑版100年集群证书
+- 无坑版100年集群证书，kubelet自动生成证书
 - 除kubelet外集群组件全部容器化部署，componentstatuses可以发现三个etcd
-- 支持flannel，metrics-server等直接一键部署
+- 支持coredns, flannel，metrics-server等 addons 模板化部署
 
 # 安装部署
 
@@ -23,7 +24,7 @@ $ ./init.sh
 
 # 进入项目根目录  运行 fake apiserver
 $ cd ..
-$ go run cmd/admin-controller/main.go fake -v 4 
+$ go run cmd/admin-controller/main.go fake --baseBinDir k8s/bin --rootDir k8s -v 4 
 
 # 运行正常后
 $ cat k8s/cfg/fake-kubeconfig.yaml
@@ -47,6 +48,7 @@ users:
 
 ## 运行
 
+本地运行
 ```bash
 # apply crd
 $ export KUBECONFIG=k8s/cfg/fake-kubeconfig.yaml && kubectl apply -f manifests/crds/
@@ -57,7 +59,58 @@ customresourcedefinition.apiextensions.k8s.io/machines.devops.k8s.io created
 # 运行
 $ go run cmd/admin-controller/main.go ctrl -v 4 --kubeconfig=k8s/cfg/fake-kubeconfig.yaml
 ```
+docker 运行
+```bash
+$ docker run --name fake-cluster -d --restart=always \
+   --net="host" \
+   --pid="host" \
+   -v /root/wtxue/k8s:/k8s \
+   registry.cn-hangzhou.aliyuncs.com/wtxue/onkube-controller:v0.1.0 \
+   onkube-controller fake -v 4
+
+$ docker run --name onkube-controller -d --restart=always \
+   --net="host" \
+   --pid="host" \
+   -v /root/wtxue/k8s:/k8s \
+   registry.cn-hangzhou.aliyuncs.com/wtxue/onkube-controller:v0.1.0  \
+   onkube-controller ctrl -v 4 --kubeconfig=/k8s/cfg/fake-kubeconfig.yaml
+
+
+```
+
+## 创建集群
+### 创建裸金属集群
+```bash
+# 设置 fake-cluster kubeconfig
+$ export KUBECONFIG=/root/wtxue/k8s/cfg/fake-kubeconfig.yaml
+
+# 创建集群cr
+$ kubectl apply -f ./manifests/example-cluster.yaml
+
+# 创建集群结点
+$ kubectl apply -f ./manifests/example-cluster-node.yaml
+```
+
+### 创建托管集群
+创建托管集群时，onkube-controller需要运行在真实集群上，这里使用上面创建裸金属集群 example-cluster, 注意一个namespace一个集群
+```bash
+# 设置 example-cluster kubeconfig
+$ export KUBECONFIG=/root/wtxue/k8s/cfg/example-cluster-kubeconfig.yaml
+
+# 这里演示直接本地运行，也可以deployment跑到集群上
+$ go run cmd/admin-controller/main.go ctrl -v 4 --kubeconfig=k8s/cfg/fake-kubeconfig.yaml
+
+# 创建 etcd 集群
+$ kubectl apply -f ./manifests/etcd-statefulset.yaml
+
+# 创建托管集群cr
+kubectl apply -f ./manifests/hosted-cluster.yaml
+
+# 创建托管集群结点
+kubectl apply -f ./manifests/hosted-cluster-node.yaml
+```
 
 # 计划
 
-- [x]  master组件托管
+- [x]  打通元集群及托管集群service网络，以支持聚合apiserver
+- [x]  支持 helm v3 部署 addons

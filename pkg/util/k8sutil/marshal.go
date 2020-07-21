@@ -1,12 +1,22 @@
 package k8sutil
 
 import (
+	"io"
+
 	"github.com/pkg/errors"
 
+	"bufio"
+	"bytes"
+	"strings"
+
+	"github.com/wtxue/kube-on-kube-operator/pkg/k8sclient"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/klog"
+	runtimeClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // MarshalToYaml marshals an object into yaml.
@@ -55,4 +65,56 @@ func GroupVersionKindsHasKind(gvks []schema.GroupVersionKind, kind string) bool 
 		}
 	}
 	return false
+}
+
+func LoadObjs(f io.Reader) ([]runtime.Object, error) {
+	var b bytes.Buffer
+
+	var yamls []string
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "---" {
+			yamls = append(yamls, b.String())
+			b.Reset()
+		} else {
+			if _, err := b.WriteString(line); err != nil {
+				return nil, err
+			}
+			if _, err := b.WriteString("\n"); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if s := strings.TrimSpace(b.String()); s != "" {
+		yamls = append(yamls, s)
+	}
+
+	objs := make([]runtime.Object, 0)
+	for _, yaml := range yamls {
+		if len(yaml) < 10 {
+			continue
+		}
+
+		s := json.NewSerializerWithOptions(json.DefaultMetaFactory,
+			k8sclient.GetScheme(), k8sclient.GetScheme(), json.SerializerOptions{Yaml: true})
+
+		obj, gvk, err := s.Decode([]byte(yaml), nil, nil)
+		if err != nil {
+			continue
+		}
+
+		if gvk != nil {
+			key, err := runtimeClient.ObjectKeyFromObject(obj)
+			if err != nil {
+				continue
+			}
+			klog.Infof("append gvk: %s, key: %s", gvk.String(), key.String())
+		}
+		objs = append(objs, obj)
+
+	}
+
+	return objs, nil
 }

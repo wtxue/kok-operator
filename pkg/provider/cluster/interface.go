@@ -1,3 +1,19 @@
+/*
+Copyright 2020 wtxue.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package cluster
 
 import (
@@ -8,9 +24,12 @@ import (
 	"runtime"
 	"strings"
 
+	"time"
+
 	"github.com/thoas/go-funk"
 	devopsv1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/devops/v1"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider"
+	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
+	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/server/mux"
@@ -33,26 +52,26 @@ type Provider interface {
 
 	RegisterHandler(mux *mux.PathRecorderMux)
 
-	Validate(cluster *provider.Cluster) field.ErrorList
+	Validate(cluster *common.Cluster) field.ErrorList
 
-	PreCreate(cluster *provider.Cluster) error
-	AfterCreate(cluster *provider.Cluster) error
+	PreCreate(cluster *common.Cluster) error
+	AfterCreate(cluster *common.Cluster) error
 
-	OnCreate(ctx context.Context, cluster *provider.Cluster) error
-	OnUpdate(ctx context.Context, cluster *provider.Cluster) error
-	OnDelete(ctx context.Context, cluster *provider.Cluster) error
+	OnCreate(ctx context.Context, cluster *common.Cluster) error
+	OnUpdate(ctx context.Context, cluster *common.Cluster) error
+	OnDelete(ctx context.Context, cluster *common.Cluster) error
 }
 
 var _ Provider = &DelegateProvider{}
 
-type Handler func(context.Context, *provider.Cluster) error
+type Handler func(context.Context, *common.Cluster) error
 
 type DelegateProvider struct {
 	ProviderName string
 
-	ValidateFunc    func(cluster *provider.Cluster) field.ErrorList
-	PreCreateFunc   func(cluster *provider.Cluster) error
-	AfterCreateFunc func(cluster *provider.Cluster) error
+	ValidateFunc    func(cluster *common.Cluster) field.ErrorList
+	PreCreateFunc   func(cluster *common.Cluster) error
+	AfterCreateFunc func(cluster *common.Cluster) error
 
 	CreateHandlers []Handler
 	DeleteHandlers []Handler
@@ -69,7 +88,7 @@ func (p *DelegateProvider) Name() string {
 func (p *DelegateProvider) RegisterHandler(mux *mux.PathRecorderMux) {
 }
 
-func (p *DelegateProvider) Validate(cluster *provider.Cluster) field.ErrorList {
+func (p *DelegateProvider) Validate(cluster *common.Cluster) field.ErrorList {
 	if p.ValidateFunc != nil {
 		return p.ValidateFunc(cluster)
 	}
@@ -77,7 +96,7 @@ func (p *DelegateProvider) Validate(cluster *provider.Cluster) field.ErrorList {
 	return nil
 }
 
-func (p *DelegateProvider) PreCreate(cluster *provider.Cluster) error {
+func (p *DelegateProvider) PreCreate(cluster *common.Cluster) error {
 	if p.PreCreateFunc != nil {
 		return p.PreCreateFunc(cluster)
 	}
@@ -85,7 +104,7 @@ func (p *DelegateProvider) PreCreate(cluster *provider.Cluster) error {
 	return nil
 }
 
-func (p *DelegateProvider) AfterCreate(cluster *provider.Cluster) error {
+func (p *DelegateProvider) AfterCreate(cluster *common.Cluster) error {
 	if p.AfterCreateFunc != nil {
 		return p.AfterCreateFunc(cluster)
 	}
@@ -93,7 +112,7 @@ func (p *DelegateProvider) AfterCreate(cluster *provider.Cluster) error {
 	return nil
 }
 
-func (p *DelegateProvider) OnCreate(ctx context.Context, cluster *provider.Cluster) error {
+func (p *DelegateProvider) OnCreate(ctx context.Context, cluster *common.Cluster) error {
 	condition, err := p.getCreateCurrentCondition(cluster)
 	if err != nil {
 		return err
@@ -127,8 +146,8 @@ func (p *DelegateProvider) OnCreate(ctx context.Context, cluster *provider.Clust
 				Message:       err.Error(),
 				Reason:        ReasonFailedProcess,
 			})
-			cluster.Status.Reason = ReasonFailedProcess
-			cluster.Status.Message = err.Error()
+			cluster.Cluster.Status.Reason = ReasonFailedProcess
+			cluster.Cluster.Status.Message = err.Error()
 			return nil
 		}
 
@@ -143,7 +162,7 @@ func (p *DelegateProvider) OnCreate(ctx context.Context, cluster *provider.Clust
 
 	nextConditionType := p.getNextConditionType(condition.Type)
 	if nextConditionType == ConditionTypeDone {
-		cluster.Status.Phase = devopsv1.ClusterRunning
+		cluster.Cluster.Status.Phase = devopsv1.ClusterRunning
 	} else {
 		cluster.SetCondition(devopsv1.ClusterCondition{
 			Type:               nextConditionType,
@@ -158,12 +177,13 @@ func (p *DelegateProvider) OnCreate(ctx context.Context, cluster *provider.Clust
 	return nil
 }
 
-func tryFindHandler(handlerName string, handlers []string, cluster *provider.Cluster) bool {
+func tryFindHandler(handlerName string, handlers []string, cluster *common.Cluster) bool {
 	var obj *devopsv1.ClusterCondition
-	for idx := range cluster.Status.Conditions {
-		c := &cluster.Status.Conditions[idx]
+	for idx := range cluster.Cluster.Status.Conditions {
+		c := &cluster.Cluster.Status.Conditions[idx]
 		if c.Type == handlerName {
-			if c.Status == devopsv1.ConditionTrue {
+			ltime := c.LastProbeTime
+			if c.Status == devopsv1.ConditionTrue && ltime.Add(2*time.Minute).After(time.Now()) {
 				obj = c
 			}
 			break
@@ -183,14 +203,14 @@ func tryFindHandler(handlerName string, handlers []string, cluster *provider.Clu
 	return false
 }
 
-func (p *DelegateProvider) OnUpdate(ctx context.Context, cluster *provider.Cluster) error {
+func (p *DelegateProvider) OnUpdate(ctx context.Context, cluster *common.Cluster) error {
 	if cluster.Cluster.Annotations == nil {
 		return nil
 	}
 
 	var key string
 	var ok bool
-	if key, ok = cluster.Cluster.Annotations[devopsv1.ClusterAnnotationAction]; !ok {
+	if key, ok = cluster.Cluster.Annotations[constants.ClusterAnnotationAction]; !ok {
 		return nil
 	}
 
@@ -213,8 +233,8 @@ func (p *DelegateProvider) OnUpdate(ctx context.Context, cluster *provider.Clust
 				Message:       err.Error(),
 				Reason:        ReasonFailedProcess,
 			})
-			cluster.Status.Reason = ReasonFailedProcess
-			cluster.Status.Message = err.Error()
+			cluster.Cluster.Status.Reason = ReasonFailedProcess
+			cluster.Cluster.Status.Message = err.Error()
 			return nil
 		}
 
@@ -230,7 +250,7 @@ func (p *DelegateProvider) OnUpdate(ctx context.Context, cluster *provider.Clust
 	return nil
 }
 
-func (p *DelegateProvider) OnDelete(ctx context.Context, cluster *provider.Cluster) error {
+func (p *DelegateProvider) OnDelete(ctx context.Context, cluster *common.Cluster) error {
 	for _, f := range p.DeleteHandlers {
 		klog.Infof("clusterName: %s OnDelete handler: %s", cluster.Name, f.Name())
 		err := f(ctx, cluster)
@@ -280,8 +300,8 @@ func (p *DelegateProvider) getCreateHandler(conditionType string) Handler {
 	return nil
 }
 
-func (p *DelegateProvider) getCreateCurrentCondition(c *provider.Cluster) (*devopsv1.ClusterCondition, error) {
-	if c.Status.Phase == devopsv1.ClusterRunning {
+func (p *DelegateProvider) getCreateCurrentCondition(c *common.Cluster) (*devopsv1.ClusterCondition, error) {
+	if c.Cluster.Status.Phase == devopsv1.ClusterRunning {
 		return nil, errors.New("cluster phase is running now")
 	}
 
@@ -289,7 +309,7 @@ func (p *DelegateProvider) getCreateCurrentCondition(c *provider.Cluster) (*devo
 		return nil, errors.New("no create handlers")
 	}
 
-	if len(c.Status.Conditions) == 0 {
+	if len(c.Cluster.Status.Conditions) == 0 {
 		return &devopsv1.ClusterCondition{
 			Type:          p.CreateHandlers[0].Name(),
 			Status:        devopsv1.ConditionUnknown,
@@ -299,15 +319,15 @@ func (p *DelegateProvider) getCreateCurrentCondition(c *provider.Cluster) (*devo
 		}, nil
 	}
 
-	for _, condition := range c.Status.Conditions {
+	for _, condition := range c.Cluster.Status.Conditions {
 		if condition.Status == devopsv1.ConditionFalse || condition.Status == devopsv1.ConditionUnknown {
 			return &condition, nil
 		}
 	}
 
-	if len(c.Status.Conditions) < len(p.CreateHandlers) {
+	if len(c.Cluster.Status.Conditions) < len(p.CreateHandlers) {
 		return &devopsv1.ClusterCondition{
-			Type:          p.CreateHandlers[len(c.Status.Conditions)].Name(),
+			Type:          p.CreateHandlers[len(c.Cluster.Status.Conditions)].Name(),
 			Status:        devopsv1.ConditionUnknown,
 			LastProbeTime: metav1.Now(),
 			Message:       "waiting process",

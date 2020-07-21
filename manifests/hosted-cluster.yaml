@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    name: hosted-cluster
+  name: hosted-cluster
+---
+apiVersion: devops.gostship.io/v1
+kind: Cluster
+metadata:
+  name: hosted-cluster
+  namespace: hosted-cluster
+  annotations:
+    k8s.io/action: EnsureExtKubeconfig,EnsureAddons,EnsureFlannel
+spec:
+  pause: false
+  tenantID: wtxue
+  displayName: demo
+  type: Hosted
+  version: v1.18.6
+  networkType: eth0
+  clusterCIDR: 10.97.0.0/16
+  serviceCIDR: 10.96.0.0/16
+  dnsDomain: cluster.local
+  publicAlternativeNames:
+    - escrow-cluster.dke.k8s.io
+    - kube-apiserver
+  features:
+    ipvs: true
+    internalLB: true
+    enableMasterSchedule: true
+    ha:
+      thirdParty:
+        vip: "10.248.224.183"
+        vport: 30443
+    files:
+      - src: "k8s/linuxbin/k9s"
+        dst: "/usr/local/bin/k9s"
+    hooks:
+      PostCniInstall: flannel
+  properties:
+    maxNodePodNum: 64
+  apiServerExtraArgs:
+    audit-log-maxage: "30"
+    audit-log-maxbackup: "3"
+    audit-log-maxsize: "100"
+    audit-log-truncate-enabled: "true"
+    audit-policy-file: "/etc/kubernetes/audit-policy.yaml"
+    audit-log-path: "/var/log/kubernetes/k8s-audit.log"
+  controllerManagerExtraArgs:
+    "bind-address": "0.0.0.0"
+  schedulerExtraArgs:
+    "bind-address": "0.0.0.0"
+  dockerExtraArgs:
+    registry-mirrors: https://4xr1qpsp.mirror.aliyuncs.com
+    version: 19.03.9

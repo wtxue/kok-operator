@@ -1,3 +1,19 @@
+/*
+Copyright 2020 wtxue.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package v1
 
 import (
@@ -33,9 +49,9 @@ const (
 // MachineAddress contains information for the machine's address.
 type MachineAddress struct {
 	// Machine address type, one of Public, ExternalIP or InternalIP.
-	Type MachineAddressType `json:"type" protobuf:"bytes,1,opt,name=type,casttype=MachineAddressType"`
+	Type MachineAddressType `json:"type"`
 	// The machine address.
-	Address string `json:"address" protobuf:"bytes,2,opt,name=address"`
+	Address string `json:"address"`
 }
 
 // MachineSystemInfo is a set of ids/uuids to uniquely identify the node.
@@ -43,67 +59,67 @@ type MachineSystemInfo struct {
 	// MachineID reported by the node. For unique machine identification
 	// in the cluster this field is preferred. Learn more from man(5)
 	// machine-id: http://man7.org/linux/man-pages/man5/machine-id.5.html
-	MachineID string `json:"machineID,omitempty" protobuf:"bytes,1,opt,name=machineID"`
+	MachineID string `json:"machineID,omitempty"`
 	// SystemUUID reported by the node. For unique machine identification
 	// MachineID is preferred. This field is specific to Red Hat hosts
 	// https://access.redhat.com/documentation/en-US/Red_Hat_Subscription_Management/1/html/RHSM/getting-system-uuid.html
-	SystemUUID string `json:"systemUUID,omitempty" protobuf:"bytes,2,opt,name=systemUUID"`
+	SystemUUID string `json:"systemUUID,omitempty"`
 	// Boot ID reported by the node.
-	BootID string `json:"bootID,omitempty" protobuf:"bytes,3,opt,name=bootID"`
+	BootID string `json:"bootID,omitempty"`
 	// Kernel Version reported by the node.
-	KernelVersion string `json:"kernelVersion,omitempty" protobuf:"bytes,4,opt,name=kernelVersion"`
+	KernelVersion string `json:"kernelVersion,omitempty"`
 	// OS Image reported by the node.
-	OSImage string `json:"osImage,omitempty" protobuf:"bytes,5,opt,name=osImage"`
+	OSImage string `json:"osImage,omitempty"`
 	// ContainerRuntime Version reported by the node.
-	ContainerRuntimeVersion string `json:"containerRuntimeVersion,omitempty" protobuf:"bytes,6,opt,name=containerRuntimeVersion"`
+	ContainerRuntimeVersion string `json:"containerRuntimeVersion,omitempty"`
 	// Kubelet Version reported by the node.
-	KubeletVersion string `json:"kubeletVersion,omitempty" protobuf:"bytes,7,opt,name=kubeletVersion"`
+	KubeletVersion string `json:"kubeletVersion,omitempty"`
 	// KubeProxy Version reported by the node.
-	KubeProxyVersion string `json:"kubeProxyVersion,omitempty" protobuf:"bytes,8,opt,name=kubeProxyVersion"`
+	KubeProxyVersion string `json:"kubeProxyVersion,omitempty"`
 	// The Operating System reported by the node
-	OperatingSystem string `json:"operatingSystem,omitempty" protobuf:"bytes,9,opt,name=operatingSystem"`
+	OperatingSystem string `json:"operatingSystem,omitempty"`
 	// The Architecture reported by the node
-	Architecture string `json:"architecture,omitempty" protobuf:"bytes,10,opt,name=architecture"`
+	Architecture string `json:"architecture,omitempty"`
 }
 
 // MachineCondition contains details for the current condition of this Machine.
 type MachineCondition struct {
 	// Type is the type of the condition.
-	Type string `json:"type" protobuf:"bytes,1,opt,name=type"`
+	Type string `json:"type"`
 	// Status is the status of the condition.
 	// Can be True, False, Unknown.
-	Status ConditionStatus `json:"status" protobuf:"bytes,2,opt,name=status,casttype=ConditionStatus"`
+	Status ConditionStatus `json:"status"`
 	// Last time we probed the condition.
 	// +optional
-	LastProbeTime metav1.Time `json:"lastProbeTime,omitempty" protobuf:"bytes,3,opt,name=lastProbeTime"`
+	LastProbeTime metav1.Time `json:"lastProbeTime,omitempty"`
 	// Last time the condition transitioned from one status to another.
 	// +optional
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty" protobuf:"bytes,4,opt,name=lastTransitionTime"`
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	// Unique, one-word, CamelCase reason for the condition's last transition.
 	// +optional
-	Reason string `json:"reason,omitempty" protobuf:"bytes,5,opt,name=reason"`
+	Reason string `json:"reason,omitempty"`
 	// Human-readable message indicating details about last transition.
 	// +optional
-	Message string `json:"message,omitempty" protobuf:"bytes,6,opt,name=message"`
+	Message string `json:"message,omitempty"`
 }
 
 type MachineFeature struct {
 	// +optional
-	SkipConditions []string `json:"skipConditions,omitempty" protobuf:"bytes,7,opt,name=skipConditions"`
+	SkipConditions []string `json:"skipConditions,omitempty"`
 	// +optional
-	Files []File `json:"files,omitempty" protobuf:"bytes,8,opt,name=files"`
+	Files []File `json:"files,omitempty"`
 	// +optional
-	Hooks map[string]string `json:"hooks,omitempty" protobuf:"bytes,9,opt,name=hooks"`
+	Hooks map[string]string `json:"hooks,omitempty"`
 }
 
 // MachineSpec is a description of machine.
 type MachineSpec struct {
 	// Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
 	// +optional
-	Finalizers  []FinalizerName `json:"finalizers,omitempty" protobuf:"bytes,1,rep,name=finalizers,casttype=FinalizerName"`
-	TenantID    string          `json:"tenantID,omitempty" protobuf:"bytes,2,opt,name=tenantID"`
-	ClusterName string          `json:"clusterName" protobuf:"bytes,3,opt,name=clusterName"`
-	Type        string          `json:"type" protobuf:"bytes,4,opt,name=type"`
+	Finalizers  []FinalizerName `json:"finalizers,omitempty"`
+	TenantID    string          `json:"tenantID,omitempty"`
+	ClusterName string          `json:"clusterName"`
+	Type        string          `json:"type"`
 	Machine     *ClusterMachine `json:"machine,omitempty"`
 	Feature     *MachineFeature `json:"feature,omitempty"`
 	Pause       bool            `json:"pause,omitempty"`
@@ -112,27 +128,27 @@ type MachineSpec struct {
 // MachineStatus represents information about the status of an machine.
 type MachineStatus struct {
 	// +optional
-	Locked *bool `json:"locked,omitempty" protobuf:"varint,1,opt,name=locked"`
+	Locked *bool `json:"locked,omitempty"`
 	// +optional
-	Phase MachinePhase `json:"phase,omitempty" protobuf:"bytes,2,opt,name=phase,casttype=MachinePhase"`
+	Phase MachinePhase `json:"phase,omitempty"`
 	// +optional
 	// +patchMergeKey=type
 	// +patchStrategy=merge
-	Conditions []MachineCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,3,rep,name=conditions"`
+	Conditions []MachineCondition `json:"conditions,omitempty"`
 	// A human readable message indicating details about why the machine is in this condition.
 	// +optional
-	Message string `json:"message,omitempty" protobuf:"bytes,4,opt,name=message"`
+	Message string `json:"message,omitempty"`
 	// A brief CamelCase message indicating details about why the machine is in this state.
 	// +optional
-	Reason string `json:"reason,omitempty" protobuf:"bytes,5,opt,name=reason"`
+	Reason string `json:"reason,omitempty"`
 	// List of addresses reachable to the machine.
 	// +optional
 	// +patchMergeKey=type
 	// +patchStrategy=merge
-	Addresses []MachineAddress `json:"addresses,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,6,rep,name=addresses"`
+	Addresses []MachineAddress `json:"addresses,omitempty"`
 	// Set of ids/uuids to uniquely identify the node.
 	// +optional
-	MachineInfo MachineSystemInfo `json:"machineInfo,omitempty" protobuf:"bytes,7,opt,name=machineInfo"`
+	MachineInfo MachineSystemInfo `json:"machineInfo,omitempty"`
 }
 
 // +genclient

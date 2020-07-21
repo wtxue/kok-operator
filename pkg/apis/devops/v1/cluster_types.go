@@ -1,3 +1,19 @@
+/*
+Copyright 2020 wtxue.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package v1
 
 import (
@@ -25,8 +41,8 @@ type ResourceList map[string]resource.Quantity
 
 // ResourceRequirements describes the compute resource requirements.
 type ResourceRequirements struct {
-	Limits   ResourceList `json:"limits,omitempty" protobuf:"bytes,1,rep,name=limits,casttype=ResourceList"`
-	Requests ResourceList `json:"requests,omitempty" protobuf:"bytes,2,rep,name=requests,casttype=ResourceList"`
+	Limits   ResourceList `json:"limits,omitempty"`
+	Requests ResourceList `json:"requests,omitempty"`
 }
 
 // ClusterResource records the current available and maximum resource quota
@@ -34,29 +50,29 @@ type ResourceRequirements struct {
 type ClusterResource struct {
 	// Capacity represents the total resources of a cluster.
 	// +optional
-	Capacity ResourceList `json:"capacity,omitempty" protobuf:"bytes,1,rep,name=capacity,casttype=ResourceList"`
+	Capacity ResourceList `json:"capacity,omitempty"`
 	// Allocatable represents the resources of a cluster that are available for scheduling.
 	// Defaults to Capacity.
 	// +optional
-	Allocatable ResourceList `json:"allocatable,omitempty" protobuf:"bytes,2,rep,name=allocatable,casttype=ResourceList"`
+	Allocatable ResourceList `json:"allocatable,omitempty"`
 	// +optional
-	Allocated ResourceList `json:"allocated,omitempty" protobuf:"bytes,3,rep,name=allocated,casttype=ResourceList"`
+	Allocated ResourceList `json:"allocated,omitempty"`
 }
 
 // ClusterComponent records the number of copies of each component of the
 // cluster master.
 type ClusterComponent struct {
-	Type     string                   `json:"type" protobuf:"bytes,1,opt,name=type"`
-	Replicas ClusterComponentReplicas `json:"replicas" protobuf:"bytes,2,opt,name=replicas,casttype=ClusterComponentReplicas"`
+	Type     string                   `json:"type"`
+	Replicas ClusterComponentReplicas `json:"replicas"`
 }
 
 // ClusterComponentReplicas records the number of copies of each state of each
 // component of the cluster master.
 type ClusterComponentReplicas struct {
-	Desired   int32 `json:"desired" protobuf:"varint,1,name=desired"`
-	Current   int32 `json:"current" protobuf:"varint,2,name=current"`
-	Available int32 `json:"available" protobuf:"varint,3,name=available"`
-	Updated   int32 `json:"updated" protobuf:"varint,4,name=updated"`
+	Desired   int32 `json:"desired"`
+	Current   int32 `json:"current"`
+	Available int32 `json:"available"`
+	Updated   int32 `json:"updated"`
 }
 
 // ClusterPhase defines the phase of cluster constructor.
@@ -71,35 +87,37 @@ const (
 	ClusterFailed ClusterPhase = "Failed"
 	// ClusterTerminating means the cluster is undergoing graceful termination.
 	ClusterTerminating ClusterPhase = "Terminating"
+	// ClusterNotSupport is the not support phase.
+	ClusterNotSupport ClusterPhase = "NotSupport"
 )
 
 // ClusterCondition contains details for the current condition of this cluster.
 type ClusterCondition struct {
 	// Type is the type of the condition.
-	Type string `json:"type" protobuf:"bytes,1,opt,name=type"`
+	Type string `json:"type"`
 	// Status is the status of the condition.
 	// Can be True, False, Unknown.
-	Status ConditionStatus `json:"status" protobuf:"bytes,2,opt,name=status,casttype=ConditionStatus"`
+	Status ConditionStatus `json:"status"`
 	// Last time we probed the condition.
 	// +optional
-	LastProbeTime metav1.Time `json:"lastProbeTime,omitempty" protobuf:"bytes,3,opt,name=lastProbeTime"`
+	LastProbeTime metav1.Time `json:"lastProbeTime,omitempty"`
 	// Last time the condition transitioned from one status to another.
 	// +optional
-	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty" protobuf:"bytes,4,opt,name=lastTransitionTime"`
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
 	// Unique, one-word, CamelCase reason for the condition's last transition.
 	// +optional
-	Reason string `json:"reason,omitempty" protobuf:"bytes,5,opt,name=reason"`
+	Reason string `json:"reason,omitempty"`
 	// Human-readable message indicating details about last transition.
 	// +optional
-	Message string `json:"message,omitempty" protobuf:"bytes,6,opt,name=message"`
+	Message string `json:"message,omitempty"`
 }
 
 type HookType string
 
 const (
-	HookPreInstall     HookType = "PreInstall"
-	HookPostInstall    HookType = "PostInstall"
-	HookPostCniInstall HookType = "PostCniInstall"
+	HookPreInstall  HookType = "preInstall"
+	HookPostInstall HookType = "postInstall"
+	HookCniInstall  HookType = "cniInstall"
 )
 
 // AddressType indicates the type of cluster apiserver access address.
@@ -122,94 +140,94 @@ const (
 // ClusterAddress contains information for the cluster's address.
 type ClusterAddress struct {
 	// Cluster address type, one of Public, ExternalIP or InternalIP.
-	Type AddressType `json:"type" protobuf:"bytes,1,opt,name=type,casttype=AddressType"`
+	Type AddressType `json:"type"`
 	// The cluster address.
-	Host string `json:"host" protobuf:"bytes,2,opt,name=host"`
-	Port int32  `json:"port" protobuf:"varint,3,name=port"`
+	Host string `json:"host"`
+	Port int32  `json:"port"`
 }
 
 // LocalEtcd describes that kubeadm should run an etcd cluster locally
 type LocalEtcd struct {
 	// DataDir is the directory etcd will place its data.
 	// Defaults to "/var/lib/etcd".
-	DataDir string `json:"dataDir" protobuf:"bytes,1,opt,name=dataDir"`
+	DataDir string `json:"dataDir"`
 
 	// ExtraArgs are extra arguments provided to the etcd binary
 	// when run inside a static pod.
-	ExtraArgs map[string]string `json:"extraArgs,omitempty" protobuf:"bytes,2,rep,name=extraArgs"`
+	ExtraArgs map[string]string `json:"extraArgs,omitempty"`
 
 	// ServerCertSANs sets extra Subject Alternative Names for the etcd server signing cert.
-	ServerCertSANs []string `json:"serverCertSANs,omitempty" protobuf:"bytes,3,rep,name=serverCertSANs"`
+	ServerCertSANs []string `json:"serverCertSANs,omitempty"`
 	// PeerCertSANs sets extra Subject Alternative Names for the etcd peer signing cert.
-	PeerCertSANs []string `json:"peerCertSANs,omitempty" protobuf:"bytes,4,rep,name=peerCertSANs"`
+	PeerCertSANs []string `json:"peerCertSANs,omitempty"`
 }
 
 type HA struct {
-	DKEHA        *DKEHA        `json:"dke,omitempty" protobuf:"bytes,1,opt,name=tke"`
-	ThirdPartyHA *ThirdPartyHA `json:"thirdParty,omitempty" protobuf:"bytes,2,opt,name=thirdParty"`
+	DKEHA        *DKEHA        `json:"dke,omitempty"`
+	ThirdPartyHA *ThirdPartyHA `json:"thirdParty,omitempty"`
 }
 
 type DKEHA struct {
-	VIP string `json:"vip" protobuf:"bytes,1,name=vip"`
+	VIP string `json:"vip"`
 }
 
 type ThirdPartyHA struct {
-	VIP   string `json:"vip" protobuf:"bytes,1,name=vip"`
-	VPort int32  `json:"vport" protobuf:"bytes,2,name=vport"`
+	VIP   string `json:"vip"`
+	VPort int32  `json:"vport"`
 }
 
 type File struct {
-	Src string `json:"src" protobuf:"bytes,1,name=src"` // Only support regular file
-	Dst string `json:"dst" protobuf:"bytes,2,name=dst"`
+	Src string `json:"src"` // Only support regular file
+	Dst string `json:"dst"`
 }
 
 // ClusterFeature records the features that are enabled by the cluster.
 type ClusterFeature struct {
 	// +optional
-	IPVS *bool `json:"ipvs,omitempty" protobuf:"varint,1,opt,name=ipvs"`
+	IPVS *bool `json:"ipvs,omitempty"`
 	// +optional
-	PublicLB *bool `json:"publicLB,omitempty" protobuf:"varint,2,opt,name=publicLB"`
+	PublicLB *bool `json:"publicLB,omitempty"`
 	// +optional
-	InternalLB *bool `json:"internalLB,omitempty" protobuf:"varint,3,opt,name=internalLB"`
+	InternalLB *bool `json:"internalLB,omitempty" `
 	// +optional
-	EnableMasterSchedule bool `json:"enableMasterSchedule,omitempty" protobuf:"bytes,5,opt,name=enableMasterSchedule"`
+	EnableMasterSchedule bool `json:"enableMasterSchedule,omitempty"`
 	// +optional
-	HA *HA `json:"ha,omitempty" protobuf:"bytes,6,opt,name=ha"`
+	HA *HA `json:"ha,omitempty"`
 	// +optional
-	SkipConditions []string `json:"skipConditions,omitempty" protobuf:"bytes,7,opt,name=skipConditions"`
+	SkipConditions []string `json:"skipConditions,omitempty"`
 	// +optional
-	Files []File `json:"files,omitempty" protobuf:"bytes,8,opt,name=files"`
+	Files []File `json:"files,omitempty"`
 	// +optional
-	Hooks map[HookType]string `json:"hooks,omitempty" protobuf:"bytes,9,opt,name=hooks"`
+	Hooks map[HookType]string `json:"hooks,omitempty"`
 }
 
 // ClusterProperty records the attribute information of the cluster.
 type ClusterProperty struct {
 	// +optional
-	MaxClusterServiceNum *int32 `json:"maxClusterServiceNum,omitempty" protobuf:"bytes,1,opt,name=maxClusterServiceNum"`
+	MaxClusterServiceNum *int32 `json:"maxClusterServiceNum,omitempty"`
 	// +optional
-	MaxNodePodNum *int32 `json:"maxNodePodNum,omitempty" protobuf:"bytes,2,opt,name=maxNodePodNum"`
+	MaxNodePodNum *int32 `json:"maxNodePodNum,omitempty"`
 	// +optional
-	OversoldRatio map[string]string `json:"oversoldRatio,omitempty" protobuf:"bytes,3,opt,name=oversoldRatio"`
+	OversoldRatio map[string]string `json:"oversoldRatio,omitempty"`
 }
 
 // ExternalEtcd describes an external etcd cluster.
 // Kubeadm has no knowledge of where certificate files live and they must be supplied.
 type ExternalEtcd struct {
 	// Endpoints of etcd members. Required for ExternalEtcd.
-	Endpoints []string `json:"endpoints" protobuf:"bytes,1,rep,name=endpoints"`
+	Endpoints []string `json:"endpoints"`
 
 	// CAFile is an SSL Certificate Authority file used to secure etcd communication.
 	// Required if using a TLS connection.
-	CAFile string `json:"caFile" protobuf:"bytes,2,opt,name=caFile"`
+	CAFile string `json:"caFile"`
 
 	// CertFile is an SSL certification file used to secure etcd communication.
 	// Required if using a TLS connection.
-	CertFile string `json:"certFile" protobuf:"bytes,3,opt,name=certFile"`
+	CertFile string `json:"certFile"`
 
 	// KeyFile is an SSL key file used to secure etcd communication.
 	// Required if using a TLS connection.
-	KeyFile string `json:"keyFile" protobuf:"bytes,4,opt,name=keyFile"`
+	KeyFile string `json:"keyFile"`
 }
 
 // Etcd contains elements describing Etcd configuration.
@@ -217,54 +235,54 @@ type Etcd struct {
 
 	// Local provides configuration knobs for configuring the local etcd instance
 	// Local and External are mutually exclusive
-	Local *LocalEtcd `json:"local,omitempty" protobuf:"bytes,1,opt,name=local"`
+	Local *LocalEtcd `json:"local,omitempty"`
 
 	// External describes how to connect to an external etcd cluster
 	// Local and External are mutually exclusive
-	External *ExternalEtcd `json:"external,omitempty" protobuf:"bytes,2,opt,name=external"`
+	External *ExternalEtcd `json:"external,omitempty"`
 }
 
 // ClusterSpec defines the desired state of Cluster
 type ClusterSpec struct {
 	// Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
 	// +optional
-	Finalizers []FinalizerName `json:"finalizers,omitempty" protobuf:"bytes,1,rep,name=finalizers,casttype=FinalizerName"`
-	TenantID   string          `json:"tenantID" protobuf:"bytes,2,opt,name=tenantID"`
+	Finalizers []FinalizerName `json:"finalizers,omitempty"`
+	TenantID   string          `json:"tenantID"`
 	// +optional
-	DisplayName string `json:"displayName" protobuf:"bytes,3,opt,name=displayName"`
-	Type        string `json:"type" protobuf:"bytes,4,opt,name=type"`
-	Version     string `json:"version" protobuf:"bytes,5,opt,name=version"`
+	DisplayName string `json:"displayName"`
+	Type        string `json:"type"`
+	Version     string `json:"version"`
 	// +optional
-	NetworkType NetworkType `json:"networkType,omitempty" protobuf:"bytes,6,opt,name=networkType,casttype=NetworkType"`
+	NetworkType NetworkType `json:"networkType,omitempty"`
 	// +optional
-	NetworkDevice string `json:"networkDevice,omitempty" protobuf:"bytes,7,opt,name=networkDevice"`
+	NetworkDevice string `json:"networkDevice,omitempty"`
 	// +optional
-	ClusterCIDR string `json:"clusterCIDR,omitempty" protobuf:"bytes,8,opt,name=clusterCIDR"`
+	ClusterCIDR string `json:"clusterCIDR,omitempty"`
 	// ServiceCIDR is used to set a separated CIDR for k8s service, it's exclusive with MaxClusterServiceNum.
 	// +optional
-	ServiceCIDR *string `json:"serviceCIDR,omitempty" protobuf:"bytes,19,opt,name=serviceCIDR"`
+	ServiceCIDR *string `json:"serviceCIDR,omitempty"`
 	// DNSDomain is the dns domain used by k8s services. Defaults to "cluster.local".
-	DNSDomain string `json:"dnsDomain,omitempty" protobuf:"bytes,9,opt,name=dnsDomain"`
+	DNSDomain string `json:"dnsDomain,omitempty"`
 	// +optional
-	PublicAlternativeNames []string `json:"publicAlternativeNames,omitempty" protobuf:"bytes,10,opt,name=publicAlternativeNames"`
+	PublicAlternativeNames []string `json:"publicAlternativeNames,omitempty"`
 	// +optional
-	Features ClusterFeature `json:"features,omitempty" protobuf:"bytes,11,opt,name=features,casttype=ClusterFeature"`
+	Features ClusterFeature `json:"features,omitempty"`
 	// +optional
-	Properties ClusterProperty `json:"properties,omitempty" protobuf:"bytes,12,opt,name=properties,casttype=ClusterProperty"`
+	Properties ClusterProperty `json:"properties,omitempty"`
 	// +optional
-	Machines []*ClusterMachine `json:"machines,omitempty" protobuf:"bytes,13,rep,name=addresses"`
+	Machines []*ClusterMachine `json:"machines,omitempty"`
 	// +optional
-	DockerExtraArgs map[string]string `json:"dockerExtraArgs,omitempty" protobuf:"bytes,14,name=dockerExtraArgs"`
+	DockerExtraArgs map[string]string `json:"dockerExtraArgs,omitempty"`
 	// +optional
-	KubeletExtraArgs map[string]string `json:"kubeletExtraArgs,omitempty" protobuf:"bytes,15,name=kubeletExtraArgs"`
+	KubeletExtraArgs map[string]string `json:"kubeletExtraArgs,omitempty"`
 	// +optional
-	APIServerExtraArgs map[string]string `json:"apiServerExtraArgs,omitempty" protobuf:"bytes,16,name=apiServerExtraArgs"`
+	APIServerExtraArgs map[string]string `json:"apiServerExtraArgs,omitempty"`
 	// +optional
-	ControllerManagerExtraArgs map[string]string `json:"controllerManagerExtraArgs,omitempty" protobuf:"bytes,17,name=controllerManagerExtraArgs"`
+	ControllerManagerExtraArgs map[string]string `json:"controllerManagerExtraArgs,omitempty"`
 	// +optional
-	SchedulerExtraArgs map[string]string `json:"schedulerExtraArgs,omitempty" protobuf:"bytes,18,name=schedulerExtraArgs"`
+	SchedulerExtraArgs map[string]string `json:"schedulerExtraArgs,omitempty"`
 	// Etcd holds configuration for etcd.
-	Etcd *Etcd `json:"etcd,omitempty" protobuf:"bytes,21,opt,name=etcd"`
+	Etcd *Etcd `json:"etcd,omitempty"`
 	//
 	Pause bool `json:"pause,omitempty"`
 }
@@ -272,40 +290,40 @@ type ClusterSpec struct {
 // ClusterStatus represents information about the status of a cluster.
 type ClusterStatus struct {
 	// +optional
-	Locked *bool `json:"locked,omitempty" protobuf:"varint,1,opt,name=locked"`
+	Locked *bool `json:"locked,omitempty"`
 	// +optional
-	Version string `json:"version" protobuf:"bytes,2,opt,name=version"`
+	Version string `json:"version"`
 	// +optional
-	Phase ClusterPhase `json:"phase,omitempty" protobuf:"bytes,3,opt,name=phase,casttype=ClusterPhase"`
+	Phase ClusterPhase `json:"phase,omitempty"`
 	// +optional
 	// +patchMergeKey=type
 	// +patchStrategy=merge
-	Conditions []ClusterCondition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,4,rep,name=conditions"`
+	Conditions []ClusterCondition `json:"conditions,omitempty"`
 	// A human readable message indicating details about why the cluster is in this condition.
 	// +optional
-	Message string `json:"message,omitempty" protobuf:"bytes,5,opt,name=message"`
+	Message string `json:"message,omitempty"`
 	// A brief CamelCase message indicating details about why the cluster is in this state.
 	// +optional
-	Reason string `json:"reason,omitempty" protobuf:"bytes,6,opt,name=reason"`
+	Reason string `json:"reason,omitempty"`
 	// List of addresses reachable to the cluster.
 	// +optional
 	// +patchMergeKey=type
 	// +patchStrategy=merge
-	Addresses []ClusterAddress `json:"addresses,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,7,rep,name=addresses"`
+	Addresses []ClusterAddress `json:"addresses,omitempty"`
 	// +optional
-	Resource ClusterResource `json:"resource,omitempty" protobuf:"bytes,9,opt,name=resource,casttype=ClusterResource"`
+	Resource ClusterResource `json:"resource,omitempty"`
 	// +optional
 	// +patchMergeKey=type
 	// +patchStrategy=merge
-	Components []ClusterComponent `json:"components,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,10,rep,name=components"`
+	Components []ClusterComponent `json:"components,omitempty"`
 	// +optional
-	ServiceCIDR string `json:"serviceCIDR,omitempty" protobuf:"bytes,11,opt,name=serviceCIDR"`
+	ServiceCIDR string `json:"serviceCIDR,omitempty"`
 	// +optional
-	NodeCIDRMaskSize int32 `json:"nodeCIDRMaskSize,omitempty" protobuf:"varint,12,opt,name=nodeCIDRMaskSize"`
+	NodeCIDRMaskSize int32 `json:"nodeCIDRMaskSize,omitempty" `
 	// +optional
-	DNSIP string `json:"dnsIP,omitempty" protobuf:"bytes,13,opt,name=dnsIP"`
+	DNSIP string `json:"dnsIP,omitempty"`
 	// +optional
-	RegistryIPs []string `json:"registryIPs,omitempty" protobuf:"bytes,14,opt,name=registryIPs"`
+	RegistryIPs []string `json:"registryIPs,omitempty"`
 }
 
 // +genclient
