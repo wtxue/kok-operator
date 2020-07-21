@@ -3,62 +3,61 @@ package machine
 import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/baremetal/config"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/baremetal/validation"
-	machineprovider "github.com/wtxue/kube-on-kube-operator/pkg/provider/machine"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/containerregistry"
+	"github.com/wtxue/kok-operator/pkg/provider/baremetal/validation"
+	machineprovider "github.com/wtxue/kok-operator/pkg/provider/machine"
 
-	devopsv1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/devops/v1"
+	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
+	"github.com/wtxue/kok-operator/pkg/provider/config"
 	"k8s.io/klog"
 )
 
-func init() {
-	p, err := NewProvider()
+func Add(mgr *machineprovider.MpManager, cfg *config.Config) error {
+	p, err := NewProvider(mgr, cfg)
 	if err != nil {
-		klog.Errorf("init machine provider error: %s", err)
-		return
+		klog.Errorf("init cluster provider error: %s", err)
+		return err
 	}
-	machineprovider.Register(p.Name(), p)
+	mgr.Register(p.Name(), p)
+	return nil
 }
 
 type Provider struct {
 	*machineprovider.DelegateProvider
-
-	config *config.Config
+	Mgr *machineprovider.MpManager
+	Cfg *config.Config
 }
 
-func NewProvider() (*Provider, error) {
-	p := new(Provider)
-
-	cfg, err := config.NewDefaultConfig()
-	if err != nil {
-		return nil, err
+func NewProvider(mgr *machineprovider.MpManager, cfg *config.Config) (*Provider, error) {
+	p := &Provider{
+		Mgr: mgr,
+		Cfg: cfg,
 	}
-	p.config = cfg
-
-	containerregistry.Init(cfg.Registry.Domain, cfg.Registry.Namespace)
 
 	p.DelegateProvider = &machineprovider.DelegateProvider{
 		ProviderName: "Baremetal",
 		CreateHandlers: []machineprovider.Handler{
 			p.EnsureCopyFiles,
 			p.EnsurePreInstallHook,
-
 			p.EnsureClean,
 			p.EnsureRegistryHosts,
 
+			p.EnsureEth,
 			p.EnsureSystem,
+			p.EnsureK8sComponent,
 			p.EnsurePreflight, // wait basic setting done
 
 			p.EnsureJoinNode,
 			p.EnsureKubeconfig,
 			p.EnsureMarkNode,
+			p.EnsureCni,
 			p.EnsureNodeReady,
 
 			p.EnsurePostInstallHook,
 		},
 		UpdateHandlers: []machineprovider.Handler{
+			p.EnsureCni,
 			p.EnsurePostInstallHook,
+			p.EnsureRegistryHosts,
 		},
 	}
 

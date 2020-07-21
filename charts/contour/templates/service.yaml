@@ -1,0 +1,80 @@
+{{- if .Values.contour.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "contour.fullname" . }}
+  labels: {{- include "contour.labels" . | nindent 4 }}
+    app.kubernetes.io/component: contour
+spec:
+  ports:
+    - port: 8001
+      name: xds
+      protocol: TCP
+      targetPort: 8001
+    - name: metrics
+      port: 8000
+      protocol: TCP
+      targetPort: 8000
+  selector: {{- include "contour.matchLabels" . | nindent 4 }}
+    app.kubernetes.io/component: contour
+  type: ClusterIP
+{{- end }}
+{{- if .Values.envoy.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "contour.fullname" . }}-envoy
+  labels: {{- include "contour.labels" . | nindent 4 }}
+    app.kubernetes.io/component: envoy
+    {{- if .Values.envoy.service.labels }}
+    {{- include "contour.tplValue" (dict "value" .Values.envoy.service.labels "context" $) | nindent 4 }}
+    {{- end }}
+  annotations:
+    {{- if .Values.envoy.service.annotations }}
+    {{- include "contour.tplValue" (dict "value" .Values.envoy.service.annotations "context" $) | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.envoy.service.externalTrafficPolicy }}
+  externalTrafficPolicy: {{ .Values.envoy.service.externalTrafficPolicy | quote }}
+  {{- end }}
+  {{- if not (empty .Values.envoy.service.clusterIP) }}
+  clusterIP: {{ .Values.envoy.service.clusterIP | quote }}
+  {{- end }}
+  {{- if .Values.envoy.service.externalIPs }}
+  externalIPs: {{- toYaml .Values.envoy.service.externalIPs | nindent 4 }}
+  {{- end }}
+  {{- if .Values.envoy.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.envoy.service.loadBalancerIP | quote }}
+  {{- end }}
+  {{- if .Values.envoy.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges: {{- toYaml .Values.envoy.service.loadBalancerSourceRanges | nindent 4 }}
+  {{- end }}
+  ports:
+    - name: http
+      port: {{ .Values.envoy.service.ports.http }}
+      protocol: TCP
+      targetPort: http
+      {{- if and (or (eq .Values.envoy.service.type "NodePort") (eq .Values.envoy.service.type "LoadBalancer")) (not (empty .Values.envoy.service.nodePorts.http)) }}
+      nodePort: {{ .Values.envoy.service.nodePorts.http }}
+      {{- else if eq .Values.envoy.service.type "ClusterIP" }}
+      nodePort: null
+      {{- end }}
+    - name: https
+      port: {{ .Values.envoy.service.ports.https }}
+      protocol: TCP
+      targetPort: https
+      {{- if and (or (eq .Values.envoy.service.type "NodePort") (eq .Values.envoy.service.type "LoadBalancer")) (not (empty .Values.envoy.service.nodePorts.https)) }}
+      nodePort: {{ .Values.envoy.service.nodePorts.https }}
+      {{- else if eq .Values.envoy.service.type "ClusterIP" }}
+      nodePort: null
+      {{- end }}
+    - name: metrics
+      port: 8002
+      protocol: TCP
+      targetPort: 8002
+  selector: {{- include "contour.matchLabels" . | nindent 4 }}
+    app.kubernetes.io/component: envoy
+  type: {{ .Values.envoy.service.type }}
+{{- end }}

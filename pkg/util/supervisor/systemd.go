@@ -5,7 +5,7 @@ import (
 	"io"
 	"path"
 
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/ssh"
+	"github.com/wtxue/kok-operator/pkg/util/ssh"
 )
 
 const (

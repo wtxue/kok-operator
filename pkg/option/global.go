@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
-	"github.com/wtxue/kube-on-kube-operator/pkg/k8sclient"
+	"github.com/wtxue/kok-operator/pkg/k8sclient"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog"
@@ -31,7 +31,7 @@ func DefaultGlobalManagetOption() *GlobalManagerOption {
 		GoroutineThreshold:      1000,
 		ResyncPeriod:            60 * time.Minute,
 		EnableLeaderElection:    false,
-		LeaderElectionNamespace: "sym-admin",
+		LeaderElectionNamespace: "onkube-admin",
 	}
 }
 

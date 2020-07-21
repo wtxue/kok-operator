@@ -20,8 +20,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	kubeadmv1beta2 "github.com/wtxue/kube-on-kube-operator/pkg/apis/kubeadm/v1beta2"
-	kubeadmconstants "github.com/wtxue/kube-on-kube-operator/pkg/provider/baremetal/phases/kubeadm/constants"
+	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
 	"k8s.io/apimachinery/pkg/util/validation"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/keyutil"
@@ -511,7 +510,7 @@ func NewSignedCert(cfg *CertConfig, key crypto.Signer, caCert *x509.Certificate,
 
 // GetAPIServerAltNames builds an AltNames object for to be used when generating apiserver certificate
 func GetAPIServerAltNames(cfg *kubeadmv1beta2.WarpperConfiguration) (*certutil.AltNames, error) {
-	internalAPIServerVirtualIP, err := kubeadmconstants.GetAPIServerVirtualIP(cfg.Networking.ServiceSubnet, false)
+	internalAPIServerVirtualIP, err := GetAPIServerVirtualIP(cfg.Networking.ServiceSubnet, false)
 	if err != nil {
 		return nil, errors.Wrapf(err, "unable to get first IP address from the given CIDR: %v", cfg.Networking.ServiceSubnet)
 	}
@@ -531,7 +530,7 @@ func GetAPIServerAltNames(cfg *kubeadmv1beta2.WarpperConfiguration) (*certutil.A
 	}
 
 	altNames.DNSNames = append(altNames.DNSNames, cfg.IPs...)
-	appendSANsToAltNames(altNames, cfg.APIServer.CertSANs, kubeadmconstants.APIServerCertName)
+	appendSANsToAltNames(altNames, cfg.APIServer.CertSANs, APIServerCertName)
 	return altNames, nil
 }
 
@@ -539,14 +538,14 @@ func GetAPIServerAltNames(cfg *kubeadmv1beta2.WarpperConfiguration) (*certutil.A
 // `advertise address` and localhost are included in the SAN since this is the interfaces the etcd static pod listens on.
 // The user can override the listen address with `Etcd.ExtraArgs` and add SANs with `Etcd.ServerCertSANs`.
 func GetEtcdAltNames(cfg *kubeadmv1beta2.WarpperConfiguration) (*certutil.AltNames, error) {
-	return getAltNames(cfg, kubeadmconstants.EtcdServerCertName)
+	return getAltNames(cfg, EtcdServerCertName)
 }
 
 // GetEtcdPeerAltNames builds an AltNames object for generating the etcd peer certificate.
 // Hostname and `API.AdvertiseAddress` are included if the user chooses to promote the single node etcd cluster into a multi-node one (stacked etcd).
 // The user can override the listen address with `Etcd.ExtraArgs` and add SANs with `Etcd.PeerCertSANs`.
 func GetEtcdPeerAltNames(cfg *kubeadmv1beta2.WarpperConfiguration) (*certutil.AltNames, error) {
-	return getAltNames(cfg, kubeadmconstants.EtcdPeerCertName)
+	return getAltNames(cfg, EtcdPeerCertName)
 }
 
 // getAltNames builds an AltNames object with the cfg and certName.

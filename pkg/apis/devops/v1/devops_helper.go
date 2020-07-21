@@ -1,3 +1,19 @@
+/*
+Copyright 2020 wtxue.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package v1
 
 import (
@@ -6,7 +22,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/ssh"
+	"github.com/wtxue/kok-operator/pkg/util/ssh"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -25,26 +41,22 @@ const (
 	ConditionUnknown ConditionStatus = "Unknown"
 )
 
-const (
-	ClusterAnnotationAction = "k8s.io/action"
-)
-
 // ClusterMachine is the master machine definition of cluster.
 type ClusterMachine struct {
-	IP       string `json:"ip" protobuf:"bytes,1,opt,name=ip"`
-	Port     int32  `json:"port" protobuf:"varint,2,opt,name=port"`
-	Username string `json:"username" protobuf:"bytes,3,opt,name=username"`
+	IP       string `json:"ip"`
+	Port     int32  `json:"port"`
+	Username string `json:"username"`
 	// +optional
-	Password string `json:"password,omitempty" protobuf:"bytes,4,opt,name=password"`
+	Password string `json:"password,omitempty"`
 	// +optional
-	PrivateKey []byte `json:"privateKey,omitempty" protobuf:"bytes,5,opt,name=privateKey"`
+	PrivateKey []byte `json:"privateKey,omitempty"`
 	// +optional
-	PassPhrase []byte `json:"passPhrase,omitempty" protobuf:"bytes,6,opt,name=passPhrase"`
+	PassPhrase []byte `json:"passPhrase,omitempty"`
 	// +optional
-	Labels map[string]string `json:"labels,omitempty" protobuf:"bytes,7,opt,name=labels"`
+	Labels map[string]string `json:"labels,omitempty"`
 	// If specified, the node's taints.
 	// +optional
-	Taints []corev1.Taint `json:"taints,omitempty" protobuf:"bytes,8,opt,name=taints"`
+	Taints []corev1.Taint `json:"taints,omitempty"`
 }
 
 func (in *Cluster) SetCondition(newCondition ClusterCondition) {

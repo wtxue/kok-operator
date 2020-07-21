@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"net"
 
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/allocator"
+	"github.com/wtxue/kok-operator/pkg/util/allocator"
 	api "k8s.io/api/core/v1"
 )
 

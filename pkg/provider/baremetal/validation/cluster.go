@@ -6,12 +6,12 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	devopsv1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/devops/v1"
-	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/ipallocator"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/validation"
-	utilvalidation "github.com/wtxue/kube-on-kube-operator/pkg/util/validation"
+	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
+	"github.com/wtxue/kok-operator/pkg/constants"
+	"github.com/wtxue/kok-operator/pkg/controllers/common"
+	"github.com/wtxue/kok-operator/pkg/util/ipallocator"
+	"github.com/wtxue/kok-operator/pkg/util/validation"
+	utilvalidation "github.com/wtxue/kok-operator/pkg/util/validation"
 )
 
 var (
@@ -20,8 +20,8 @@ var (
 )
 
 // ValidateCluster validates a given Cluster.
-func ValidateCluster(obj *provider.Cluster) field.ErrorList {
-	allErrs := ValidatClusterSpec(&obj.Spec, field.NewPath("spec"), obj.Status.Phase)
+func ValidateCluster(obj *common.Cluster) field.ErrorList {
+	allErrs := ValidatClusterSpec(&obj.Spec, field.NewPath("spec"), obj.Cluster.Status.Phase)
 
 	return allErrs
 }

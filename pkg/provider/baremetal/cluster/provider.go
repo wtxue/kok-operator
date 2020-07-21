@@ -1,3 +1,19 @@
+/*
+Copyright 2020 wtxue.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 package cluster
 
 import (
@@ -7,53 +23,56 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/server/mux"
 
-	clusterprovider "github.com/wtxue/kube-on-kube-operator/pkg/provider/cluster"
+	clusterprovider "github.com/wtxue/kok-operator/pkg/provider/cluster"
 
-	devopsv1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/devops/v1"
-	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/baremetal/config"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/baremetal/validation"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/containerregistry"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/pointer"
+	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
+	"github.com/wtxue/kok-operator/pkg/constants"
+	"github.com/wtxue/kok-operator/pkg/controllers/common"
+	"github.com/wtxue/kok-operator/pkg/provider/baremetal/validation"
+	"github.com/wtxue/kok-operator/pkg/provider/config"
+	"github.com/wtxue/kok-operator/pkg/util/pointer"
 	"k8s.io/klog"
 )
 
-func init() {
-	p, err := NewProvider()
+func Add(mgr *clusterprovider.CpManager, cfg *config.Config) error {
+	p, err := NewProvider(mgr, cfg)
 	if err != nil {
 		klog.Errorf("init cluster provider error: %s", err)
-		return
+		return err
 	}
-	clusterprovider.Register(p.Name(), p)
+	mgr.Register(p.Name(), p)
+	return nil
 }
 
 type Provider struct {
 	*clusterprovider.DelegateProvider
-
-	config *config.Config
+	Mgr *clusterprovider.CpManager
+	Cfg *config.Config
 }
 
 var _ clusterprovider.Provider = &Provider{}
 
-func NewProvider() (*Provider, error) {
-	p := new(Provider)
+func NewProvider(mgr *clusterprovider.CpManager, cfg *config.Config) (*Provider, error) {
+	p := &Provider{
+		Mgr: mgr,
+		Cfg: cfg,
+	}
 
 	p.DelegateProvider = &clusterprovider.DelegateProvider{
 		ProviderName: "Baremetal",
 		CreateHandlers: []clusterprovider.Handler{
 			p.EnsureCopyFiles,
 			p.EnsurePreInstallHook,
+			p.EnsureEth,
 			p.EnsureSystem,
+			p.EnsureComponent,
 			p.EnsurePreflight, // wait basic setting done
 			p.EnsureClusterComplete,
 
-			p.EnsurePrepareForControlplane,
-			p.EnsureKubeadmInitCertsPhase,
-			p.EnsureStoreCredential,
+			p.EnsureCerts,
 			p.EnsureKubeadmInitKubeletStartPhase,
 			p.EnsureKubeconfig,
-			p.EnsureKubeadmInitKubeConfigPhase,
+			p.EnsureKubeMiscPhase,
 			p.EnsureKubeadmInitControlPlanePhase,
 			p.EnsureKubeadmInitEtcdPhase,
 			p.EnsureKubeadmInitWaitControlPlanePhase,
@@ -63,28 +82,25 @@ func NewProvider() (*Provider, error) {
 			p.EnsureKubeadmInitAddonPhase,
 			p.EnsureJoinControlePlane,
 			p.EnsureMarkControlPlane,
+			p.EnsureApplyEtcd,
 
-			p.EnsureMakeEtcd,
-			p.EnsureMakeControlPlane,
-			p.EnsureMakeCni,
+			p.EnsureCni,
+			p.EnsureApplyControlPlane,
+			p.EnsureExtKubeconfig,
 			p.EnsurePostInstallHook,
 		},
 		UpdateHandlers: []clusterprovider.Handler{
-			p.EnsureStoreCredential,
-			p.EnsureMakeEtcd,
-			p.EnsureMakeControlPlane,
+			p.EnsureExtKubeconfig,
+			p.EnsureMasterNode,
+			p.EnsureCni,
+			p.EnsureApplyEtcd,
+			p.EnsureApplyControlPlane,
 			p.EnsureRenewCerts,
 			p.EnsureAPIServerCert,
-			p.EnsureStoreCredential,
+			p.EnsureMetricsServer,
 		},
 	}
 
-	cfg, err := config.NewDefaultConfig()
-	if err != nil {
-		return nil, err
-	}
-	p.config = cfg
-	containerregistry.Init(cfg.Registry.Domain, cfg.Registry.Namespace)
 	return p, nil
 }
 
@@ -94,11 +110,11 @@ func (p *Provider) RegisterHandler(mux *mux.PathRecorderMux) {
 	mux.HandleFunc(path.Join(prefix, "ping"), p.ping)
 }
 
-func (p *Provider) Validate(cluster *provider.Cluster) field.ErrorList {
+func (p *Provider) Validate(cluster *common.Cluster) field.ErrorList {
 	return validation.ValidateCluster(cluster)
 }
 
-func (p *Provider) PreCreate(cluster *provider.Cluster) error {
+func (p *Provider) PreCreate(cluster *common.Cluster) error {
 	if cluster.Spec.Version == "" {
 		cluster.Spec.Version = constants.K8sVersions[0]
 	}
@@ -120,7 +136,7 @@ func (p *Provider) PreCreate(cluster *provider.Cluster) error {
 		cluster.Spec.Properties.MaxNodePodNum = pointer.ToInt32(256)
 	}
 	if cluster.Spec.Features.SkipConditions == nil {
-		cluster.Spec.Features.SkipConditions = p.config.Feature.SkipConditions
+		cluster.Spec.Features.SkipConditions = p.Cfg.Feature.SkipConditions
 	}
 
 	if cluster.Spec.Etcd == nil {

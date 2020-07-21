@@ -12,11 +12,8 @@
 *.out
 
 # Dependency directories (remove the comment below to include it)
-
-.github/
-.idea/
-.vscode/
-tools/
-k8s/
 vendor/
 bin/
+.idea/
+.vscode/
+k8s/

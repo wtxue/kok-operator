@@ -17,7 +17,7 @@ limitations under the License.
 package scheme
 
 import (
-	"github.com/wtxue/kube-on-kube-operator/pkg/apis/kubeadm/v1beta2"
+	"github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

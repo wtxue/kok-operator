@@ -1,0 +1,9 @@
+apiVersion: v2
+name: kok-operator
+description: A Helm chart for Kubernetes kok-operator
+version: v0.2.0
+keywords:
+  - k8s
+  - controller
+
+appVersion: v0.2.0

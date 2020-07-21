@@ -1,5 +1,5 @@
 domain: k8s.io
-repo: github.com/wtxue/kube-on-kube-operator
+repo: github.com/wtxue/kok-operator
 resources:
 - group: devops
   kind: Cluster
@@ -7,4 +7,4 @@ resources:
 - group: devops
   kind: Machine
   version: v1
-version: "3"
+version: "2"

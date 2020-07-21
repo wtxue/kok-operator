@@ -3,11 +3,11 @@ kind: Machine
 metadata:
   labels:
     name: 10.248.224.210
-    clusterName: cvm2-cluster
+    clusterName: example-cluster
   name: 10.248.224.210
-  namespace: cvm-admin
+  namespace: example-cluster
 spec:
-  clusterName: cvm2-cluster
+  clusterName: example-cluster
   type: Baremetal
   machine:
     ip: 10.248.224.210

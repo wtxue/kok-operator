@@ -1,8 +1,20 @@
-
+VERSION ?= v0.2.0
 # Image URL to use all building/pushing image targets
-IMG ?= controller:latest
+IMG_REG ?= registry.cn-hangzhou.aliyuncs.com/wtxue
+IMG_CTL := $(IMG_REG)/kok-operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
+
+# This repo's root import path (under GOPATH).
+ROOT := github.com/wtxue/kok-operator
+
+GO_VERSION := 1.15.4
+ARCH     ?= $(shell go env GOARCH)
+BUILD_DATE = $(shell date +'%Y-%m-%dT%H:%M:%SZ')
+COMMIT    = $(shell git rev-parse --short HEAD)
+GOENV    := CGO_ENABLED=0 GOOS=$(shell uname -s | tr A-Z a-z) GOARCH=$(ARCH) GOPROXY=https://goproxy.io,direct
+#GO       := $(GOENV) go build -mod=vendor
+GO       := $(GOENV) go build -tags=jsoniter
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -11,22 +23,18 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
-all: manager
+all: build
 
 # Run tests
 test: generate fmt vet manifests
 	go test ./... -coverprofile cover.out
-
-# Build manager binary
-manager: generate fmt vet
-	go build -o bin/manager main.go
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run: generate fmt vet manifests
 	go run ./main.go
 
 # generate crd spec and deepcopy
-crd: generate manifests
+crd: generate manifests pre-build
 	kustomize build config/crd > manifests/crds/crd.yaml
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
@@ -55,12 +63,19 @@ pre-build:
 #	go generate ./pkg/... ./cmd/...
 
 # Build the docker image
-docker-build: test
-	docker build . -t ${IMG}
+docker-build:
+	docker run --rm -v "$$PWD":/go/src/${ROOT} -v ${GOPATH}/pkg/mod:/go/pkg/mod -w /go/src/${ROOT} golang:${GO_VERSION} make build-controller
+
+build: build-controller
+
+build-controller:
+	$(GO) -v -o bin/kok-operator -ldflags "-s -w -X $(ROOT)/pkg/version.Release=$(VERSION) -X  $(ROOT)/pkg/version.Commit=$(COMMIT)   \
+	-X  $(ROOT)/pkg/version.BuildDate=$(BUILD_DATE)" cmd/controller/main.go
 
 # Push the docker image
 docker-push:
-	docker push ${IMG}
+	docker build -t ${IMG_CTL}:${VERSION} -f ./docker/kok-operator/Dockerfile .
+	docker push ${IMG_CTL}:${VERSION}
 
 # find or download controller-gen
 # download controller-gen if necessary
@@ -71,7 +86,7 @@ ifeq (, $(shell which controller-gen))
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.2.5 ;\
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.0 ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(GOBIN)/controller-gen
