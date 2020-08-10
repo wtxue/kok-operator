@@ -301,8 +301,6 @@ func (p *Provider) EnsureCni(ctx context.Context, c *common.Cluster) error {
 	}
 
 	return nil
-
-	return nil
 }
 
 func (p *Provider) EnsureMetricsServer(ctx context.Context, c *common.Cluster) error {

@@ -162,6 +162,6 @@ func (c *Cluster) StartCache(stopCh <-chan struct{}) {
 }
 
 func (c *Cluster) Stop() {
-	klog.Infof("cluster: %s start stop cache Informers")
+	klog.Infof("cluster: %s start stop cache Informers", c.Name)
 	close(c.internalStopper)
 }
