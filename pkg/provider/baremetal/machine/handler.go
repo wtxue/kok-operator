@@ -19,7 +19,7 @@ import (
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/addons/cni"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/certs"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/component"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/joinnode"
+	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/join"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/kubemisc"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/system"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/preflight"
@@ -226,7 +226,7 @@ func (p *Provider) EnsureJoinNode(ctx context.Context, machine *devopsv1.Machine
 	apiserver := certs.BuildApiserverEndpoint(c.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(c.Cluster))
 	klog.Infof("join apiserver: %s", apiserver)
 
-	err = joinnode.JoinNodePhase(sh, p.Cfg, c, apiserver, false)
+	err = join.JoinNodePhase(sh, p.Cfg, c, apiserver, false)
 	if err != nil {
 		return err
 	}
