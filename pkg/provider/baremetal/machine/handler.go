@@ -3,6 +3,7 @@ package machine
 import (
 	"context"
 	"fmt"
+	"k8s.io/klog"
 	"math/rand"
 	"strings"
 	"time"
@@ -24,7 +25,6 @@ import (
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/preflight"
 	"github.com/wtxue/kube-on-kube-operator/pkg/util/apiclient"
 	"github.com/wtxue/kube-on-kube-operator/pkg/util/hosts"
-	"k8s.io/klog"
 )
 
 func (p *Provider) EnsureCopyFiles(ctx context.Context, machine *devopsv1.Machine, c *common.Cluster) error {
