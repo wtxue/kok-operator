@@ -1,4 +1,4 @@
-VERSION ?= v0.1.1
+VERSION ?= v0.1.2
 # Image URL to use all building/pushing image targets
 IMG_REG ?= registry.cn-hangzhou.aliyuncs.com/wtxue
 IMG_CTL := $(IMG_REG)/onkube-controller
