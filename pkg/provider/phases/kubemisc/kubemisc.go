@@ -1,20 +1,4 @@
-/*
-Copyright 2020 wtxue.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
-package kubeconfig
+package kubemisc
 
 import (
 	"bytes"
@@ -26,7 +10,7 @@ import (
 	devopsv1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
 	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/certs"
+	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/certs"
 	"github.com/wtxue/kube-on-kube-operator/pkg/util/ssh"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -40,6 +24,12 @@ apiVersion: audit.k8s.io/v1
 kind: Policy
 rules:
 - level: Metadata
+`
+)
+
+const (
+	tokenFileTemplate = `
+%s,admin,admin,system:masters
 `
 )
 
@@ -114,7 +104,7 @@ func ApplyKubeletKubeconfig(c *common.Cluster, apiserver string, kubeletNodeAddr
 	return nil
 }
 
-func ApplyMasterKubeconfig(c *common.Cluster, apiserver string) error {
+func ApplyMasterMisc(c *common.Cluster, apiserver string) error {
 	if c.ClusterCredential.CACert == nil {
 		return fmt.Errorf("ca is nil")
 	}
@@ -144,6 +134,8 @@ func ApplyMasterKubeconfig(c *common.Cluster, apiserver string) error {
 	key := filepath.Join(constants.KubernetesDir, "audit-policy.yaml")
 	c.ClusterCredential.KubeData[key] = additPolicy
 
+	tokenData := fmt.Sprintf(tokenFileTemplate, *c.ClusterCredential.Token)
+	c.ClusterCredential.KubeData[constants.TokenFile] = tokenData
 	return nil
 }
 
@@ -187,6 +179,13 @@ func CovertMasterKubeConfig(s ssh.Interface, c *common.Cluster) error {
 	err := ApplyKubeletKubeconfig(c, apiserver, s.HostIP(), fileMaps)
 	if err != nil {
 		return err
+	}
+
+	for name, data := range c.ClusterCredential.KubeData {
+		if strings.Contains(name, "known_tokens.csv") {
+			fileMaps[name] = data
+			break
+		}
 	}
 
 	for pathName, va := range fileMaps {

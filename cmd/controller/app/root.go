@@ -21,7 +21,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/wtxue/kube-on-kube-operator/cmd/admin-controller/app/app_option"
+	"github.com/wtxue/kube-on-kube-operator/cmd/controller/app/app_option"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"

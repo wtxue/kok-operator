@@ -138,9 +138,9 @@ func (te *ServerWarpper) Start(stopCh <-chan struct{}) (*rest.Config, error) {
 			Args: te.getAPIServerFlags(),
 			URL: &url.URL{
 				Scheme: "http",
-				Host:   net.JoinHostPort("127.0.0.1", strconv.Itoa(18080)),
+				Host:   net.JoinHostPort("0.0.0.0", strconv.Itoa(8080)),
 			},
-			SecurePort: 18088,
+			SecurePort: 8083,
 		}
 	}
 	if te.ControlPlane.Etcd == nil {

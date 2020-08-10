@@ -12,7 +12,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
-	runtimeClient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type DesiredState string
@@ -22,7 +22,7 @@ const (
 	DesiredStateAbsent  DesiredState = "absent"
 )
 
-func Reconcile(log logr.Logger, client runtimeClient.Client, desired runtime.Object, desiredState DesiredState) error {
+func Reconcile(log logr.Logger, cli client.Client, desired runtime.Object, desiredState DesiredState) error {
 	if desiredState == "" {
 		desiredState = DesiredStatePresent
 	}
@@ -30,13 +30,13 @@ func Reconcile(log logr.Logger, client runtimeClient.Client, desired runtime.Obj
 	desiredType := reflect.TypeOf(desired)
 	var current = desired.DeepCopyObject()
 	var desiredCopy = desired.DeepCopyObject()
-	key, err := runtimeClient.ObjectKeyFromObject(current)
+	key, err := client.ObjectKeyFromObject(current)
 	if err != nil {
 		return emperror.With(err, "kind", desiredType)
 	}
 	log = log.WithValues("kind", desiredType, "name", key.Name)
 
-	err = client.Get(context.TODO(), key, current)
+	err = cli.Get(context.TODO(), key, current)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return emperror.WrapWith(err, "getting resource failed", "kind", desiredType, "name", key.Name)
 	}
@@ -45,7 +45,7 @@ func Reconcile(log logr.Logger, client runtimeClient.Client, desired runtime.Obj
 			if err := patch.DefaultAnnotator.SetLastAppliedAnnotation(desired); err != nil {
 				log.Error(err, "Failed to set last applied annotation", "desired", desired)
 			}
-			if err := client.Create(context.TODO(), desired); err != nil {
+			if err := cli.Create(context.TODO(), desired); err != nil {
 				return emperror.WrapWith(err, "creating resource failed", "kind", desiredType, "name", key.Name)
 			}
 			log.Info("resource created")
@@ -80,15 +80,15 @@ func Reconcile(log logr.Logger, client runtimeClient.Client, desired runtime.Obj
 			metaAccessor.SetResourceVersion(desired, currentResourceVersion)
 			prepareResourceForUpdate(current, desired)
 
-			if err := client.Update(context.TODO(), desired); err != nil {
+			if err := cli.Update(context.TODO(), desired); err != nil {
 				if apierrors.IsConflict(err) || apierrors.IsInvalid(err) {
 					log.Info("resource needs to be re-created", "error", err)
-					err := client.Delete(context.TODO(), current)
+					err := cli.Delete(context.TODO(), current)
 					if err != nil {
 						return emperror.WrapWith(err, "could not delete resource", "kind", desiredType, "name", key.Name)
 					}
 					log.Info("resource deleted")
-					if err := client.Create(context.TODO(), desiredCopy); err != nil {
+					if err := cli.Create(context.TODO(), desiredCopy); err != nil {
 						return emperror.WrapWith(err, "creating resource failed", "kind", desiredType, "name", key.Name)
 					}
 					log.Info("resource created")
@@ -99,7 +99,7 @@ func Reconcile(log logr.Logger, client runtimeClient.Client, desired runtime.Obj
 			}
 			log.Info("resource updated")
 		} else if desiredState == DesiredStateAbsent {
-			if err := client.Delete(context.TODO(), current); err != nil {
+			if err := cli.Delete(context.TODO(), current); err != nil {
 				return emperror.WrapWith(err, "deleting resource failed", "kind", desiredType, "name", key.Name)
 			}
 			log.Info("resource deleted")
@@ -147,9 +147,9 @@ func IsObjectChanged(oldObj, newObj runtime.Object, ignoreStatusChange bool) (bo
 }
 
 // ReconcileNamespaceLabelsIgnoreNotFound patches namespaces by adding/removing labels, returns without error if namespace is not found
-func ReconcileNamespaceLabelsIgnoreNotFound(log logr.Logger, client runtimeClient.Client, namespace string, labels map[string]string, labelsToRemove []string) error {
+func ReconcileNamespaceLabelsIgnoreNotFound(log logr.Logger, cli client.Client, namespace string, labels map[string]string, labelsToRemove []string) error {
 	var ns = &corev1.Namespace{}
-	err := client.Get(context.TODO(), runtimeClient.ObjectKey{Name: namespace}, ns)
+	err := cli.Get(context.TODO(), client.ObjectKey{Name: namespace}, ns)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			log.V(1).Info("namespace not found, ignoring", "namespace", namespace)
@@ -176,7 +176,7 @@ func ReconcileNamespaceLabelsIgnoreNotFound(log logr.Logger, client runtimeClien
 		}
 	}
 	if updateNeeded {
-		if err := client.Update(context.TODO(), ns); err != nil {
+		if err := cli.Update(context.TODO(), ns); err != nil {
 			return emperror.WrapWith(err, "updating namespace failed", "namespace", namespace)
 		}
 		log.Info("namespace labels reconciled", "namespace", namespace, "labels", labels)

@@ -1,19 +1,3 @@
-/*
-Copyright 2020 wtxue.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package cluster
 
 import (
@@ -22,6 +6,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
 	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
 	"github.com/wtxue/kube-on-kube-operator/pkg/util/k8sutil"
@@ -34,6 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/klog"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -43,8 +30,31 @@ type Reconciler struct {
 	*Provider
 }
 
-func GetPodBindPort() int32 {
-	return 6443
+func GetPodBindPort(obj *common.Cluster) int32 {
+	var port int32
+	port = 6443
+	if obj.Cluster.Spec.Features.HA != nil && obj.Cluster.Spec.Features.HA.ThirdPartyHA != nil {
+		port = obj.Cluster.Spec.Features.HA.ThirdPartyHA.VPort
+	}
+	return port
+}
+
+func GetSvcNodePort(obj *common.Cluster) int32 {
+	port := GetPodBindPort(obj)
+
+	if port < 30000 {
+		port = port + 30000
+	}
+	return port
+}
+
+func GetAdvertiseAddress(obj *common.Cluster) string {
+	advertiseAddress := "$(INSTANCE_IP)"
+	if obj.Cluster.Spec.Features.HA != nil && obj.Cluster.Spec.Features.HA.ThirdPartyHA != nil {
+		advertiseAddress = obj.Cluster.Spec.Features.HA.ThirdPartyHA.VIP
+	}
+
+	return advertiseAddress
 }
 
 // GetHPAReplicaCountOrDefault get desired replica count from HPA if exists, returns the given default otherwise
@@ -62,13 +72,48 @@ func GetHPAReplicaCountOrDefault(client client.Client, name types.NamespacedName
 	return hpa.Status.DesiredReplicas
 }
 
-func GetAdvertiseAddress(obj *common.Cluster) string {
-	advertiseAddress := "$(INSTANCE_IP)"
-	if obj.Cluster.Spec.Features.HA != nil && obj.Cluster.Spec.Features.HA.ThirdPartyHA != nil {
-		advertiseAddress = obj.Cluster.Spec.Features.HA.ThirdPartyHA.VIP
+func ApplyCertsConfigmap(cli client.Client, obj *common.Cluster, pathCerts map[string][]byte) error {
+	noPathCerts := make(map[string]string, len(pathCerts))
+	for pathName, value := range pathCerts {
+		splits := strings.Split(pathName, "/")
+		noPathName := splits[len(splits)-1]
+		noPathCerts[noPathName] = string(value)
+		klog.Infof("add noPathName: %s", noPathName)
 	}
 
-	return advertiseAddress
+	cm := &corev1.ConfigMap{
+		ObjectMeta: k8sutil.ObjectMeta(constants.KubeApiServerCerts, constants.CtrlLabels, obj.Cluster),
+		Data:       noPathCerts,
+	}
+
+	logger := ctrl.Log.WithValues("cluster", obj.Cluster.Name)
+	err := k8sutil.Reconcile(logger, cli, cm, k8sutil.DesiredStatePresent)
+	if err != nil {
+		return errors.Wrapf(err, "apply certs configmap err: %v", err)
+	}
+	return nil
+}
+
+func ApplyKubeMiscConfigmap(cli client.Client, obj *common.Cluster, pathKubeMisc map[string]string) error {
+	noPathKubeMisc := make(map[string]string, len(pathKubeMisc))
+	for pathName, value := range pathKubeMisc {
+		splits := strings.Split(pathName, "/")
+		noPathName := splits[len(splits)-1]
+		noPathKubeMisc[noPathName] = value
+		klog.Infof("add noPathName: %s", noPathName)
+	}
+
+	cm := &corev1.ConfigMap{
+		ObjectMeta: k8sutil.ObjectMeta(constants.KubeApiServerConfig, constants.CtrlLabels, obj.Cluster),
+		Data:       noPathKubeMisc,
+	}
+
+	logger := ctrl.Log.WithValues("cluster", obj.Cluster.Name)
+	err := k8sutil.Reconcile(logger, cli, cm, k8sutil.DesiredStatePresent)
+	if err != nil {
+		return errors.Wrapf(err, "apply kube misc configmap err: %v", err)
+	}
+	return nil
 }
 
 func (r *Reconciler) apiServerDeployment() runtime.Object {
@@ -143,11 +188,11 @@ func (r *Reconciler) apiServerDeployment() runtime.Object {
 		"--service-account-key-file=/etc/kubernetes/pki/sa.pub",
 		"--tls-cert-file=/etc/kubernetes/pki/apiserver.crt",
 		"--tls-private-key-file=/etc/kubernetes/pki/apiserver.key",
-		"--token-auth-file=/etc/kubernetes/pki/known_tokens.csv",
+		"--token-auth-file=/etc/kubernetes/known_tokens.csv",
 	}
 
 	advertiseAddress := GetAdvertiseAddress(r.Obj)
-	cmds = append(cmds, fmt.Sprintf("--secure-port=%d", GetPodBindPort()))
+	cmds = append(cmds, fmt.Sprintf("--secure-port=%d", GetPodBindPort(r.Obj)))
 	cmds = append(cmds, fmt.Sprintf("--advertise-address=%s", advertiseAddress))
 	if r.Obj.Cluster.Spec.APIServerExtraArgs != nil {
 		extraArgs := []string{}
@@ -184,7 +229,7 @@ func (r *Reconciler) apiServerDeployment() runtime.Object {
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "https",
-				ContainerPort: GetPodBindPort(),
+				ContainerPort: GetPodBindPort(r.Obj),
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
@@ -251,8 +296,8 @@ func (r *Reconciler) apiServerSvc() runtime.Object {
 				{
 					Name:       "https",
 					Protocol:   corev1.ProtocolTCP,
-					Port:       GetPodBindPort(),
-					NodePort:   30443,
+					Port:       GetPodBindPort(r.Obj),
+					NodePort:   GetSvcNodePort(r.Obj),
 					TargetPort: intstr.FromString("https"),
 				},
 			},
@@ -271,10 +316,8 @@ func (r *Reconciler) apiServerSvc() runtime.Object {
 		svc.Annotations = make(map[string]string)
 	}
 
-	// svc.Annotations["contour.heptio.com/upstream-protocol.tls"] = "443,https"
-	svc.Annotations["projectcontour.io/upstream-protocol.tls"] = "6443"
-	svc.Annotations["gloo.solo.io/sslService.secret"] = constants.KubeApiServerCerts
-
+	podPort := GetPodBindPort(r.Obj)
+	svc.Annotations["contour.heptio.com/upstream-protocol.tls"] = fmt.Sprintf("%d,https", podPort)
 	return svc
 }
 

@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 
-	"github.com/wtxue/kube-on-kube-operator/cmd/admin-controller/app/app_option"
+	"github.com/wtxue/kube-on-kube-operator/cmd/controller/app/app_option"
 	"github.com/wtxue/kube-on-kube-operator/pkg/controllers"
 	"github.com/wtxue/kube-on-kube-operator/pkg/k8sclient"
 	"github.com/wtxue/kube-on-kube-operator/pkg/static"

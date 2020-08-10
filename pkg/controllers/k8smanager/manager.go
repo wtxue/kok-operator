@@ -26,13 +26,12 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var (
-	logger  = logf.Log.WithName("controller")
-	timeout <-chan time.Time
+	logger = logf.Log.WithName("controller")
 )
 
 // key config
@@ -49,19 +48,16 @@ type MasterClient struct {
 // ClusterManager ...
 type ClusterManager struct {
 	MasterClient
-	mu             *sync.RWMutex
-	clusters       []*Cluster
-	Started        bool
-	ClusterAddInfo chan map[string]string
+	clusters []*Cluster
+	Started  bool
+	sync.RWMutex
 }
 
 // NewManager ...
 func NewManager(cli MasterClient) (*ClusterManager, error) {
 	cMgr := &ClusterManager{
-		MasterClient:   cli,
-		clusters:       make([]*Cluster, 0, 4),
-		mu:             &sync.RWMutex{},
-		ClusterAddInfo: make(chan map[string]string),
+		MasterClient: cli,
+		clusters:     make([]*Cluster, 0, 4),
 	}
 
 	cMgr.Started = true
@@ -70,8 +66,8 @@ func NewManager(cli MasterClient) (*ClusterManager, error) {
 
 // GetAll get all cluster
 func (m *ClusterManager) GetAll(name ...string) []*Cluster {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.RLock()
+	defer m.RUnlock()
 
 	isAll := true
 	var ObserveName string
@@ -106,8 +102,8 @@ func (m *ClusterManager) Add(cluster *Cluster) error {
 		return fmt.Errorf("cluster name: %s is already add to manager", cluster.Name)
 	}
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.Lock()
+	defer m.Unlock()
 	m.clusters = append(m.clusters, cluster)
 	sort.Slice(m.clusters, func(i int, j int) bool {
 		return m.clusters[i].Name > m.clusters[j].Name
@@ -132,8 +128,8 @@ func (m *ClusterManager) Delete(name string) error {
 		return nil
 	}
 
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.Lock()
+	defer m.Unlock()
 
 	if len(m.clusters) == 0 {
 		klog.Errorf("clusters list is empty, nothing to delete")
@@ -146,17 +142,18 @@ func (m *ClusterManager) Delete(name string) error {
 		return nil
 	}
 
+	m.clusters[index].Stop()
 	clusters := m.clusters
 	clusters = append(clusters[:index], clusters[index+1:]...)
 	m.clusters = clusters
-	klog.Infof("cluster: the cluster %s has been deleted.", name)
+	klog.Infof("the cluster %s has been deleted.", name)
 	return nil
 }
 
 // Get ...
 func (m *ClusterManager) Get(name string) (*Cluster, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.Lock()
+	defer m.Unlock()
 
 	if name == "" || name == "all" {
 		return nil, fmt.Errorf("single query not support: %s ", name)
@@ -181,10 +178,10 @@ func (m *ClusterManager) Get(name string) (*Cluster, error) {
 }
 
 func (m *ClusterManager) cluterCheck() {
-	klog.V(5).Info("cluster configmap check.")
+	klog.V(5).Info("cluster health check.")
 	for _, c := range m.clusters {
 		if !c.healthCheck() {
-			klog.Warningf("cluster:%s healthCheck fail", c.Name)
+			klog.Warningf("cluster: %s healthCheck fail", c.Name)
 		}
 	}
 }
@@ -206,7 +203,7 @@ func (m *ClusterManager) AddNewClusters(name string, kubeconfig string) (*Cluste
 	nc.StartCache(ctx.Done())
 	err = m.Add(nc)
 	if err != nil {
-		klog.Errorf("cluster: %s add err: %v", name, err)
+		klog.Errorf("cluster: %s add err: %+v", name, err)
 		return nil, err
 	}
 	return nc, nil
@@ -214,20 +211,19 @@ func (m *ClusterManager) AddNewClusters(name string, kubeconfig string) (*Cluste
 
 // Start timer check cluster health
 func (m *ClusterManager) Start(stopCh <-chan struct{}) error {
-	klog.Info("start cluster manager check loop ... ")
+	klog.V(4).Info("multi cluster manager start check loop ... ")
 	wait.Until(m.cluterCheck, time.Minute, stopCh)
 
-	klog.Info("close manager info")
-	m.stop()
+	klog.V(4).Info("multi cluster manager stoped ... ")
+	m.Stop()
 	return nil
 }
 
-func (m *ClusterManager) stop() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (m *ClusterManager) Stop() {
+	m.Lock()
+	defer m.Unlock()
 
 	for _, cluster := range m.clusters {
 		cluster.Stop()
 	}
-	close(m.ClusterAddInfo)
 }

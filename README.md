@@ -4,12 +4,12 @@ kube-on-kube-operator 是一个自动化部署高可用kubernetes的operator
 
 # 特性
 
-- 云原生架构，crd+controller，采用声明式api描述一个集群的最终状态
-- 支持裸金属和master组件托管两种方式部署集群
-- 可以启用一个fake-cluster，解决裸金属第一次部署集群没有元集群问题
+- 云原生架构，crd+controller，采用声明式api描述一个集群的生命周期(创建，升级，删除)
+- 支持裸金属和master托管模式两种方式部署集群
+- 可以启用fake-cluster或者k3s，解决裸金属第一次部署集群没有元集群问题
 - 无坑版100年集群证书，kubelet自动生成证书
-- 除kubelet外集群组件全部容器化部署，componentstatuses可以发现三个etcd
-- 支持coredns, flannel，metrics-server等 addons 模板化部署
+- 除kubelet外集群组件全部容器化部署，采用static pod方式部署高可用etcd集群
+- 支持coredns, flannel，metrics-server，kube-proxy, metallb等addons模板化部署
 
 # 安装部署
 
@@ -65,14 +65,14 @@ $ docker run --name fake-cluster -d --restart=always \
    --net="host" \
    --pid="host" \
    -v /root/wtxue/k8s:/k8s \
-   registry.cn-hangzhou.aliyuncs.com/wtxue/onkube-controller:v0.1.0 \
+   registry.cn-hangzhou.aliyuncs.com/wtxue/onkube-controller:v0.1.1 \
    onkube-controller fake -v 4
 
 $ docker run --name onkube-controller -d --restart=always \
    --net="host" \
    --pid="host" \
    -v /root/wtxue/k8s:/k8s \
-   registry.cn-hangzhou.aliyuncs.com/wtxue/onkube-controller:v0.1.0  \
+   registry.cn-hangzhou.aliyuncs.com/wtxue/onkube-controller:v0.1.1  \
    onkube-controller ctrl -v 4 --kubeconfig=/k8s/cfg/fake-kubeconfig.yaml
 
 
@@ -114,3 +114,4 @@ kubectl apply -f ./manifests/hosted-cluster-node.yaml
 
 - [x]  打通元集群及托管集群service网络，以支持聚合apiserver
 - [x]  支持 helm v3 部署 addons
+- [x]  用k3s替换fake-cluster

@@ -23,7 +23,7 @@ import (
 
 var (
 	OSs              = []string{"linux"}
-	K8sVersions      = []string{"v1.16.13", "v1.18.6"}
+	K8sVersions      = []string{"v1.16.13", "v1.18.5"}
 	K8sVersionsWithV = funk.Map(K8sVersions, func(s string) string {
 		return "v" + s
 	}).([]string)

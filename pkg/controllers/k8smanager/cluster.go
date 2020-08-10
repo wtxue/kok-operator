@@ -95,7 +95,7 @@ func (c *Cluster) initK8SClients() error {
 	startTime := time.Now()
 	cfg, err := k8sclient.NewClientConfig(c.RawKubeconfig)
 	if err != nil {
-		return errors.Wrapf(err, "could not get rest config name:%s", c.Name)
+		return errors.Wrapf(err, "could not get rest config name: %s", c.Name)
 	}
 
 	klog.V(5).Infof("##### cluster [%s] NewClientConfig. time taken: %v. ", c.Name, time.Since(startTime))
@@ -109,9 +109,10 @@ func (c *Cluster) initK8SClients() error {
 	klog.V(5).Infof("##### cluster [%s] NewClientCli. time taken: %v. ", c.Name, time.Since(startTime))
 	c.KubeCli = kubecli
 	o := manager.Options{
-		Scheme:             k8sclient.GetScheme(),
-		SyncPeriod:         &c.SyncPeriod,
-		MetricsBindAddress: "0",
+		Scheme:                 k8sclient.GetScheme(),
+		SyncPeriod:             &c.SyncPeriod,
+		MetricsBindAddress:     "0",
+		HealthProbeBindAddress: "0",
 	}
 
 	mgr, err := manager.New(c.RestConfig, o)
@@ -151,7 +152,9 @@ func (c *Cluster) StartCache(stopCh <-chan struct{}) {
 	klog.Infof("cluster name: %s start cache Informers ", c.Name)
 	go func() {
 		err := c.Cache.Start(c.internalStopper)
-		klog.Warningf("cluster name: %s cache Informers quit end err:%v", c.Name, err)
+		if err != nil {
+			klog.Warningf("cluster name: %s cache Informers quit end err: %+v", c.Name, err)
+		}
 	}()
 
 	c.Cache.WaitForCacheSync(stopCh)
@@ -159,5 +162,6 @@ func (c *Cluster) StartCache(stopCh <-chan struct{}) {
 }
 
 func (c *Cluster) Stop() {
+	klog.Infof("cluster: %s start stop cache Informers")
 	close(c.internalStopper)
 }

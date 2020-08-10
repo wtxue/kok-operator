@@ -229,7 +229,7 @@ const (
 
 	// KubeletConfigurationFileName specifies the file name on the node which stores initial remote configuration of kubelet
 	// This file should exist under KubeletRunDirectory
-	KubeletConfigurationFileName = "config-bgp.yaml"
+	KubeletConfigurationFileName = "config.yaml"
 
 	// DynamicKubeletConfigurationDirectoryName specifies the directory which stores the dynamic configuration checkpoints for the kubelet
 	// This directory should exist under KubeletRunDirectory

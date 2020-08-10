@@ -28,7 +28,7 @@ const (
 	KubeletPodManifestDir = KubernetesDir + "manifests/"
 
 	SchedulerPolicyConfigFile = KubernetesDir + "scheduler-policy-config.json"
-	AuditWebhookConfigFile    = KubernetesDir + "audit-api-client-config-bgp.yaml"
+	AuditWebhookConfigFile    = KubernetesDir + "audit-api-client-config.yaml"
 	AuditPolicyConfigFile     = KubernetesDir + "audit-policy.yaml"
 
 	EtcdPodManifestFile                  = KubeletPodManifestDir + "etcd.yaml"
@@ -74,7 +74,7 @@ const (
 	// APIServerEtcdClientKeyName defines apiserver's etcd client key name
 	APIServerEtcdClientKeyName = CertificatesDir + "apiserver-etcd-client.key"
 
-	KubeadmConfigFileName = KubernetesDir + "kubeadm-config-bgp.yaml"
+	KubeadmConfigFileName = KubernetesDir + "kubeadm-config.yaml"
 
 	// KubeletKubeConfigFileName defines the file name for the kubeconfig that the control-plane kubelet will use for talking
 	// to the API server
@@ -83,7 +83,7 @@ const (
 	DefaultSystemdUnitFilePath   = "/usr/lib/systemd/system/"
 	KubeletSystemdUnitFilePath   = DefaultSystemdUnitFilePath + "kubelet.service"
 	KubeletServiceRunConfig      = DefaultSystemdUnitFilePath + "kubelet.service.d/10-kubeadm.conf"
-	KubeletConfigurationFileName = KubeletRunDirectory + "config-bgp.yaml"
+	KubeletConfigurationFileName = KubeletRunDirectory + "config.yaml"
 	KubeletEnvFileName           = KubeletRunDirectory + "kubeadm-flags.env"
 	KubeletEnvFileVariableName   = "KUBELET_KUBEADM_ARGS"
 

@@ -1,19 +1,3 @@
-/*
-Copyright 2020 wtxue.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package cluster
 
 import (
@@ -30,13 +14,14 @@ import (
 	devopsv1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
 	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
+	"github.com/wtxue/kube-on-kube-operator/pkg/provider/addons/cni"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/addons/coredns"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/addons/flannel"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/addons/kubeproxy"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/addons/metricsserver"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/certs"
+	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/certs"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/kubeadm"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/kubeconfig"
+	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/kubemisc"
 	"github.com/wtxue/kube-on-kube-operator/pkg/util/k8sutil"
 	"github.com/wtxue/kube-on-kube-operator/pkg/util/pkiutil"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -172,18 +157,17 @@ func (p *Provider) EnsureCerts(ctx context.Context, c *common.Cluster) error {
 		return err
 	}
 
-	return nil
+	return ApplyCertsConfigmap(c.Client, c, c.ClusterCredential.CertsBinaryData)
 }
 
-func (p *Provider) EnsureKubeconfig(ctx context.Context, c *common.Cluster) error {
-	apiserver := certs.BuildApiserverEndpoint(constants.KubeApiServer, kubeconfig.GetBindPort(c.Cluster))
-	err := kubeconfig.ApplyMasterKubeconfig(c, apiserver)
+func (p *Provider) EnsureKubeMisc(ctx context.Context, c *common.Cluster) error {
+	apiserver := certs.BuildApiserverEndpoint(constants.KubeApiServer, kubemisc.GetBindPort(c.Cluster))
+	err := kubemisc.ApplyMasterMisc(c, apiserver)
 	if err != nil {
 		return err
 	}
 
-	//
-	return nil
+	return ApplyKubeMiscConfigmap(c.Client, c, c.ClusterCredential.KubeData)
 }
 
 func (p *Provider) EnsureEtcd(ctx context.Context, c *common.Cluster) error {
@@ -207,7 +191,7 @@ func (p *Provider) EnsureKubeMaster(ctx context.Context, c *common.Cluster) erro
 		obj := f()
 		err := k8sutil.Reconcile(logger, c.Client, obj, k8sutil.DesiredStatePresent)
 		if err != nil {
-			return errors.Wrapf(err, "create kubeconfig err: %v", err)
+			return errors.Wrapf(err, "apply object err: %v", err)
 		}
 	}
 
@@ -219,7 +203,8 @@ func (p *Provider) EnsureExtKubeconfig(ctx context.Context, c *common.Cluster) e
 		c.ClusterCredential.ExtData = make(map[string]string)
 	}
 
-	apiserver := certs.BuildApiserverEndpoint(c.Cluster.Spec.Features.HA.ThirdPartyHA.VIP, kubeconfig.GetBindPort(c.Cluster))
+	apiserver := certs.BuildApiserverEndpoint(c.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(c.Cluster))
+	klog.Infof("external apiserver url: %s", apiserver)
 	cfgMaps, err := certs.CreateApiserverKubeConfigFile(c.ClusterCredential.CAKey, c.ClusterCredential.CACert,
 		apiserver, c.Cluster.Name)
 	if err != nil {
@@ -245,10 +230,11 @@ func (p *Provider) EnsureAddons(ctx context.Context, c *common.Cluster) error {
 	}
 	kubeproxyObjs, err := kubeproxy.BuildKubeproxyAddon(p.Cfg, c)
 	if err != nil {
-		return errors.Wrapf(err, "build kube-proxy err: %v", err)
+		return errors.Wrapf(err, "build kube-proxy err: %+v", err)
 	}
 
 	logger := ctrl.Log.WithValues("cluster", c.Name)
+	logger.Info("start apply kube-proxy")
 	for _, obj := range kubeproxyObjs {
 		err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStatePresent)
 		if err != nil {
@@ -256,9 +242,10 @@ func (p *Provider) EnsureAddons(ctx context.Context, c *common.Cluster) error {
 		}
 	}
 
+	logger.Info("start apply coredns")
 	corednsObjs, err := coredns.BuildCoreDNSAddon(p.Cfg, c)
 	if err != nil {
-		return errors.Wrapf(err, "build kube-proxy err: %v", err)
+		return errors.Wrapf(err, "build coredns err: %+v", err)
 	}
 	for _, obj := range corednsObjs {
 		err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStatePresent)
@@ -269,24 +256,51 @@ func (p *Provider) EnsureAddons(ctx context.Context, c *common.Cluster) error {
 	return nil
 }
 
-func (p *Provider) EnsureFlannel(ctx context.Context, c *common.Cluster) error {
-	clusterCtx, err := c.ClusterManager.Get(c.Name)
-	if err != nil {
+func (p *Provider) EnsureCni(ctx context.Context, c *common.Cluster) error {
+	var cniType string
+	var ok bool
+
+	if cniType, ok = c.Cluster.Spec.Features.Hooks[devopsv1.HookCniInstall]; !ok {
 		return nil
 	}
-	objs, err := flannel.BuildFlannelAddon(p.Cfg, c)
-	if err != nil {
-		return errors.Wrapf(err, "build flannel err: %v", err)
+
+	switch cniType {
+	case "dke-cni":
+		for _, machine := range c.Spec.Machines {
+			sh, err := machine.SSH()
+			if err != nil {
+				return err
+			}
+
+			err = cni.ApplyCniCfg(sh, c)
+			if err != nil {
+				klog.Errorf("node: %s apply cni cfg err: %v", sh.HostIP(), err)
+				return err
+			}
+		}
+	case "flannel":
+		clusterCtx, err := c.ClusterManager.Get(c.Name)
+		if err != nil {
+			return nil
+		}
+		objs, err := flannel.BuildFlannelAddon(p.Cfg, c)
+		if err != nil {
+			return errors.Wrapf(err, "build flannel err: %v", err)
+		}
+
+		logger := ctrl.Log.WithValues("cluster", c.Name, "component", "flannel")
+		logger.Info("start reconcile ...")
+		for _, obj := range objs {
+			err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStatePresent)
+			if err != nil {
+				return errors.Wrapf(err, "Reconcile  err: %v", err)
+			}
+		}
+	default:
+		return fmt.Errorf("unknown cni type: %s", cniType)
 	}
 
-	logger := ctrl.Log.WithValues("cluster", c.Name, "component", "flannel")
-	logger.Info("start reconcile ...")
-	for _, obj := range objs {
-		err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStatePresent)
-		if err != nil {
-			return errors.Wrapf(err, "Reconcile  err: %v", err)
-		}
-	}
+	return nil
 
 	return nil
 }
@@ -304,7 +318,7 @@ func (p *Provider) EnsureMetricsServer(ctx context.Context, c *common.Cluster) e
 	logger := ctrl.Log.WithValues("cluster", c.Name, "component", "metrics-server")
 	logger.Info("start reconcile ...")
 	for _, obj := range objs {
-		err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStatePresent)
+		err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStateAbsent)
 		if err != nil {
 			return errors.Wrapf(err, "Reconcile  err: %v", err)
 		}

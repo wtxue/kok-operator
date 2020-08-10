@@ -16,7 +16,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog"
-	runtimeClient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // MarshalToYaml marshals an object into yaml.
@@ -67,6 +66,19 @@ func GroupVersionKindsHasKind(gvks []schema.GroupVersionKind, kind string) bool 
 	return false
 }
 
+func RemoveNonYAMLLines(yms string) string {
+	out := ""
+	for _, s := range strings.Split(yms, "\n") {
+		if strings.HasPrefix(s, "#") {
+			continue
+		}
+		out += s + "\n"
+	}
+
+	// helm charts sometimes emits blank objects with just a "disabled" comment.
+	return strings.TrimSpace(out)
+}
+
 func LoadObjs(f io.Reader) ([]runtime.Object, error) {
 	var b bytes.Buffer
 
@@ -93,25 +105,20 @@ func LoadObjs(f io.Reader) ([]runtime.Object, error) {
 
 	objs := make([]runtime.Object, 0)
 	for _, yaml := range yamls {
-		if len(yaml) < 10 {
+		yaml = RemoveNonYAMLLines(yaml)
+		if yaml == "" {
 			continue
 		}
 
 		s := json.NewSerializerWithOptions(json.DefaultMetaFactory,
 			k8sclient.GetScheme(), k8sclient.GetScheme(), json.SerializerOptions{Yaml: true})
 
-		obj, gvk, err := s.Decode([]byte(yaml), nil, nil)
+		obj, _, err := s.Decode([]byte(yaml), nil, nil)
 		if err != nil {
+			klog.Errorf("Failed to parse YAML to a k8s object: %v, yaml: \n %s", err, yaml)
 			continue
 		}
 
-		if gvk != nil {
-			key, err := runtimeClient.ObjectKeyFromObject(obj)
-			if err != nil {
-				continue
-			}
-			klog.Infof("append gvk: %s, key: %s", gvk.String(), key.String())
-		}
 		objs = append(objs, obj)
 
 	}

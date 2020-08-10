@@ -118,7 +118,6 @@ func (r *clusterReconciler) onCreate(ctx context.Context, rc *clusterContext, p 
 }
 
 func (r *clusterReconciler) onUpdate(ctx context.Context, rc *clusterContext, p cluster.Provider, clusterWrapper *common.Cluster) error {
-
 	err := p.OnUpdate(ctx, clusterWrapper)
 	if err != nil {
 		clusterWrapper.Cluster.Status.Message = err.Error()

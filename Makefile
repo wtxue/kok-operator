@@ -1,4 +1,4 @@
-VERSION ?= v0.1.0
+VERSION ?= v0.1.1
 # Image URL to use all building/pushing image targets
 IMG_REG ?= registry.cn-hangzhou.aliyuncs.com/wtxue
 IMG_CTL := $(IMG_REG)/onkube-controller
@@ -8,7 +8,7 @@ CRD_OPTIONS ?= "crd:trivialVersions=true"
 # This repo's root import path (under GOPATH).
 ROOT := github.com/wtxue/kube-on-kube-operator
 
-GO_VERSION := 1.14.4
+GO_VERSION := 1.14.6
 ARCH     ?= $(shell go env GOARCH)
 BUILD_DATE = $(shell date +'%Y-%m-%dT%H:%M:%SZ')
 COMMIT    = $(shell git rev-parse --short HEAD)
@@ -63,14 +63,14 @@ pre-build:
 #	go generate ./pkg/... ./cmd/...
 
 # Build the docker image
-docker-build-controller:
+docker-build:
 	docker run --rm -v "$$PWD":/go/src/${ROOT} -v ${GOPATH}/pkg/mod:/go/pkg/mod -w /go/src/${ROOT} golang:${GO_VERSION} make build-controller
 
 build: build-controller
 
 build-controller:
 	$(GO) -v -o bin/onkube-controller -ldflags "-s -w -X $(ROOT)/pkg/version.Release=$(VERSION) -X  $(ROOT)/pkg/version.Commit=$(COMMIT)   \
-	-X  $(ROOT)/pkg/version.BuildDate=$(BUILD_DATE)" cmd/admin-controller/main.go
+	-X  $(ROOT)/pkg/version.BuildDate=$(BUILD_DATE)" cmd/controller/main.go
 
 # Push the docker image
 docker-push:

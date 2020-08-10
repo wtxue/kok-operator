@@ -27,9 +27,9 @@ import (
 	"github.com/thoas/go-funk"
 	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
 	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/certs"
+	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/certs"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/kubeadm"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/kubeconfig"
+	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/kubemisc"
 	"github.com/wtxue/kube-on-kube-operator/pkg/util/k8sutil"
 	certutil "k8s.io/client-go/util/cert"
 )
@@ -66,7 +66,7 @@ func (p *Provider) EnsureRenewCerts(ctx context.Context, c *common.Cluster) erro
 }
 
 func (p *Provider) EnsureAPIServerCert(ctx context.Context, c *common.Cluster) error {
-	apiserver := certs.BuildApiserverEndpoint(c.Cluster.Spec.PublicAlternativeNames[0], kubeconfig.GetBindPort(c.Cluster))
+	apiserver := certs.BuildApiserverEndpoint(c.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(c.Cluster))
 
 	kubeadmConfig := kubeadm.GetKubeadmConfig(c, p.Cfg, apiserver)
 	exptectCertSANs := k8sutil.GetAPIServerCertSANs(c.Cluster)

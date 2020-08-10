@@ -1,19 +1,3 @@
-/*
-Copyright 2020 wtxue.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package certs
 
 import (
@@ -31,6 +15,8 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
+	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
+	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
 	kubeconfigutil "github.com/wtxue/kube-on-kube-operator/pkg/util/kubeconfig"
 	"github.com/wtxue/kube-on-kube-operator/pkg/util/pkiutil"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -226,6 +212,33 @@ func CreateKubeConfigFiles(CAKey, CACert []byte, apiserver string, kubeletNodeAd
 	}
 
 	return cfgMaps, nil
+}
+
+func BuildExternalApiserverEndpoint(c *common.Cluster) string {
+	var vip string
+	port := "6443"
+	vipMasterKey := constants.GetAnnotationKey(c.Cluster.Annotations, constants.ClusterApiSvcVip)
+	if vipMasterKey != "" {
+		vip = vipMasterKey
+	}
+
+	if c.Cluster.Spec.Features.HA != nil && c.Cluster.Spec.Features.HA.ThirdPartyHA != nil {
+		port = fmt.Sprintf("%d", c.Cluster.Spec.Features.HA.ThirdPartyHA.VPort)
+		if vip == "" {
+			vip = c.Cluster.Spec.Features.HA.ThirdPartyHA.VIP
+		}
+	}
+
+	if vip == "" && len(c.Cluster.Spec.Machines) > 0 {
+		vip = c.Cluster.Spec.Machines[0].IP
+	}
+
+	controlPlaneURL := &url.URL{
+		Scheme: "https",
+		Host:   net.JoinHostPort(vip, port),
+	}
+
+	return controlPlaneURL.String()
 }
 
 func BuildApiserverEndpoint(ipOrDns string, bindPort int) string {

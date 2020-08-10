@@ -1,4 +1,4 @@
-ARG ONKUBE_BASE_VERSION=v0.1.0
+ARG ONKUBE_BASE_VERSION=v1.18.5-1613
 
 FROM registry.cn-hangzhou.aliyuncs.com/wtxue/onkube-base:${ONKUBE_BASE_VERSION}
 

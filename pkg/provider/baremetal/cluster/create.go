@@ -38,7 +38,6 @@ import (
 	devopsv1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/kubeadm"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/kubeconfig"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/system"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/preflight"
 	"github.com/wtxue/kube-on-kube-operator/pkg/util/apiclient"
@@ -50,9 +49,10 @@ import (
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/addons/cni"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/addons/flannel"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/addons/metricsserver"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/certs"
 
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/k8scomponent"
+	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/certs"
+	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/component"
+	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/kubemisc"
 	"github.com/wtxue/kube-on-kube-operator/pkg/util/k8sutil"
 	"github.com/wtxue/kube-on-kube-operator/pkg/util/pkiutil"
 	"github.com/wtxue/kube-on-kube-operator/pkg/util/ssh"
@@ -60,6 +60,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sync"
 )
 
 func (p *Provider) EnsureCopyFiles(ctx context.Context, c *common.Cluster) error {
@@ -200,7 +201,7 @@ func (p *Provider) EnsureKubeconfig(ctx context.Context, c *common.Cluster) erro
 			return err
 		}
 
-		err = kubeconfig.Install(machineSSH, c)
+		err = kubemisc.Install(machineSSH, c)
 		if err != nil {
 			return errors.Wrap(err, machine.IP)
 		}
@@ -244,7 +245,7 @@ func (p *Provider) EnsureCerts(ctx context.Context, c *common.Cluster) error {
 	return nil
 }
 
-func (p *Provider) EnsureKubeadmInitKubeConfigPhase(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsureKubeMiscPhase(ctx context.Context, c *common.Cluster) error {
 	sh, err := c.Spec.Machines[0].SSH()
 	if err != nil {
 		return err
@@ -252,12 +253,12 @@ func (p *Provider) EnsureKubeadmInitKubeConfigPhase(ctx context.Context, c *comm
 
 	apiserver := certs.BuildApiserverEndpoint(c.Spec.Machines[0].IP, 6443)
 	kubeMaps := make(map[string]string)
-	err = kubeconfig.ApplyKubeletKubeconfig(c, apiserver, sh.HostIP(), kubeMaps)
+	err = kubemisc.ApplyKubeletKubeconfig(c, apiserver, sh.HostIP(), kubeMaps)
 	if err != nil {
 		return err
 	}
 
-	err = kubeconfig.ApplyMasterKubeconfig(c, apiserver)
+	err = kubemisc.ApplyMasterMisc(c, apiserver)
 	if err != nil {
 		return err
 	}
@@ -267,7 +268,7 @@ func (p *Provider) EnsureKubeadmInitKubeConfigPhase(ctx context.Context, c *comm
 	}
 
 	for pathName, va := range kubeMaps {
-		klog.V(4).Infof("node: %s start write kubeconfig [%s] ...", sh.HostIP(), pathName)
+		klog.V(4).Infof("node: %s start write misc [%s] ...", sh.HostIP(), pathName)
 		err = sh.WriteFile(strings.NewReader(va), pathName)
 		if err != nil {
 			klog.Errorf("write kubeconfg: %s err: %+v", pathName, err)
@@ -367,14 +368,14 @@ func (p *Provider) EnsureJoinControlePlane(ctx context.Context, c *common.Cluste
 	return nil
 }
 
-func (p *Provider) EnsureK8sComponent(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsureComponent(ctx context.Context, c *common.Cluster) error {
 	for _, machine := range c.Spec.Machines {
 		machineSSH, err := machine.SSH()
 		if err != nil {
 			return err
 		}
 
-		err = k8scomponent.Install(machineSSH, c)
+		err = component.Install(machineSSH, c)
 		if err != nil {
 			return errors.Wrap(err, machine.IP)
 		}
@@ -384,18 +385,42 @@ func (p *Provider) EnsureK8sComponent(ctx context.Context, c *common.Cluster) er
 }
 
 func (p *Provider) EnsureSystem(ctx context.Context, c *common.Cluster) error {
-	for _, machine := range c.Spec.Machines {
-		machineSSH, err := machine.SSH()
+	wg := sync.WaitGroup{}
+	quitErrors := make(chan error)
+	wgDone := make(chan struct{})
+	for _, mach := range c.Spec.Machines {
+		sh, err := mach.SSH()
 		if err != nil {
 			return err
 		}
 
-		err = system.Install(machineSSH, c)
-		if err != nil {
-			return errors.Wrap(err, machine.IP)
-		}
+		wg.Add(1)
+
+		go func(s ssh.Interface) {
+			defer wg.Done()
+			err = system.Install(s, c)
+			if err != nil {
+				quitErrors <- errors.Wrap(err, sh.HostIP())
+			}
+		}(sh)
 	}
 
+	go func() {
+		wg.Wait()
+		close(wgDone)
+	}()
+
+	// Wait until either WaitGroup is done or an error is received through the channel
+	select {
+	case <-wgDone:
+		break
+	case err := <-quitErrors:
+		close(quitErrors)
+		klog.Errorf("err: %+v", err)
+		return err
+	}
+
+	klog.Infof("clster: %s ensureSystem all host executed successfully", c.Cluster.Name)
 	return nil
 }
 
@@ -640,7 +665,7 @@ func (p *Provider) EnsureApplyControlPlane(ctx context.Context, c *common.Cluste
 		if err != nil {
 			return err
 		}
-		err = kubeconfig.CovertMasterKubeConfig(sh, c)
+		err = kubemisc.CovertMasterKubeConfig(sh, c)
 		if err != nil {
 			return err
 		}
@@ -649,18 +674,18 @@ func (p *Provider) EnsureApplyControlPlane(ctx context.Context, c *common.Cluste
 		if err != nil {
 			return err
 		}
-		err = kubeadm.RestartContainerByFilter(sh, kubeadm.DockerFilterForControlPlane("kube-apiserver"))
-		if err != nil {
-			return err
-		}
-		err = kubeadm.RestartContainerByFilter(sh, kubeadm.DockerFilterForControlPlane("kube-controller-manager"))
-		if err != nil {
-			return err
-		}
-		err = kubeadm.RestartContainerByFilter(sh, kubeadm.DockerFilterForControlPlane("kube-scheduler"))
-		if err != nil {
-			return err
-		}
+		// err = kubeadm.RestartContainerByFilter(sh, kubeadm.DockerFilterForControlPlane("kube-apiserver"))
+		// if err != nil {
+		// 	return err
+		// }
+		// err = kubeadm.RestartContainerByFilter(sh, kubeadm.DockerFilterForControlPlane("kube-controller-manager"))
+		// if err != nil {
+		// 	return err
+		// }
+		// err = kubeadm.RestartContainerByFilter(sh, kubeadm.DockerFilterForControlPlane("kube-scheduler"))
+		// if err != nil {
+		// 	return err
+		// }
 	}
 
 	return nil
@@ -671,20 +696,24 @@ func (p *Provider) EnsureExtKubeconfig(ctx context.Context, c *common.Cluster) e
 		c.ClusterCredential.ExtData = make(map[string]string)
 	}
 
-	apiserver := certs.BuildApiserverEndpoint(c.Cluster.Spec.Machines[0].IP, 6443)
+	apiserver := certs.BuildExternalApiserverEndpoint(c)
+	klog.Infof("external apiserver url: %s", apiserver)
 	cfgMaps, err := certs.CreateApiserverKubeConfigFile(c.ClusterCredential.CAKey, c.ClusterCredential.CACert,
 		apiserver, c.Cluster.Name)
 	if err != nil {
-		klog.Errorf("create kubeconfg err: %+v", err)
+		klog.Errorf("build apiserver kubeconfg err: %+v", err)
 		return err
 	}
-	klog.Infof("[%s/%s] start build kubeconfig ...", c.Cluster.Namespace, c.Cluster.Name)
+	klog.Infof("[%s/%s] start convert apiserver kubeconfig ...", c.Cluster.Namespace, c.Cluster.Name)
 	for _, v := range cfgMaps {
 		by, err := certs.BuildKubeConfigByte(v)
 		if err != nil {
 			return err
 		}
-		c.ClusterCredential.ExtData[pkiutil.ExternalAdminKubeConfigFileName] = string(by)
+
+		externalKubeconfig := string(by)
+		klog.Infof("cluster: %s externalKubeconfig: \n%s", c.Cluster.Name, externalKubeconfig)
+		c.ClusterCredential.ExtData[pkiutil.ExternalAdminKubeConfigFileName] = externalKubeconfig
 	}
 
 	return nil
@@ -839,9 +868,9 @@ func (p *Provider) EnsureMasterNode(ctx context.Context, c *common.Cluster) erro
 
 	phases := []func(s ssh.Interface, c *common.Cluster) error{
 		system.Install,
-		k8scomponent.Install,
+		component.Install,
 		preflight.RunMasterChecks,
-		kubeconfig.Install,
+		kubemisc.Install,
 		kubeadm.JoinControlPlane,
 	}
 

@@ -1,19 +1,3 @@
-/*
-Copyright 2020 wtxue.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package machine
 
 import (
@@ -32,10 +16,10 @@ import (
 	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
 	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/addons/cni"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/certs"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/joinNode"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/k8scomponent"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/kubeconfig"
+	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/certs"
+	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/component"
+	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/joinnode"
+	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/kubemisc"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/system"
 	"github.com/wtxue/kube-on-kube-operator/pkg/provider/preflight"
 	"github.com/wtxue/kube-on-kube-operator/pkg/util/apiclient"
@@ -196,7 +180,7 @@ func (p *Provider) EnsureK8sComponent(ctx context.Context, machine *devopsv1.Mac
 		return err
 	}
 
-	err = k8scomponent.Install(sh, c)
+	err = component.Install(sh, c)
 	if err != nil {
 		return errors.Wrap(err, sh.HostIP())
 	}
@@ -210,15 +194,16 @@ func (p *Provider) EnsureKubeconfig(ctx context.Context, machine *devopsv1.Machi
 		return err
 	}
 
-	apiserver := certs.BuildApiserverEndpoint(c.Cluster.Spec.Features.HA.ThirdPartyHA.VIP, kubeconfig.GetBindPort(c.Cluster))
+	apiserver := certs.BuildApiserverEndpoint(c.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(c.Cluster))
+	klog.Infof("join apiserver: %s", apiserver)
 
-	option := &kubeconfig.Option{
+	option := &kubemisc.Option{
 		MasterEndpoint: apiserver,
 		ClusterName:    c.Cluster.Name,
 		CACert:         c.ClusterCredential.CACert,
 		Token:          *c.ClusterCredential.Token,
 	}
-	err = kubeconfig.InstallNode(machineSSH, option)
+	err = kubemisc.InstallNode(machineSSH, option)
 	if err != nil {
 		return err
 	}
@@ -232,9 +217,9 @@ func (p *Provider) EnsureJoinNode(ctx context.Context, machine *devopsv1.Machine
 		return err
 	}
 
-	apiserver := certs.BuildApiserverEndpoint(c.Cluster.Spec.PublicAlternativeNames[0], kubeconfig.GetBindPort(c.Cluster))
+	apiserver := certs.BuildApiserverEndpoint(c.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(c.Cluster))
 	klog.Infof("join apiserver: %s", apiserver)
-	err = joinNode.JoinNodePhase(sh, p.Cfg, c, apiserver, false)
+	err = joinnode.JoinNodePhase(sh, p.Cfg, c, apiserver, false)
 	if err != nil {
 		return err
 	}

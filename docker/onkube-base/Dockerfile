@@ -1,7 +1,7 @@
 ARG CENTOS_BASE_VERSION=v7.8.2
 
 ARG K8S_ETCD_VERSION1=v3.3.23
-ARG K8S_ETCD_VERSION2=v3.4.10
+ARG K8S_ETCD_VERSION2=v3.4.9
 
 FROM quay.io/coreos/etcd:${K8S_ETCD_VERSION1} as etcd-v1
 FROM quay.io/coreos/etcd:${K8S_ETCD_VERSION2} as etcd-v2
@@ -32,7 +32,7 @@ COPY --from=etcd-v1 /usr/local/bin/etcd \
                           /usr/local/bin/etcdctl \
                           /k8s-$K8S_V1/bin/
 
-ENV K8S_V2 v1.18.6
+ENV K8S_V2 v1.18.5
 RUN curl -fsSL https://dl.k8s.io/$K8S_V2/kubernetes-server-linux-amd64.tar.gz -o k8s-$K8S_V2.tar.gz \
     && mkdir -p /k8s-$K8S_V2/bin/ && tar -C /k8s-$K8S_V2 -xzf k8s-$K8S_V2.tar.gz \
     && mv /k8s-$K8S_V2/kubernetes/server/bin/{kube-apiserver,kubeadm,kubectl,kubelet,kube-scheduler,kube-controller-manager} /k8s-$K8S_V2/bin/ \
@@ -43,12 +43,11 @@ COPY --from=etcd-v2 /usr/local/bin/etcd \
 
 FROM registry.cn-hangzhou.aliyuncs.com/wtxue/centos-base:${CENTOS_BASE_VERSION}
 
-COPY --from=default /k8s/bin /k8s/bin
 
 ENV K8S_V1 v1.16.13
 COPY --from=default /k8s-$K8S_V1/bin /k8s-$K8S_V1/bin
 
-ENV K8S_V2 v1.18.6
+ENV K8S_V2 v1.18.5
 COPY --from=default /k8s-$K8S_V2/bin /k8s-$K8S_V2/bin
 
 COPY --from=default /k8s-$K8S_V2/bin/etcd \
@@ -56,4 +55,4 @@ COPY --from=default /k8s-$K8S_V2/bin/etcd \
                     /k8s-$K8S_V2/bin/kube-apiserver \
                     /usr/local/bin/
 
-
+COPY --from=default /k8s/bin /k8s/bin
