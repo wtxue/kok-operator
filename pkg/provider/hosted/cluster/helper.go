@@ -7,9 +7,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
-	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/k8sutil"
+	"github.com/wtxue/kok-operator/pkg/constants"
+	"github.com/wtxue/kok-operator/pkg/controllers/common"
+	"github.com/wtxue/kok-operator/pkg/util/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalev2beta1 "k8s.io/api/autoscaling/v2beta1"
 	corev1 "k8s.io/api/core/v1"

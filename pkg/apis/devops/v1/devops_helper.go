@@ -22,7 +22,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/ssh"
+	"github.com/wtxue/kok-operator/pkg/util/ssh"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

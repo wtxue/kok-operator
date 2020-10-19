@@ -7,14 +7,14 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/server/mux"
 
-	clusterprovider "github.com/wtxue/kube-on-kube-operator/pkg/provider/cluster"
+	clusterprovider "github.com/wtxue/kok-operator/pkg/provider/cluster"
 
-	devopsv1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/devops/v1"
-	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
-	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/baremetal/validation"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/config"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/pointer"
+	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
+	"github.com/wtxue/kok-operator/pkg/constants"
+	"github.com/wtxue/kok-operator/pkg/controllers/common"
+	"github.com/wtxue/kok-operator/pkg/provider/baremetal/validation"
+	"github.com/wtxue/kok-operator/pkg/provider/config"
+	"github.com/wtxue/kok-operator/pkg/util/pointer"
 	"k8s.io/klog"
 )
 

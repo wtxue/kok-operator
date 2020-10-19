@@ -6,7 +6,7 @@ IMG_CTL := $(IMG_REG)/onkube-controller
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
 # This repo's root import path (under GOPATH).
-ROOT := github.com/wtxue/kube-on-kube-operator
+ROOT := github.com/wtxue/kok-operator
 
 GO_VERSION := 1.14.6
 ARCH     ?= $(shell go env GOARCH)

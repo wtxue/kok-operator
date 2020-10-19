@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/pointer"
+	"github.com/wtxue/kok-operator/pkg/util/pointer"
 	admissionv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	apps "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"

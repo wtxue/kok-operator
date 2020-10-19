@@ -4,7 +4,7 @@ import (
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 
-	devopsv1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/devops/v1"
+	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	apiregistrationv1beta1 "k8s.io/kube-aggregator/pkg/apis/apiregistration/v1beta1"
 	//  monitorv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"

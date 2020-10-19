@@ -1,7 +1,7 @@
 package validation
 
 import (
-	devopsv1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/devops/v1"
+	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 

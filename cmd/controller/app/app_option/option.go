@@ -18,7 +18,7 @@ package app_option
 
 import (
 	"github.com/spf13/pflag"
-	"github.com/wtxue/kube-on-kube-operator/pkg/option"
+	"github.com/wtxue/kok-operator/pkg/option"
 )
 
 type Options struct {

@@ -17,7 +17,7 @@ limitations under the License.
 package common
 
 import (
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/k8sutil"
+	"github.com/wtxue/kok-operator/pkg/util/k8sutil"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"

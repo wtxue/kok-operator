@@ -20,11 +20,11 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/klog"
 
-	"github.com/wtxue/kube-on-kube-operator/cmd/controller/app/app_option"
-	"github.com/wtxue/kube-on-kube-operator/pkg/controllers"
-	"github.com/wtxue/kube-on-kube-operator/pkg/k8sclient"
-	"github.com/wtxue/kube-on-kube-operator/pkg/static"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/k8sutil"
+	"github.com/wtxue/kok-operator/cmd/controller/app/app_option"
+	"github.com/wtxue/kok-operator/pkg/controllers"
+	"github.com/wtxue/kok-operator/pkg/k8sclient"
+	"github.com/wtxue/kok-operator/pkg/static"
+	"github.com/wtxue/kok-operator/pkg/util/k8sutil"
 	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
 )

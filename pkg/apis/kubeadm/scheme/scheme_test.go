@@ -23,7 +23,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/wtxue/kube-on-kube-operator/pkg/apis/kubeadm/v1beta2"
+	"github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 

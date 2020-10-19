@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/wtxue/kube-on-kube-operator/pkg/version"
+	"github.com/wtxue/kok-operator/pkg/version"
 )
 
 // NewCmdVersion returns a cobra command for fetching versions

@@ -8,11 +8,11 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	devopsv1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/devops/v1"
-	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
-	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/ssh"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/template"
+	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
+	"github.com/wtxue/kok-operator/pkg/constants"
+	"github.com/wtxue/kok-operator/pkg/controllers/common"
+	"github.com/wtxue/kok-operator/pkg/util/ssh"
+	"github.com/wtxue/kok-operator/pkg/util/template"
 	"k8s.io/klog"
 )
 

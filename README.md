@@ -1,6 +1,6 @@
-# kube-on-kube-operator
+# kok-operator
 
-kube-on-kube-operator 是一个自动化部署高可用kubernetes的operator
+kok-operator 是一个自动化部署高可用kubernetes的operator
 
 # 特性
 
@@ -114,4 +114,4 @@ kubectl apply -f ./manifests/hosted-cluster-node.yaml
 
 - [x]  打通元集群及托管集群service网络，以支持聚合apiserver
 - [x]  支持 helm v3 部署 addons
-- [x]  用k3s替换fake-cluster
+- [x]  用 k3s 替换fake-cluster

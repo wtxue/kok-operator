@@ -21,9 +21,9 @@ import (
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"github.com/wtxue/kube-on-kube-operator/cmd/controller/app/app_option"
-	"github.com/wtxue/kube-on-kube-operator/pkg/apiserver"
-	"github.com/wtxue/kube-on-kube-operator/pkg/option"
+	"github.com/wtxue/kok-operator/cmd/controller/app/app_option"
+	"github.com/wtxue/kok-operator/pkg/apiserver"
+	"github.com/wtxue/kok-operator/pkg/option"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"

@@ -17,12 +17,12 @@ limitations under the License.
 package controllers
 
 import (
-	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/cluster"
-	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/k8smanager"
-	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/machine"
-	"github.com/wtxue/kube-on-kube-operator/pkg/gmanager"
-	"github.com/wtxue/kube-on-kube-operator/pkg/option"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider"
+	"github.com/wtxue/kok-operator/pkg/controllers/cluster"
+	"github.com/wtxue/kok-operator/pkg/controllers/k8smanager"
+	"github.com/wtxue/kok-operator/pkg/controllers/machine"
+	"github.com/wtxue/kok-operator/pkg/gmanager"
+	"github.com/wtxue/kok-operator/pkg/option"
+	"github.com/wtxue/kok-operator/pkg/provider"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )

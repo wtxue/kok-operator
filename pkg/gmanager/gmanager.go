@@ -17,8 +17,8 @@ limitations under the License.
 package gmanager
 
 import (
-	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/k8smanager"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider"
+	"github.com/wtxue/kok-operator/pkg/controllers/k8smanager"
+	"github.com/wtxue/kok-operator/pkg/provider"
 )
 
 type GManager struct {

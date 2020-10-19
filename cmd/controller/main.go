@@ -22,7 +22,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/wtxue/kube-on-kube-operator/cmd/controller/app"
+	"github.com/wtxue/kok-operator/cmd/controller/app"
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 )

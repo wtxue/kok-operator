@@ -29,8 +29,8 @@ import (
 
 	"k8s.io/client-go/rest"
 
-	"github.com/wtxue/kube-on-kube-operator/pkg/apiserver/internal"
-	"github.com/wtxue/kube-on-kube-operator/pkg/option"
+	"github.com/wtxue/kok-operator/pkg/apiserver/internal"
+	"github.com/wtxue/kok-operator/pkg/option"
 	"k8s.io/klog"
 )
 

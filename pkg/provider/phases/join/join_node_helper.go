@@ -7,12 +7,12 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/wtxue/kube-on-kube-operator/pkg/apis"
-	kubeadmv1beta2 "github.com/wtxue/kube-on-kube-operator/pkg/apis/kubeadm/v1beta2"
-	kubeletv1beta1 "github.com/wtxue/kube-on-kube-operator/pkg/apis/kubelet/config/v1beta1"
-	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
-	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/k8sutil"
+	"github.com/wtxue/kok-operator/pkg/apis"
+	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
+	kubeletv1beta1 "github.com/wtxue/kok-operator/pkg/apis/kubelet/config/v1beta1"
+	"github.com/wtxue/kok-operator/pkg/constants"
+	"github.com/wtxue/kok-operator/pkg/controllers/common"
+	"github.com/wtxue/kok-operator/pkg/util/k8sutil"
 	"k8s.io/klog"
 )
 

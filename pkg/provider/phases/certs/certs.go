@@ -5,8 +5,8 @@ import (
 	"crypto/x509"
 
 	"github.com/pkg/errors"
-	kubeadmv1beta2 "github.com/wtxue/kube-on-kube-operator/pkg/apis/kubeadm/v1beta2"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/pkiutil"
+	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
+	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
 	"k8s.io/klog"
 )
 

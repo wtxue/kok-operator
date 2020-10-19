@@ -24,9 +24,9 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 
-	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
-	"github.com/wtxue/kube-on-kube-operator/pkg/k8sclient"
-	crdgenerated "github.com/wtxue/kube-on-kube-operator/pkg/static/crds/generated"
+	"github.com/wtxue/kok-operator/pkg/constants"
+	"github.com/wtxue/kok-operator/pkg/k8sclient"
+	crdgenerated "github.com/wtxue/kok-operator/pkg/static/crds/generated"
 	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )

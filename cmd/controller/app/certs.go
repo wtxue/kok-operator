@@ -23,8 +23,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
-	"github.com/wtxue/kube-on-kube-operator/cmd/controller/app/app_option"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/pkiutil"
+	"github.com/wtxue/kok-operator/cmd/controller/app/app_option"
+	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/klog"
 )

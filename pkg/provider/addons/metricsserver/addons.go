@@ -3,9 +3,9 @@ package metricsserver
 import (
 	"bytes"
 
-	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/k8sutil"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/template"
+	"github.com/wtxue/kok-operator/pkg/controllers/common"
+	"github.com/wtxue/kok-operator/pkg/util/k8sutil"
+	"github.com/wtxue/kok-operator/pkg/util/template"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
 )

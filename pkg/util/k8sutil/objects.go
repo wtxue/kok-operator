@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/wtxue/kube-on-kube-operator/pkg/k8sclient"
+	"github.com/wtxue/kok-operator/pkg/k8sclient"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer"

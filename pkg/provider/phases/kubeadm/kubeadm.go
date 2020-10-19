@@ -14,15 +14,15 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
 
-	kubeadmv1beta2 "github.com/wtxue/kube-on-kube-operator/pkg/apis/kubeadm/v1beta2"
-	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
-	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
+	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
+	"github.com/wtxue/kok-operator/pkg/constants"
+	"github.com/wtxue/kok-operator/pkg/controllers/common"
 
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/config"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/certs"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/k8sutil"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/ssh"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/template"
+	"github.com/wtxue/kok-operator/pkg/provider/config"
+	"github.com/wtxue/kok-operator/pkg/provider/phases/certs"
+	"github.com/wtxue/kok-operator/pkg/util/k8sutil"
+	"github.com/wtxue/kok-operator/pkg/util/ssh"
+	"github.com/wtxue/kok-operator/pkg/util/template"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
 )

@@ -9,7 +9,7 @@ import (
 	"regexp"
 
 	"github.com/pkg/errors"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/template"
+	"github.com/wtxue/kok-operator/pkg/util/template"
 	"gopkg.in/yaml.v2"
 	admissionv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"

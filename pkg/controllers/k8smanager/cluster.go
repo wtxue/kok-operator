@@ -24,7 +24,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
-	"github.com/wtxue/kube-on-kube-operator/pkg/k8sclient"
+	"github.com/wtxue/kok-operator/pkg/k8sclient"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"

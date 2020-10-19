@@ -25,12 +25,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/log"
 	"github.com/thoas/go-funk"
-	"github.com/wtxue/kube-on-kube-operator/pkg/constants"
-	"github.com/wtxue/kube-on-kube-operator/pkg/controllers/common"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/certs"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/kubeadm"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/phases/kubemisc"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/k8sutil"
+	"github.com/wtxue/kok-operator/pkg/constants"
+	"github.com/wtxue/kok-operator/pkg/controllers/common"
+	"github.com/wtxue/kok-operator/pkg/provider/phases/certs"
+	"github.com/wtxue/kok-operator/pkg/provider/phases/kubeadm"
+	"github.com/wtxue/kok-operator/pkg/provider/phases/kubemisc"
+	"github.com/wtxue/kok-operator/pkg/util/k8sutil"
 	certutil "k8s.io/client-go/util/cert"
 )
 

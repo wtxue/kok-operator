@@ -1,15 +1,15 @@
 package provider
 
 import (
-	baremetalcluster "github.com/wtxue/kube-on-kube-operator/pkg/provider/baremetal/cluster"
-	baremetalmachine "github.com/wtxue/kube-on-kube-operator/pkg/provider/baremetal/machine"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/cluster"
-	clusterprovider "github.com/wtxue/kube-on-kube-operator/pkg/provider/cluster"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/config"
-	hostedcluster "github.com/wtxue/kube-on-kube-operator/pkg/provider/hosted/cluster"
-	hostedmachine "github.com/wtxue/kube-on-kube-operator/pkg/provider/hosted/machine"
-	"github.com/wtxue/kube-on-kube-operator/pkg/provider/machine"
-	machineprovider "github.com/wtxue/kube-on-kube-operator/pkg/provider/machine"
+	baremetalcluster "github.com/wtxue/kok-operator/pkg/provider/baremetal/cluster"
+	baremetalmachine "github.com/wtxue/kok-operator/pkg/provider/baremetal/machine"
+	"github.com/wtxue/kok-operator/pkg/provider/cluster"
+	clusterprovider "github.com/wtxue/kok-operator/pkg/provider/cluster"
+	"github.com/wtxue/kok-operator/pkg/provider/config"
+	hostedcluster "github.com/wtxue/kok-operator/pkg/provider/hosted/cluster"
+	hostedmachine "github.com/wtxue/kok-operator/pkg/provider/hosted/machine"
+	"github.com/wtxue/kok-operator/pkg/provider/machine"
+	machineprovider "github.com/wtxue/kok-operator/pkg/provider/machine"
 )
 
 type ProviderManager struct {

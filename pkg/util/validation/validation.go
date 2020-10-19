@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/ipallocator"
+	"github.com/wtxue/kok-operator/pkg/util/ipallocator"
 )
 
 // IsHTTPSReachle tests that https://host:port is reachble in timeout.

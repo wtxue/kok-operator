@@ -3,7 +3,7 @@ package hosts
 import (
 	"bytes"
 
-	"github.com/wtxue/kube-on-kube-operator/pkg/util/ssh"
+	"github.com/wtxue/kok-operator/pkg/util/ssh"
 )
 
 // RemoteHosts for remote hosts
