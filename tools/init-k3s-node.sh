@@ -21,7 +21,7 @@ function Install_depend_software(){
     echo -e "\033[32;32m 开始安装依赖环境包 \033[0m \n"
     yum -y --nogpgcheck install nfs-utils curl yum-utils device-mapper-persistent-data lvm2 \
            net-tools conntrack-tools wget vim  libseccomp libtool-ltdl telnet \
-           ipvsadm tc ipset bridge-utils tree telnet wget net-tools  \
+           ipvsadm tc ipset tree telnet wget net-tools  \
            tcpdump bash-completion sysstat chrony jq psmisc socat \
            sysstat conntrack iproute dstat lsof
 }
@@ -54,15 +54,13 @@ function Install_docker(){
 
     echo -e "\033[32;32m 开始安装docker \033[0m \n"
     yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+    yum install -y https://download.docker.com/linux/fedora/30/x86_64/stable/Packages/containerd.io-1.2.6-3.3.fc30.x86_64.rpm
     yum install -y docker-ce-${DockerVersion} docker-ce-cli-${DockerVersion}
 
     echo -e "\033[32;32m 开始写 docker daemon.json\033[0m \n"
     mkdir -p /etc/docker
     cat > /etc/docker/daemon.json <<EOF
 {
-  "exec-opts": [
-    "native.cgroupdriver=systemd"
-  ],
   "data-root": "/var/lib/docker",
   "ip-forward": true,
   "ip-masq": false,
@@ -90,9 +88,68 @@ EOF
     systemctl enable docker && systemctl daemon-reload && systemctl restart docker
 }
 
+# --- write systemd service file ---
+function Install_k3s_service() {
+    echo -e "\033[32;32m 开始写 /lib/systemd/system/etcd.service \033[0m \n"
+
+    cat > /lib/systemd/system/etcd.service <<EOF
+[Unit]
+Description=Etcd Server
+After=network.target
+After=network-online.target
+Wants=network-online.target
+Documentation=https://github.com/coreos/etcd
+
+[Service]
+Type=notify
+User=root
+ExecStart=/usr/local/bin/etcd --data-dir=/var/lib/etcd/
+Restart=always
+LimitNOFILE=65536
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl enable etcd && systemctl daemon-reload && systemctl restart etcd
+
+    echo -e "\033[32;32m 开始写 /lib/systemd/system/k3s.service \033[0m \n"
+    cat > /lib/systemd/system/k3s.service <<EOF
+[Unit]
+Description=Lightweight Kubernetes
+Documentation=https://k3s.io
+Wants=network-online.target
+After=network-online.target etcd.service
+
+[Service]
+Type=notify
+Environment="K3S_TYPE=server"
+Environment="K3S_RUNTIME=--docker"
+Environment="K3S_DATASTORE=--datastore-endpoint=http://localhost:2379"
+KillMode=process
+Delegate=yes
+# Having non-zero Limit*s causes performance problems due to accounting overhead
+# in the kernel. We recommend using cgroups to do container-local accounting.
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+TasksMax=infinity
+TimeoutStartSec=0
+Restart=always
+RestartSec=5s
+ExecStartPre=-/sbin/modprobe br_netfilter
+ExecStartPre=-/sbin/modprobe overlay
+ExecStart=/usr/local/bin/k3s $K3S_TYPE $K3S_RUNTIME $K3S_DATASTORE
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl enable k3s && systemctl daemon-reload && systemctl restart k3s
+}
+
 echo -e "\033[32;32m 开始初始化 k3s 结点 \033[0m \n"
 Firewalld_process && \
 Install_depend_software && \
 Install_ipvs && \
-Install_depend_environment && \
-Install_docker
+Install_docker && \
+Install_k3s_service
