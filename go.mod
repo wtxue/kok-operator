@@ -1,6 +1,6 @@
 module github.com/wtxue/kok-operator
 
-go 1.14
+go 1.15
 
 require (
 	github.com/Masterminds/goutils v1.1.0 // indirect
