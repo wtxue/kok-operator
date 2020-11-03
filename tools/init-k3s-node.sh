@@ -19,12 +19,11 @@ function Firewalld_process() {
 
 function Install_depend_software(){
     echo -e "\033[32;32m 开始安装依赖环境包 \033[0m \n"
-    yum makecache fast
     yum -y --nogpgcheck install nfs-utils curl yum-utils device-mapper-persistent-data lvm2 \
-           net-tools conntrack-tools wget vim  ntpdate libseccomp libtool-ltdl telnet \
+           net-tools conntrack-tools wget vim  libseccomp libtool-ltdl telnet \
            ipvsadm tc ipset bridge-utils tree telnet wget net-tools  \
            tcpdump bash-completion sysstat chrony jq psmisc socat \
-           cri-o sysstat conntrack  iproute dstat lsof perl bind-utils
+           sysstat conntrack iproute dstat lsof
 }
 
 function Install_ipvs(){
@@ -55,7 +54,6 @@ function Install_docker(){
 
     echo -e "\033[32;32m 开始安装docker \033[0m \n"
     yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-    yum makecache fast
     yum install -y docker-ce-${DockerVersion} docker-ce-cli-${DockerVersion}
 
     echo -e "\033[32;32m 开始写 docker daemon.json\033[0m \n"
