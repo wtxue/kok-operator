@@ -17,8 +17,8 @@ limitations under the License.
 package controllers
 
 import (
+	"github.com/wtxue/kok-operator/pkg/clustermanager"
 	"github.com/wtxue/kok-operator/pkg/controllers/cluster"
-	"github.com/wtxue/kok-operator/pkg/controllers/k8smanager"
 	"github.com/wtxue/kok-operator/pkg/controllers/machine"
 	"github.com/wtxue/kok-operator/pkg/gmanager"
 	"github.com/wtxue/kok-operator/pkg/option"
@@ -48,7 +48,7 @@ func AddToManager(m manager.Manager, opt *option.ControllersManagerOption) error
 		return err
 	}
 
-	k8sMgr, _ := k8smanager.NewManager(k8smanager.MasterClient{
+	k8sMgr, _ := clustermanager.NewManager(clustermanager.MasterClient{
 		Manager: m,
 	})
 

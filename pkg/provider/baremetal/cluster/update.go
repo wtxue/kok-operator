@@ -27,10 +27,10 @@ import (
 	"github.com/thoas/go-funk"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
+	"github.com/wtxue/kok-operator/pkg/k8sutil"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/certs"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/kubeadm"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/kubemisc"
-	"github.com/wtxue/kok-operator/pkg/util/k8sutil"
 	certutil "k8s.io/client-go/util/cert"
 )
 

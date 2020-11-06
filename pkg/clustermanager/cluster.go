@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package k8smanager
+package clustermanager
 
 import (
 	"strings"
@@ -108,16 +108,17 @@ func (c *Cluster) initK8SClients() error {
 
 	klog.V(5).Infof("##### cluster [%s] NewClientCli. time taken: %v. ", c.Name, time.Since(startTime))
 	c.KubeCli = kubecli
-	o := manager.Options{
+	opt := manager.Options{
 		Scheme:                 k8sclient.GetScheme(),
 		SyncPeriod:             &c.SyncPeriod,
 		MetricsBindAddress:     "0",
 		HealthProbeBindAddress: "0",
+		LeaderElection:         false,
 	}
 
-	mgr, err := manager.New(c.RestConfig, o)
+	mgr, err := manager.New(c.RestConfig, opt)
 	if err != nil {
-		return errors.Wrapf(err, "could not new manager name:%s", c.Name)
+		return errors.Wrapf(err, "could not new manager name: %s", c.Name)
 	}
 
 	klog.V(5).Infof("##### cluster [%s] NewManagerCli. time taken: %v. ", c.Name, time.Since(startTime))

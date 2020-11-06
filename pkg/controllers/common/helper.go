@@ -24,9 +24,9 @@ import (
 	"time"
 
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
+	"github.com/wtxue/kok-operator/pkg/clustermanager"
 	"github.com/wtxue/kok-operator/pkg/constants"
-	"github.com/wtxue/kok-operator/pkg/controllers/k8smanager"
-	"github.com/wtxue/kok-operator/pkg/util/k8sutil"
+	"github.com/wtxue/kok-operator/pkg/k8sutil"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
@@ -45,10 +45,10 @@ type Cluster struct {
 	*devopsv1.Cluster
 	ClusterCredential *devopsv1.ClusterCredential
 	client.Client
-	*k8smanager.ClusterManager
+	*clustermanager.ClusterManager
 }
 
-func GetCluster(ctx context.Context, cli client.Client, cluster *devopsv1.Cluster, mgr *k8smanager.ClusterManager) (*Cluster, error) {
+func GetCluster(ctx context.Context, cli client.Client, cluster *devopsv1.Cluster, mgr *clustermanager.ClusterManager) (*Cluster, error) {
 	result := new(Cluster)
 	result.Cluster = cluster
 

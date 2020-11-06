@@ -17,7 +17,7 @@ limitations under the License.
 package common
 
 import (
-	"github.com/wtxue/kok-operator/pkg/util/k8sutil"
+	"github.com/wtxue/kok-operator/pkg/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalev2beta1 "k8s.io/api/autoscaling/v2beta1"
 	corev1 "k8s.io/api/core/v1"

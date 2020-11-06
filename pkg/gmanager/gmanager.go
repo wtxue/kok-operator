@@ -17,11 +17,11 @@ limitations under the License.
 package gmanager
 
 import (
-	"github.com/wtxue/kok-operator/pkg/controllers/k8smanager"
+	"github.com/wtxue/kok-operator/pkg/clustermanager"
 	"github.com/wtxue/kok-operator/pkg/provider"
 )
 
 type GManager struct {
 	*provider.ProviderManager
-	*k8smanager.ClusterManager
+	*clustermanager.ClusterManager
 }

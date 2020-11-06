@@ -50,17 +50,18 @@ import (
 	"github.com/wtxue/kok-operator/pkg/provider/addons/flannel"
 	"github.com/wtxue/kok-operator/pkg/provider/addons/metricsserver"
 
+	"sync"
+
+	"github.com/wtxue/kok-operator/pkg/k8sutil"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/certs"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/component"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/kubemisc"
-	"github.com/wtxue/kok-operator/pkg/util/k8sutil"
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
 	"github.com/wtxue/kok-operator/pkg/util/ssh"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sync"
 )
 
 func (p *Provider) EnsureCopyFiles(ctx context.Context, c *common.Cluster) error {

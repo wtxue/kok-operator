@@ -18,9 +18,9 @@ import (
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 
+	"github.com/wtxue/kok-operator/pkg/k8sutil"
 	"github.com/wtxue/kok-operator/pkg/provider/config"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/certs"
-	"github.com/wtxue/kok-operator/pkg/util/k8sutil"
 	"github.com/wtxue/kok-operator/pkg/util/ssh"
 	"github.com/wtxue/kok-operator/pkg/util/template"
 	corev1 "k8s.io/api/core/v1"

@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
-	"github.com/wtxue/kok-operator/pkg/util/k8sutil"
+	"github.com/wtxue/kok-operator/pkg/k8sutil"
 	"github.com/wtxue/kok-operator/pkg/util/template"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
