@@ -9,7 +9,8 @@ kok-operator 是一个自动化部署高可用kubernetes的operator
 - 可以启用fake-cluster或者k3s，解决裸金属第一次部署集群没有元集群问题
 - 无坑版100年集群证书，kubelet自动生成证书
 - 除kubelet外集群组件全部容器化部署，采用static pod方式部署高可用etcd集群
-- 支持coredns, flannel，metrics-server，kube-proxy, metallb等addons模板化部署
+- 支持coredns, flannel，metrics-server，kube-proxy, metallb等 addons 模板化部署
+- 支持 centos 和 debian 系统
 
 # 安装部署
 

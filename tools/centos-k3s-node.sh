@@ -19,9 +19,9 @@ function Firewalld_process() {
 
 function Install_depend_software(){
     echo -e "\033[32;32m 开始安装依赖环境包 \033[0m \n"
-    yum -y --nogpgcheck install nfs-utils curl yum-utils device-mapper-persistent-data lvm2 \
-           net-tools conntrack-tools wget vim  libseccomp libtool-ltdl telnet \
-           ipvsadm tc ipset tree telnet wget net-tools  \
+    yum -y --nogpgcheck install curl yum-utils device-mapper-persistent-data lvm2 \
+           conntrack-tools wget vim  libseccomp libtool-ltdl  \
+           ipvsadm ipset tree telnet wget net-tools  \
            tcpdump bash-completion sysstat chrony jq psmisc socat \
            sysstat conntrack iproute dstat lsof
 }
@@ -54,8 +54,10 @@ function Install_docker(){
 
     echo -e "\033[32;32m 开始安装docker \033[0m \n"
     yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+    # centos8 need ?
     yum install -y https://download.docker.com/linux/fedora/30/x86_64/stable/Packages/containerd.io-1.2.6-3.3.fc30.x86_64.rpm
-    yum install -y docker-ce-${DockerVersion} docker-ce-cli-${DockerVersion}
+
+    yum install -y docker-ce-${DockerVersion} docker-ce-cli-${DockerVersion} containerd.io
 
     echo -e "\033[32;32m 开始写 docker daemon.json\033[0m \n"
     mkdir -p /etc/docker

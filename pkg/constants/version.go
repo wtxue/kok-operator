@@ -23,12 +23,12 @@ import (
 
 var (
 	OSs              = []string{"linux"}
-	K8sVersions      = []string{"v1.16.13", "v1.18.5"}
+	K8sVersions      = []string{"v1.16.13", "v1.18.5", "v1.19.3"}
 	K8sVersionsWithV = funk.Map(K8sVersions, func(s string) string {
 		return "v" + s
 	}).([]string)
 	K8sVersionConstraint = ">= 1.10"
-	DockerVersions       = []string{"18.09.9"}
+	DockerVersions       = []string{"19.03.13"}
 )
 
 func IsK8sSupport(version string) bool {

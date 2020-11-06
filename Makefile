@@ -1,14 +1,14 @@
 VERSION ?= v0.1.2
 # Image URL to use all building/pushing image targets
 IMG_REG ?= registry.cn-hangzhou.aliyuncs.com/wtxue
-IMG_CTL := $(IMG_REG)/onkube-controller
+IMG_CTL := $(IMG_REG)/kok-operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
 # This repo's root import path (under GOPATH).
 ROOT := github.com/wtxue/kok-operator
 
-GO_VERSION := 1.14.6
+GO_VERSION := 1.15.3
 ARCH     ?= $(shell go env GOARCH)
 BUILD_DATE = $(shell date +'%Y-%m-%dT%H:%M:%SZ')
 COMMIT    = $(shell git rev-parse --short HEAD)
@@ -69,7 +69,7 @@ docker-build:
 build: build-controller
 
 build-controller:
-	$(GO) -v -o bin/onkube-controller -ldflags "-s -w -X $(ROOT)/pkg/version.Release=$(VERSION) -X  $(ROOT)/pkg/version.Commit=$(COMMIT)   \
+	$(GO) -v -o bin/kok-operator -ldflags "-s -w -X $(ROOT)/pkg/version.Release=$(VERSION) -X  $(ROOT)/pkg/version.Commit=$(COMMIT)   \
 	-X  $(ROOT)/pkg/version.BuildDate=$(BUILD_DATE)" cmd/controller/main.go
 
 # Push the docker image
@@ -86,7 +86,7 @@ ifeq (, $(shell which controller-gen))
 	CONTROLLER_GEN_TMP_DIR=$$(mktemp -d) ;\
 	cd $$CONTROLLER_GEN_TMP_DIR ;\
 	go mod init tmp ;\
-	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.3.0 ;\
+	go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.0 ;\
 	rm -rf $$CONTROLLER_GEN_TMP_DIR ;\
 	}
 CONTROLLER_GEN=$(GOBIN)/controller-gen

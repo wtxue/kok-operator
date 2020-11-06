@@ -162,7 +162,7 @@ func (r *clusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	if len(string(c.Status.Phase)) == 0 {
+	if (len(string(c.Status.Phase)) == 0 || len(c.Status.Conditions) == 0) && c.Status.Phase != devopsv1.ClusterInitializing {
 		logger.V(4).Info("change", "status", devopsv1.ClusterInitializing)
 		c.Status.Phase = devopsv1.ClusterInitializing
 		err = r.Client.Status().Update(ctx, c)
@@ -245,7 +245,8 @@ func (r *clusterReconciler) reconcile(ctx context.Context, rc *clusterContext) e
 		r.addClusterCheck(ctx, clusterWrapper)
 		r.onUpdate(ctx, rc, p, clusterWrapper)
 	default:
-		return fmt.Errorf("no handler for %q", rc.Cluster.Status.Phase)
+		rc.Logger.Info("cluster status %q unknown", rc.Cluster.Status.Phase)
+		return fmt.Errorf("no handler for status %q", rc.Cluster.Status.Phase)
 	}
 
 	return r.applyStatus(ctx, rc, clusterWrapper)

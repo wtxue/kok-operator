@@ -5,10 +5,10 @@ set -x  # display all commands
 
 PACKAGE_DIR="../k8s"
 
-sysOS=`uname -s`
+SysOS=`uname -s`
 TargetOS="darwin"
 Version="2.3.1"
-if [ $sysOS == "Darwin" ];then
+if [ $SysOS == "Darwin" ];then
 	TargetOS="darwin"
 else
 	TargetOS="linux"

@@ -20,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 // FinalizerName is the name identifying a finalizer during cluster lifecycle.
@@ -31,6 +32,32 @@ const (
 
 	// MachineFinalize is an internal finalizer values to Machine.
 	MachineFinalize FinalizerName = "machine"
+)
+
+// GPUType defines the gpu type of cluster.
+type GPUType string
+
+const (
+	// GPUPhysical indicates the gpu type of cluster is physical.
+	GPUPhysical GPUType = "Physical"
+	// GPUVirtual indicates the gpu type of cluster is virtual.
+	GPUVirtual GPUType = "Virtual"
+)
+
+// OsType defines the os type of node.
+type OsType string
+
+const (
+	CentosType OsType = "centos"
+	DebianType OsType = "debian"
+)
+
+// RuntimeType defines the runtime of Container.
+type RuntimeType string
+
+const (
+	DockerRuntime     RuntimeType = "docker"
+	ContainerdRuntime RuntimeType = "containerd"
 )
 
 // NetworkType defines the network type of cluster.
@@ -137,6 +164,25 @@ const (
 	AddressSupport AddressType = "Support"
 )
 
+type UpgradeMode string
+
+const (
+	// Upgrade nodes automatically.
+	UpgradeModeAuto = UpgradeMode("Auto")
+	// Manual upgrade nodes which means user need label node with `platform.tkestack.io/need-upgrade`.
+	UpgradeModeManual = UpgradeMode("Manual")
+)
+
+// UpgradeStrategy used to control the upgrade process.
+type UpgradeStrategy struct {
+	// The maximum number of pods that can be unready during the upgrade.
+	// 0% means all pods need to be ready after evition.
+	// 100% means ignore any pods unready which may be used in one worker node, use this carefully!
+	// default value is 0%.
+	// +optional
+	MaxUnready *intstr.IntOrString `json:"maxUnready,omitempty" protobuf:"bytes,1,opt,name=maxUnready"`
+}
+
 // ClusterAddress contains information for the cluster's address.
 type ClusterAddress struct {
 	// Cluster address type, one of Public, ExternalIP or InternalIP.
@@ -190,6 +236,8 @@ type ClusterFeature struct {
 	// +optional
 	InternalLB *bool `json:"internalLB,omitempty" `
 	// +optional
+	GPUType *GPUType `json:"gpuType,omitempty" protobuf:"bytes,4,opt,name=gpuType"`
+	// +optional
 	EnableMasterSchedule bool `json:"enableMasterSchedule,omitempty"`
 	// +optional
 	HA *HA `json:"ha,omitempty"`
@@ -242,6 +290,15 @@ type Etcd struct {
 	External *ExternalEtcd `json:"external,omitempty"`
 }
 
+type Upgrade struct {
+	// Upgrade mode, default value is Auto.
+	// +optional
+	Mode UpgradeMode `json:"mode,omitempty" protobuf:"bytes,1,opt,name=mode"`
+	// Upgrade strategy config.
+	// +optional
+	Strategy UpgradeStrategy `json:"strategy,omitempty" protobuf:"bytes,2,opt,name=strategy"`
+}
+
 // ClusterSpec defines the desired state of Cluster
 type ClusterSpec struct {
 	// Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
@@ -253,6 +310,8 @@ type ClusterSpec struct {
 	Type        string `json:"type"`
 	Version     string `json:"version"`
 	// +optional
+	OsType      OsType      `json:"osType,omitempty"`
+	RuntimeType RuntimeType `json:"runtimeType,omitempty"`
 	NetworkType NetworkType `json:"networkType,omitempty"`
 	// +optional
 	NetworkDevice string `json:"networkDevice,omitempty"`
@@ -283,7 +342,13 @@ type ClusterSpec struct {
 	SchedulerExtraArgs map[string]string `json:"schedulerExtraArgs,omitempty"`
 	// Etcd holds configuration for etcd.
 	Etcd *Etcd `json:"etcd,omitempty"`
-	//
+	// Upgrade control upgrade process.
+	// +optional
+	Upgrade Upgrade `json:"upgrade,omitempty"`
+	// +optional
+	NetworkArgs map[string]string `json:"networkArgs,omitempty"`
+	// +optional
+	// Pause
 	Pause bool `json:"pause,omitempty"`
 }
 
@@ -324,6 +389,16 @@ type ClusterStatus struct {
 	DNSIP string `json:"dnsIP,omitempty"`
 	// +optional
 	RegistryIPs []string `json:"registryIPs,omitempty"`
+	// +optional
+	SecondaryServiceCIDR string `json:"secondaryServiceCIDR,omitempty"`
+	// +optional
+	ClusterCIDR string `json:"clusterCIDR,omitempty"`
+	// +optional
+	SecondaryClusterCIDR string `json:"secondaryClusterCIDR,omitempty" `
+	// +optional
+	NodeCIDRMaskSizeIPv4 int32 `json:"nodeCIDRMaskSizeIPv4,omitempty"`
+	// +optional
+	NodeCIDRMaskSizeIPv6 int32 `json:"nodeCIDRMaskSizeIPv6,omitempty"`
 }
 
 // +genclient

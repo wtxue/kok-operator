@@ -1,9 +1,9 @@
-ARG CENTOS_BASE_VERSION=v7.8.2
-ARG ETCD_BASE_VERSION=v3.4.9
+ARG CENTOS_BASE_VERSION=v7.8.10
+ARG ETCD_BASE_VERSION=v3.4.13
 
 FROM quay.io/coreos/etcd:${ETCD_BASE_VERSION} as etcd-default
 FROM registry.cn-hangzhou.aliyuncs.com/wtxue/centos-base:${CENTOS_BASE_VERSION} as default
-ENV K8S_SERVER_VERSION v1.18.5
+ENV K8S_SERVER_VERSION v1.19.3
 RUN curl -fsSL https://dl.k8s.io/$K8S_SERVER_VERSION/kubernetes-server-linux-amd64.tar.gz  -o kubernetes-server-linux-amd64.tar.gz \
     && tar -C /usr/local -xzf kubernetes-server-linux-amd64.tar.gz \
     && rm kubernetes-server-linux-amd64.tar.gz

@@ -23,6 +23,9 @@ RUN yum update -y && yum install -y --nogpgcheck \
     iotop \
     wget \
     which \
+    nc  \
+    perf \
+    iputils \
     tcptraceroute \
     && yum clean all \
     && rm -rf /var/cache/yum/*

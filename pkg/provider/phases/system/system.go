@@ -30,6 +30,14 @@ type Option struct {
 	ExtraArgs          map[string]string
 }
 
+func shellTemplate(c *common.Cluster) string {
+	if c.Spec.OsType == devopsv1.DebianType {
+		return debianShellTemplate
+	} else {
+		return centosShellTemplate
+	}
+}
+
 func Install(s ssh.Interface, c *common.Cluster) error {
 	dockerVersion := "19.03.9"
 	if v, ok := c.Spec.DockerExtraArgs["version"]; ok {
@@ -38,12 +46,12 @@ func Install(s ssh.Interface, c *common.Cluster) error {
 	option := &Option{
 		K8sVersion:    c.Spec.Version,
 		DockerVersion: dockerVersion,
-		Cgroupdriver:  "systemd", // cgroupfs or systemd
+		Cgroupdriver:  "cgroupfs", // cgroupfs or systemd
 		ExtraArgs:     c.Spec.KubeletExtraArgs,
 		HostIP:        s.HostIP(),
 	}
 
-	initData, err := template.ParseString(initShellTemplate, option)
+	initData, err := template.ParseString(shellTemplate(c), option)
 	if err != nil {
 		return err
 	}

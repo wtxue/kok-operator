@@ -1,8 +1,7 @@
 package system
 
 const (
-	initShellTemplate = `
-#!/usr/bin/env bash
+	centosShellTemplate = `#!/usr/bin/env bash
 
 set -xeuo pipefail
 
@@ -45,8 +44,8 @@ function Firewalld_process() {
 
 function Install_depend_software(){
     echo -e "\033[32;32m 开始安装依赖环境包 \033[0m \n"
-    yum -y --nogpgcheck install nfs-utils curl yum-utils device-mapper-persistent-data lvm2 \
-           net-tools conntrack-tools wget vim libseccomp libtool-ltdl telnet \
+    yum -y --nogpgcheck install  yum-utils device-mapper-persistent-data lvm2 \
+           curl wget vim telnet \
            ipvsadm tc ipset tree telnet wget net-tools  \
            tcpdump bash-completion sysstat chrony jq psmisc socat \
            sysstat conntrack iproute dstat lsof perl 
