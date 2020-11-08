@@ -303,7 +303,8 @@ envoy:
 
   terminationGracePeriodSeconds: 300
 
-  logLevel: info
+  ## info debug trace
+  logLevel: debug
 
   ## Envoy Service properties
   ##

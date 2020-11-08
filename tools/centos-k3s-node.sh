@@ -126,7 +126,7 @@ After=network-online.target etcd.service
 [Service]
 Type=notify
 Environment="K3S_TYPE=server"
-Environment="K3S_RUNTIME=--docker"
+Environment="K3S_RUNTIME=--docker --disable=servicelb --disable=traefik --disable=local-storage"
 Environment="K3S_DATASTORE=--datastore-endpoint=http://localhost:2379"
 KillMode=process
 Delegate=yes

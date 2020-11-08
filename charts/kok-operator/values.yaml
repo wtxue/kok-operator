@@ -5,22 +5,18 @@
 replicaCount: 1
 
 image:
-  repository: nginx
+  repository: registry.cn-hangzhou.aliyuncs.com/wtxue/kok-operator
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  tag: "v0.2.0"
 
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-serviceAccount:
-  # Specifies whether a service account should be created
+rbac:
+  # create specifies whether to install and use RBAC rules.
   create: true
-  # Annotations to add to the service account
-  annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
   name: ""
 
 podAnnotations: {}
@@ -52,7 +48,6 @@ resources: {}
   # requests:
   #   cpu: 100m
   #   memory: 128Mi
-
 
 nodeSelector: {}
 

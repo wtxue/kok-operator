@@ -28,9 +28,6 @@ import (
 )
 
 const (
-	kubeadmConfigFile  = "kubeadm/kubeadm-config.yaml"
-	kubeadmKubeletConf = "/usr/lib/systemd/system/kubelet.service.d/10-kubeadm.conf"
-
 	joinControlPlaneCmd = `kubeadm join {{.ControlPlaneEndpoint}} \
 --node-name={{.NodeName}} --token={{.BootstrapToken}} \
 --control-plane --certificate-key={{.CertificateKey}} \

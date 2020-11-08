@@ -1,4 +1,4 @@
-ARG CENTOS_BASE_VERSION=v7.8.10
+ARG CENTOS_BASE_VERSION=v7.8-11
 
 ARG K8S_ETCD_VERSION1=v3.4.9
 ARG K8S_ETCD_VERSION2=v3.4.13
@@ -20,14 +20,13 @@ RUN curl -fsSL https://github.com/containernetworking/plugins/releases/download/
 ENV HELM_VERSION v3.4.0
 RUN curl -fsSL https://get.helm.sh/helm-$HELM_VERSION-linux-amd64.tar.gz -o helm.tar.gz \
     && tar -C /tmp/ -xzf helm.tar.gz \
-    && mkdir -p /k8s/bin/ && mv /tmp/linux-amd64/helm /k8s/bin/ \
-    && rm helm.tar.gz
+    && mkdir -p /k8s/bin/ && mv /tmp/linux-amd64/helm /k8s/bin/
 
 ENV K8S_V1 v1.18.10
 RUN curl -fsSL https://dl.k8s.io/$K8S_V1/kubernetes-server-linux-amd64.tar.gz -o k8s-$K8S_V1.tar.gz \
     && mkdir -p /k8s-$K8S_V1/bin/ && tar -C /k8s-$K8S_V1 -xzf k8s-$K8S_V1.tar.gz \
-    && mv /k8s-$K8S_V1/kubernetes/server/bin/{kube-apiserver,kubeadm,kubectl,kubelet,kube-scheduler,kube-controller-manager} /k8s-$K8S_V1/bin/ \
-    && rm k8s-$K8S_V1.tar.gz
+    && mv /k8s-$K8S_V1/kubernetes/server/bin/{kube-apiserver,kubeadm,kubectl,kubelet,kube-scheduler,kube-controller-manager} /k8s-$K8S_V1/bin/
+
 COPY --from=etcd-v1 /usr/local/bin/etcd \
                           /usr/local/bin/etcdctl \
                           /k8s-$K8S_V1/bin/
@@ -35,8 +34,8 @@ COPY --from=etcd-v1 /usr/local/bin/etcd \
 ENV K8S_V2 v1.19.3
 RUN curl -fsSL https://dl.k8s.io/$K8S_V2/kubernetes-server-linux-amd64.tar.gz -o k8s-$K8S_V2.tar.gz \
     && mkdir -p /k8s-$K8S_V2/bin/ && tar -C /k8s-$K8S_V2 -xzf k8s-$K8S_V2.tar.gz \
-    && mv /k8s-$K8S_V2/kubernetes/server/bin/{kube-apiserver,kubeadm,kubectl,kubelet,kube-scheduler,kube-controller-manager} /k8s-$K8S_V2/bin/ \
-    && rm k8s-$K8S_V2.tar.gz
+    && mv /k8s-$K8S_V2/kubernetes/server/bin/{kube-apiserver,kubeadm,kubectl,kubelet,kube-scheduler,kube-controller-manager} /k8s-$K8S_V2/bin/
+
 COPY --from=etcd-v2 /usr/local/bin/etcd \
                           /usr/local/bin/etcdctl \
                           /k8s-$K8S_V2/bin/

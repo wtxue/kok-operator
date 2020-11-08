@@ -1,4 +1,4 @@
-VERSION ?= v0.1.2
+VERSION ?= v0.2.0
 # Image URL to use all building/pushing image targets
 IMG_REG ?= registry.cn-hangzhou.aliyuncs.com/wtxue
 IMG_CTL := $(IMG_REG)/kok-operator
@@ -8,13 +8,13 @@ CRD_OPTIONS ?= "crd:trivialVersions=true"
 # This repo's root import path (under GOPATH).
 ROOT := github.com/wtxue/kok-operator
 
-GO_VERSION := 1.15.3
+GO_VERSION := 1.15.4
 ARCH     ?= $(shell go env GOARCH)
 BUILD_DATE = $(shell date +'%Y-%m-%dT%H:%M:%SZ')
 COMMIT    = $(shell git rev-parse --short HEAD)
 GOENV    := CGO_ENABLED=0 GOOS=$(shell uname -s | tr A-Z a-z) GOARCH=$(ARCH) GOPROXY=https://goproxy.io,direct
 #GO       := $(GOENV) go build -mod=vendor
-GO       := $(GOENV) go build
+GO       := $(GOENV) go build -tags=jsoniter
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -74,7 +74,7 @@ build-controller:
 
 # Push the docker image
 docker-push:
-	docker build -t ${IMG_CTL}:${VERSION} -f ./docker/onkube/Dockerfile .
+	docker build -t ${IMG_CTL}:${VERSION} -f ./docker/kok-operator/Dockerfile .
 	docker push ${IMG_CTL}:${VERSION}
 
 # find or download controller-gen

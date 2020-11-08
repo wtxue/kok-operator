@@ -1,12 +1,51 @@
-{{- if .Values.serviceAccount.create -}}
+{{- if .Values.rbac.create -}}
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: {{ include "kok-operator.saname" . }}
+  labels:
+    {{- include "kok-operator.labels" . | nindent 4 }}
+rules:
+  - apiGroups:
+      - ""
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups:
+      - "apps"
+      - "apiextensions.k8s.io"
+      - "autoscaling"
+    resources: ["*"]
+    verbs: ["*"]
+  - apiGroups: ["devops.k8s.io"]
+    resources: ["*"]
+    verbs: ["*"]
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ include "kok-operator.serviceAccountName" . }}
+  name: {{ include "kok-operator.saname" . }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "kok-operator.labels" . | nindent 4 }}
-  {{- with .Values.serviceAccount.annotations }}
+  {{- with .Values.rbac.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+---
+apiVersion: {{ include "rbac_api_version" . }}
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "kok-operator.saname" . }}
+  labels:
+    {{- include "kok-operator.labels" . | nindent 4 }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "kok-operator.saname" . }}
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ include "kok-operator.saname" . }}
+  apiGroup: rbac.authorization.k8s.io
+---
 {{- end }}

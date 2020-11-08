@@ -53,10 +53,56 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "kok-operator.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "kok-operator.fullname" .) .Values.serviceAccount.name }}
+{{- define "kok-operator.saname" -}}
+{{- if .Values.rbac.create }}
+{{- default (include "kok-operator.fullname" .) .Values.rbac.name }}
 {{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- default "default" .Values.rbac.saname }}
 {{- end }}
 {{- end }}
+
+
+{{- define "deployment_api_version" -}}
+{{- if .Capabilities.APIVersions.Has "apps/v1" -}}
+{{- "apps/v1" -}}
+{{- else if .Capabilities.APIVersions.Has "apps/v1beta2" -}}
+{{- "apps/v1beta1" -}}
+{{- else if .Capabilities.APIVersions.Has "apps/v1beta1" -}}
+{{- "apps/v1beta1" -}}
+{{- else -}}
+{{- "extensions/v1beta1" -}}
+{{- end -}}
+{{- end -}}
+
+
+{{- define "statefulset_api_version" -}}
+{{- if .Capabilities.APIVersions.Has "apps/v1" -}}
+{{- "apps/v1" -}}
+{{- else if .Capabilities.APIVersions.Has "apps/v1beta2" -}}
+{{- "apps/v1beta2" -}}
+{{- else -}}
+{{- "apps/v1beta1" -}}
+{{- end -}}
+{{- end -}}
+
+
+{{- define "daemonset_api_version" -}}
+{{- if .Capabilities.APIVersions.Has "apps/v1" -}}
+{{- "apps/v1" -}}
+{{- else if .Capabilities.APIVersions.Has "apps/v1beta2" -}}
+{{- "apps/v1beta2" -}}
+{{- else -}}
+{{- "extensions/v1beta1" -}}
+{{- end -}}
+{{- end -}}
+
+
+{{- define "rbac_api_version" -}}
+{{- if .Capabilities.APIVersions.Has "rbac.authorization.k8s.io/v1" -}}
+{{- "rbac.authorization.k8s.io/v1" -}}
+{{- else if .Capabilities.APIVersions.Has "rbac.authorization.k8s.io/v1beta1" -}}
+{{- "rbac.authorization.k8s.io/v1beta1" -}}
+{{- else -}}
+{{- "rbac.authorization.k8s.io/v1alpha1" -}}
+{{- end -}}
+{{- end -}}
