@@ -3,6 +3,8 @@
 set -xeuo pipefail
 
 DockerVersion=${1:-"19.03.13"}
+K3sVersion=${2:-"v1.19.3"}
+EtcdVersion=${3:-"v3.4.9"}
 
 function Firewalld_process() {
     grep SELINUX=disabled /etc/selinux/config && echo -e "\033[32;32m 已关闭防火墙，退出防火墙设置 \033[0m \n" && return
@@ -90,7 +92,27 @@ EOF
     systemctl enable docker && systemctl daemon-reload && systemctl restart docker
 }
 
-# --- write systemd service file ---
+function Download_k3s_depend() {
+ if [ ! -f /usr/local/bin/etcd ]; then
+  if [ ! -f etcd-v${EtcdVersion}-linux-amd64.zip ]; then
+		wget https://github.com/etcd-io/etcd/releases/download/${EtcdVersion}/etcd-${EtcdVersion}-linux-amd64.zip
+	fi
+
+  tar -xf etcd-${EtcdVersion}-linux-amd64.zip
+  cp -f etcd-${EtcdVersion}-linux-amd64/etcd* /usr/local/bin/
+  rm -rf etcd-${EtcdVersion}-linux-amd64.zip etcd-${EtcdVersion}-linux-amd64
+ fi
+
+  if [ ! -f /usr/local/bin/k3s ]; then
+  if [ ! -f k3s ]; then
+		wget https://github.com/rancher/k3s/releases/download/${K3sVersion}%2Bk3s2/k3s
+	fi
+
+  chmod a+x k3s && cp -f k3s /usr/local/bin/ && rm -f k3s
+ fi
+}
+
+
 function Install_k3s_service() {
     echo -e "\033[32;32m 开始写 /lib/systemd/system/etcd.service \033[0m \n"
 
@@ -154,4 +176,7 @@ Firewalld_process && \
 Install_depend_software && \
 Install_ipvs && \
 Install_docker && \
+Download_k3s_depend && \
 Install_k3s_service
+
+}

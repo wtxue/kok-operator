@@ -4,47 +4,47 @@ kok-operator 是一个自动化部署高可用kubernetes的operator
 
 # 特性
 
-- 云原生架构，crd+controller，采用声明式api描述一个集群的生命周期(创建，升级，删除)
-- 支持裸金属和master托管模式两种方式部署集群
-- 可以启用fake-cluster或者k3s，解决裸金属第一次部署集群没有元集群问题
-- 无坑版100年集群证书，kubelet自动生成证书
-- 除kubelet外集群组件全部容器化部署，采用static pod方式部署高可用etcd集群
-- 支持coredns, flannel，metrics-server，kube-proxy, metallb等 addons 模板化部署
+- 启用 k3s，解决裸金属第一次部署集群没有元集群问题
+- 云原生架构，crd+controller，采用声明式 api 描述一个集群的生命周期(创建，升级，删除)
+- 支持 裸金属模式 和 托管模式 两种方式部署集群
+- kubelet 自动生成证书，无坑版100年集群证书
+- 除 kubelet 外集群组件全部容器化部署，采用 static pod 方式部署高可用 etcd 集群
+- 支持 coredns, flannel，metrics-server，kube-proxy, metall b等 addons 模板化部署
 - 支持 centos 和 debian 系统
+- 支持结点下线清理
+- 支持 helm 部署
 
 # 安装部署
 
 ## 准备
 
-下载fake-cluster需要二进制文件，启动fake-cluster
-
+下载启动 k3s 集群
 ```bash
 # 下载二进制文件, 进入tools目录
 $ cd tools
-$ ./init.sh
+$ bash https://raw.githubusercontent.com/wtxue/kok-operator/master/tools/centos-k3s-node.sh 
 
-# 进入项目根目录  运行 fake apiserver
-$ cd ..
-$ go run cmd/admin-controller/main.go fake --baseBinDir k8s/bin --rootDir k8s -v 4 
-
-# 运行正常后
-$ cat k8s/cfg/fake-kubeconfig.yaml
+# 等待 k3s 运行正常后，查看 k3s admin kubeconfig
+$ cat /etc/rancher/k3s/k3s.yaml
 apiVersion: v1
 clusters:
 - cluster:
-    server: 127.0.0.1:18080
-  name: fake-cluster
+    certificate-authority-data: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJXRENCL3FBREFnRUNBZ0VBTUFvR0NDcUdTTTQ5QkFNQ01DTXhJVEFmQmdOVkJBTU1HR3N6Y3kxelpYSjIKWlhJdFkyRkFNVFl3TkRNNU56STVNakFlRncweU1ERXhNRE13T1RVME5USmFGdzB6TURFeE1ERXdPVFUwTlRKYQpNQ014SVRBZkJnTlZCQU1NR0dzemN5MXpaWEoyWlhJdFkyRkFNVFl3TkRNNU56STVNakJaTUJNR0J5cUdTTTQ5CkFnRUdDQ3FHU000OUF3RUhBMElBQkE5WGZEVTRkcmZPTnplSWlKMDV4WUNTWjA4REJYN2ZoMURaZzFNdUQ4VmYKWVQwS2R5SCtyRzZQVi9xdExMbHFocGM2Rkp1MlZiR3VsbFZ6T0hIa2VDaWpJekFoTUE0R0ExVWREd0VCL3dRRQpBd0lDcERBUEJnTlZIUk1CQWY4RUJUQURBUUgvTUFvR0NDcUdTTTQ5QkFNQ0Ewa0FNRVlDSVFEckZvK1pyNWY3CllHTUdQSnVhQ3dQdmZlNURqZGRXNm52R2pWNVRKM1IwclFJaEFQcXVWelJUMUczMEgrYmdDS3NobWhUQXZxMWwKUU9sakVUdjlkYnFGMTNSUAotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    server: https://127.0.0.1:6443   # 注意外部访问，修改 127.0.0.1 为 k3s 结点 IP
+  name: default
 contexts:
 - context:
-    cluster: fake-cluster
-    user: devops
-  name: devops@fake-cluster
-current-context: devops@fake-cluster
+    cluster: default
+    user: default
+  name: default
+current-context: default
 kind: Config
 preferences: {}
 users:
-- name: devops
-  user: {}
+- name: default
+  user:
+    password: 6253ebe7e75ce5afe7baaad49f99371c
+    username: admin
 ```
 
 ## 运行
@@ -52,39 +52,27 @@ users:
 本地运行
 ```bash
 # apply crd
-$ export KUBECONFIG=k8s/cfg/fake-kubeconfig.yaml && kubectl apply -f manifests/crds/
+$ kubectl apply -f manifests/crds/
 customresourcedefinition.apiextensions.k8s.io/clustercredentials.devops.k8s.io created
 customresourcedefinition.apiextensions.k8s.io/clusters.devops.k8s.io created
 customresourcedefinition.apiextensions.k8s.io/machines.devops.k8s.io created
 
-# 运行
-$ go run cmd/admin-controller/main.go ctrl -v 4 --kubeconfig=k8s/cfg/fake-kubeconfig.yaml
+# 指定 kubeconfig 运行
+$ go run cmd/admin-controller/main.go ctrl -v 4 --kubeconfig={}/k3s-kubeconfig.yaml
 ```
-docker 运行
+k3s 安装运行
 ```bash
-$ docker run --name fake-cluster -d --restart=always \
-   --net="host" \
-   --pid="host" \
-   -v /root/wtxue/k8s:/k8s \
-   registry.cn-hangzhou.aliyuncs.com/wtxue/onkube-controller:v0.1.1 \
-   onkube-controller fake -v 4
+helm upgrade kok-operator --create-namespace --namespace kok-system --debug ./charts/kok-operator
 
-$ docker run --name onkube-controller -d --restart=always \
-   --net="host" \
-   --pid="host" \
-   -v /root/wtxue/k8s:/k8s \
-   registry.cn-hangzhou.aliyuncs.com/wtxue/onkube-controller:v0.1.1  \
-   onkube-controller ctrl -v 4 --kubeconfig=/k8s/cfg/fake-kubeconfig.yaml
-
+kubectl get pod -n kok-system      
+NAME                            READY   STATUS    RESTARTS   AGE
+kok-operator-6ff65bc44b-hg4nh   1/1     Running   0          31m
 
 ```
 
 ## 创建集群
 ### 创建裸金属集群
 ```bash
-# 设置 fake-cluster kubeconfig
-$ export KUBECONFIG=/root/wtxue/k8s/cfg/fake-kubeconfig.yaml
-
 # 创建集群cr
 $ kubectl apply -f ./manifests/example-cluster.yaml
 
@@ -93,14 +81,8 @@ $ kubectl apply -f ./manifests/example-cluster-node.yaml
 ```
 
 ### 创建托管集群
-创建托管集群时，onkube-controller需要运行在真实集群上，这里使用上面创建裸金属集群 example-cluster, 注意一个namespace一个集群
+创建托管集群时，kok-operator 需要运行在 meta 高可用集群上，这里使用集群名为 meta-cluster, 注意一个 namespace 一个托管集群
 ```bash
-# 设置 example-cluster kubeconfig
-$ export KUBECONFIG=/root/wtxue/k8s/cfg/example-cluster-kubeconfig.yaml
-
-# 这里演示直接本地运行，也可以deployment跑到集群上
-$ go run cmd/admin-controller/main.go ctrl -v 4 --kubeconfig=k8s/cfg/fake-kubeconfig.yaml
-
 # 创建 etcd 集群
 $ kubectl apply -f ./manifests/etcd-statefulset.yaml
 
@@ -113,6 +95,5 @@ kubectl apply -f ./manifests/hosted-cluster-node.yaml
 
 # 计划
 
-- [x]  打通元集群及托管集群service网络，以支持聚合apiserver
+- [x]  打通元集群及托管集群 service 网络，以支持聚合 apiserver
 - [x]  支持 helm v3 部署 addons
-- [x]  用 k3s 替换fake-cluster
