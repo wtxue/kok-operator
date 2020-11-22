@@ -78,8 +78,7 @@ function Install_docker(){
     "max-size": "50m"
   },
   "registry-mirrors": [
-    "https://mirror.ccs.tencentyun.com",
-    "https://4xr1qpsp.mirror.aliyuncs.com"
+    "https://yqdzw3p0.mirror.aliyuncs.com"
   ],
   "runtimes": {},
   "selinux-enabled": false,

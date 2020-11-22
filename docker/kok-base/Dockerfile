@@ -1,11 +1,11 @@
-ARG CENTOS_BASE_VERSION=v7.8-11
+ARG CENTOS_BASE_VERSION=v7.8
 
 ARG K8S_ETCD_VERSION1=v3.4.9
 ARG K8S_ETCD_VERSION2=v3.4.13
 
 FROM quay.io/coreos/etcd:${K8S_ETCD_VERSION1} as etcd-v1
 FROM quay.io/coreos/etcd:${K8S_ETCD_VERSION2} as etcd-v2
-FROM registry.cn-hangzhou.aliyuncs.com/wtxue/centos-base:${CENTOS_BASE_VERSION} as default
+FROM wtxue/centos-base:${CENTOS_BASE_VERSION} as default
 
 ENV K9S_SERVER_VERSION v0.23.5
 RUN curl -fsSL https://github.com/derailed/k9s/releases/download/$K9S_SERVER_VERSION/k9s_Linux_x86_64.tar.gz -o k9s.tar.gz \
@@ -40,7 +40,7 @@ COPY --from=etcd-v2 /usr/local/bin/etcd \
                           /usr/local/bin/etcdctl \
                           /k8s-$K8S_V2/bin/
 
-FROM registry.cn-hangzhou.aliyuncs.com/wtxue/centos-base:${CENTOS_BASE_VERSION}
+FROM wtxue/centos-base:${CENTOS_BASE_VERSION}
 
 ENV K8S_V1 v1.18.10
 COPY --from=default /k8s-$K8S_V1/bin /k8s-$K8S_V1/bin

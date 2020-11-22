@@ -5,7 +5,7 @@
 replicaCount: 1
 
 image:
-  repository: registry.cn-hangzhou.aliyuncs.com/wtxue/kok-operator
+  repository: wtxue/kok-operator
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "v0.2.0"

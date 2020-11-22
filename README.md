@@ -68,9 +68,9 @@ customresourcedefinition.apiextensions.k8s.io/machines.devops.k8s.io created
 # 指定 kubeconfig 运行
 $ go run cmd/admin-controller/main.go ctrl -v 4 --kubeconfig={}/k3s-kubeconfig.yaml
 ```
-k3s 安装运行
+k3s helm3 安装运行
 ```bash
-helm upgrade kok-operator --create-namespace --namespace kok-system --debug ./charts/kok-operator
+helm upgrade --install kok-operator --create-namespace --namespace kok-system --debug ./charts/kok-operator
 
 kubectl get pod -n kok-system      
 NAME                            READY   STATUS    RESTARTS   AGE

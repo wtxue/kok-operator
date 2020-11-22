@@ -1,6 +1,6 @@
 VERSION ?= v0.2.0
 # Image URL to use all building/pushing image targets
-IMG_REG ?= registry.cn-hangzhou.aliyuncs.com/wtxue
+IMG_REG ?= wtxue
 IMG_CTL := $(IMG_REG)/kok-operator
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
