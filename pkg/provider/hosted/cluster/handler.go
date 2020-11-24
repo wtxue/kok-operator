@@ -162,7 +162,7 @@ func (p *Provider) EnsureCerts(ctx context.Context, c *common.Cluster) error {
 
 func (p *Provider) EnsureKubeMisc(ctx context.Context, c *common.Cluster) error {
 	apiserver := certs.BuildApiserverEndpoint(constants.KubeApiServer, kubemisc.GetBindPort(c.Cluster))
-	err := kubemisc.ApplyMasterMisc(c, apiserver)
+	err := kubemisc.BuildMasterMiscConfigToMap(c, apiserver)
 	if err != nil {
 		return err
 	}

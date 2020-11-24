@@ -23,6 +23,7 @@ import (
 	"github.com/wtxue/kok-operator/pkg/gmanager"
 	"github.com/wtxue/kok-operator/pkg/option"
 	"github.com/wtxue/kok-operator/pkg/provider"
+	"github.com/wtxue/kok-operator/pkg/provider/config"
 	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
@@ -33,7 +34,7 @@ var AddToManagerFuncs []func(manager.Manager) error
 var AddToManagerWithProviderFuncs []func(manager.Manager, *gmanager.GManager) error
 
 // AddToManager adds all Controllers to the Manager
-func AddToManager(m manager.Manager, opt *option.ControllersManagerOption) error {
+func AddToManager(m manager.Manager, opt *option.ControllersManagerOption, config *config.Config) error {
 	if opt.EnableCluster {
 		AddToManagerWithProviderFuncs = append(AddToManagerWithProviderFuncs, cluster.Add)
 	}
@@ -42,7 +43,7 @@ func AddToManager(m manager.Manager, opt *option.ControllersManagerOption) error
 		AddToManagerWithProviderFuncs = append(AddToManagerWithProviderFuncs, machine.Add)
 	}
 
-	pMgr, err := provider.NewProvider()
+	pMgr, err := provider.NewProvider(config)
 	if err != nil {
 		klog.Errorf("NewProvider err: %v", err)
 		return err
@@ -55,6 +56,7 @@ func AddToManager(m manager.Manager, opt *option.ControllersManagerOption) error
 	var gMgr = &gmanager.GManager{
 		ProviderManager: pMgr,
 		ClusterManager:  k8sMgr,
+		Config:          config,
 	}
 	for _, f := range AddToManagerFuncs {
 		if err := f(m); err != nil {

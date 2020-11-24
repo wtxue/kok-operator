@@ -10,6 +10,7 @@ import (
 
 func CleanNode(s ssh.Interface) error {
 	cmd := "kubeadm reset -f && rm -rf /var/lib/etcd /var/lib/kubelet /var/lib/dockershim /var/run/kubernetes /var/lib/cni /etc/kubernetes /etc/cni /root/.kube && ipvsadm --clear"
+	klog.Infof("start exec node: %s cmd: %s", s.HostIP(), cmd)
 	exit, err := s.ExecStream(cmd, os.Stdout, os.Stderr)
 	if err != nil {
 		klog.Errorf("cmd: %s exit: %q err: %+v", cmd, exit, err)

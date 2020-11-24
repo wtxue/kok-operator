@@ -8,7 +8,7 @@ metadata:
   namespace: example-cluster
 spec:
   clusterName: example-cluster
-  type: Baremetal
+  type: baremetal
   machine:
     ip: 10.248.224.210
     port: 22

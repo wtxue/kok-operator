@@ -273,8 +273,8 @@ spec:
               networkType:
                 description: NetworkType defines the network type of cluster.
                 type: string
-              osType:
-                description: OsType defines the os type of node.
+              operatingSystem:
+                description: OperatingSystem defines the operating of system.
                 type: string
               pause:
                 description: Pause

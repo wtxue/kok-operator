@@ -35,6 +35,7 @@ const (
 --discovery-token-unsafe-skip-ca-verification \
 --ignore-preflight-errors=ImagePull \
 --ignore-preflight-errors=Port-10250 \
+--ignore-preflight-errors=NumCPU \
 --ignore-preflight-errors=FileContent--proc-sys-net-bridge-bridge-nf-call-iptables \
 --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests \
 --ignore-preflight-errors=FileAvailable--etc-kubernetes-kubelet.conf \
@@ -46,6 +47,7 @@ const (
 --discovery-token-unsafe-skip-ca-verification \
 --ignore-preflight-errors=ImagePull \
 --ignore-preflight-errors=Port-10250 \
+--ignore-preflight-errors=NumCPU \
 --ignore-preflight-errors=FileContent--proc-sys-net-bridge-bridge-nf-call-iptables \
 -v 9
 `
@@ -407,7 +409,7 @@ func ApplyCustomComponent(s ssh.Interface, c *common.Cluster, image string, podM
 	return nil
 }
 
-func ApplyCustomMaster(s ssh.Interface, c *common.Cluster, cfg *config.Config) error {
+func RebuildMasterManifestFile(s ssh.Interface, c *common.Cluster, cfg *config.Config) error {
 	if c.ClusterCredential.ManifestsData == nil {
 		c.ClusterCredential.ManifestsData = make(map[string]string)
 	}

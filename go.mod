@@ -17,6 +17,8 @@ require (
 	github.com/pkg/sftp v1.12.0
 	github.com/prometheus/common v0.14.0
 	github.com/segmentio/ksuid v1.0.3
+	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
+	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546 // indirect
 	github.com/spf13/cobra v1.1.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
@@ -34,9 +36,9 @@ require (
 	k8s.io/cluster-bootstrap v0.19.3
 	k8s.io/component-base v0.19.3
 	k8s.io/klog v1.0.0
+	k8s.io/klog/v2 v2.2.0
 	k8s.io/kube-aggregator v0.19.3
 	k8s.io/utils v0.0.0-20201104234853-8146046b121e
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/controller-runtime v0.6.3
-
 )

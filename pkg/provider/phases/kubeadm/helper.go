@@ -62,13 +62,12 @@ func GetKubeadmConfigByMaster0(c *common.Cluster, cfg *config.Config) *Config {
 }
 
 func GetKubeadmConfig(c *common.Cluster, cfg *config.Config, controlPlaneEndpoint string) *Config {
-	cc := new(Config)
-	cc.InitConfiguration = GetInitConfiguration(c)
-	cc.ClusterConfiguration = GetClusterConfiguration(c, cfg, controlPlaneEndpoint)
-	cc.KubeProxyConfiguration = GetKubeProxyConfiguration(c)
-	cc.KubeletConfiguration = GetKubeletConfiguration(c)
-
-	return cc
+	return &Config{
+		InitConfiguration:      GetInitConfiguration(c),
+		ClusterConfiguration:   GetClusterConfiguration(c, cfg, controlPlaneEndpoint),
+		KubeletConfiguration:   GetKubeletConfiguration(c),
+		KubeProxyConfiguration: GetKubeProxyConfiguration(c),
+	}
 }
 
 func GetInitConfiguration(c *common.Cluster) *kubeadmv1beta2.InitConfiguration {
@@ -78,7 +77,7 @@ func GetInitConfiguration(c *common.Cluster) *kubeadmv1beta2.InitConfiguration {
 		BootstrapTokens: []kubeadmv1beta2.BootstrapToken{
 			{
 				Token:       token,
-				Description: "dke kubeadm bootstrap token",
+				Description: "kubeadm bootstrap token",
 				TTL:         &metav1.Duration{Duration: 0},
 			},
 		},

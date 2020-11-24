@@ -1,4 +1,4 @@
-VERSION ?= v0.2.0
+VERSION ?= v0.2.0-dev2
 # Image URL to use all building/pushing image targets
 IMG_REG ?= wtxue
 IMG_CTL := $(IMG_REG)/kok-operator

@@ -44,12 +44,13 @@ const (
 	GPUVirtual GPUType = "Virtual"
 )
 
-// OsType defines the os type of node.
-type OsType string
+// OperatingSystem defines the operating of system.
+type OperatingSystem string
 
 const (
-	CentosType OsType = "centos"
-	DebianType OsType = "debian"
+	CentosType OperatingSystem = "centos"
+	DebianType OperatingSystem = "debian"
+	UbuntuType OperatingSystem = "ubuntu"
 )
 
 // RuntimeType defines the runtime of Container.
@@ -310,9 +311,9 @@ type ClusterSpec struct {
 	Type        string `json:"type"`
 	Version     string `json:"version"`
 	// +optional
-	OsType      OsType      `json:"osType,omitempty"`
-	RuntimeType RuntimeType `json:"runtimeType,omitempty"`
-	NetworkType NetworkType `json:"networkType,omitempty"`
+	OperatingSystem OperatingSystem `json:"operatingSystem,omitempty"`
+	RuntimeType     RuntimeType     `json:"runtimeType,omitempty"`
+	NetworkType     NetworkType     `json:"networkType,omitempty"`
 	// +optional
 	NetworkDevice string `json:"networkDevice,omitempty"`
 	// +optional

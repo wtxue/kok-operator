@@ -43,7 +43,7 @@ func NewProvider(mgr *clusterprovider.CpManager, cfg *config.Config) (*Provider,
 	}
 
 	p.DelegateProvider = &clusterprovider.DelegateProvider{
-		ProviderName: "Hosted",
+		ProviderName: "hosted",
 		CreateHandlers: []clusterprovider.Handler{
 			p.EnsureCopyFiles,
 			p.EnsurePreInstallHook,

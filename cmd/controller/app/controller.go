@@ -72,7 +72,7 @@ func NewControllerCmd(opt *app_option.Options) *cobra.Command {
 
 			// Setup all Controllers
 			klog.Info("Setting up controller")
-			if err := controllers.AddToManager(mgr, opt.Ctrl); err != nil {
+			if err := controllers.AddToManager(mgr, opt.Ctrl, opt.Provider); err != nil {
 				klog.Fatalf("unable to register controllers to the manager err: %v", err)
 			}
 
@@ -85,5 +85,6 @@ func NewControllerCmd(opt *app_option.Options) *cobra.Command {
 	}
 
 	opt.Ctrl.AddFlags(cmd.Flags())
+	opt.Provider.AddFlags(cmd.Flags())
 	return cmd
 }

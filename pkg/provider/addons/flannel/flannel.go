@@ -183,7 +183,7 @@ spec:
       serviceAccountName: flannel
       initContainers:
       - name: install-cni
-        image: "{{ default "quay.io/coreos/flannel:v0.12.0-amd64" .ImageName }}"
+        image: "{{ default "docker.io/wtxue/flannel:v0.12.0-amd64" .ImageName }}"
         command:
         - cp
         args:
@@ -197,7 +197,7 @@ spec:
           mountPath: /etc/kube-flannel/
       containers:
       - name: kube-flannel
-        image: "{{ default "quay.io/coreos/flannel:v0.12.0-amd64" .ImageName }}"
+        image: "{{ default "docker.io/wtxue/flannel:v0.12.0-amd64" .ImageName }}"
         command:
         - /opt/bin/flanneld
         args:

@@ -104,7 +104,7 @@ func ApplyKubeletKubeconfig(c *common.Cluster, apiserver string, kubeletNodeAddr
 	return nil
 }
 
-func ApplyMasterMisc(c *common.Cluster, apiserver string) error {
+func BuildMasterMiscConfigToMap(c *common.Cluster, apiserver string) error {
 	if c.ClusterCredential.CACert == nil {
 		return fmt.Errorf("ca is nil")
 	}

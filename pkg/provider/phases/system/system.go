@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -18,11 +17,12 @@ import (
 
 type Option struct {
 	InsecureRegistries string
-	RegistryDomain     string
+	RegistryMirrors    string // "https://yqdzw3p0.mirror.aliyuncs.com"
+	RegistryDomain     string // "download.docker.com" or "mirrors.aliyun.com"
 	Options            string
 	K8sVersion         string
 	DockerVersion      string
-	Cgroupdriver       string
+	Cgroupdriver       string // cgroupfs or systemd
 	HostIP             string
 	KernelRepo         string
 	ResolvConf         string
@@ -31,22 +31,30 @@ type Option struct {
 }
 
 func shellTemplate(c *common.Cluster) string {
-	if c.Spec.OsType == devopsv1.DebianType {
+	switch c.Spec.OperatingSystem {
+	case devopsv1.DebianType:
 		return debianShellTemplate
-	} else {
+	case devopsv1.UbuntuType:
+		return ubuntuShellTemplate
+	default:
 		return centosShellTemplate
 	}
 }
 
 func Install(s ssh.Interface, c *common.Cluster) error {
-	dockerVersion := "19.03.9"
+	dockerVersion := "19.03.13"
 	if v, ok := c.Spec.DockerExtraArgs["version"]; ok {
+		dockerVersion = v
+	}
+
+	cgroupDriver := "cgroupfs"
+	if v, ok := c.Spec.DockerExtraArgs["cgroupDriver"]; ok {
 		dockerVersion = v
 	}
 	option := &Option{
 		K8sVersion:    c.Spec.Version,
 		DockerVersion: dockerVersion,
-		Cgroupdriver:  "cgroupfs", // cgroupfs or systemd
+		Cgroupdriver:  cgroupDriver,
 		ExtraArgs:     c.Spec.KubeletExtraArgs,
 		HostIP:        s.HostIP(),
 	}
@@ -70,27 +78,27 @@ func Install(s ssh.Interface, c *common.Cluster) error {
 	}
 
 	klog.Infof("node: %s exec init system success", option.HostIP)
-	result, err := s.CombinedOutput("uname -r")
-	if err != nil {
-		klog.Errorf("err: %+v", err)
-		return err
-	}
-	versionStr := strings.TrimSpace(string(result))
-	versions := strings.Split(strings.TrimSpace(string(result)), ".")
-	if len(versions) < 2 {
-		return errors.Errorf("parse version error:%s", versionStr)
-	}
-	kernelVersion, err := strconv.Atoi(versions[0])
-	if err != nil {
-		return errors.Wrapf(err, "parse kernelVersion")
-	}
-
-	if kernelVersion >= 4 {
-		return nil
-	}
-
-	klog.Infof("node: %s now kernel: %s,  start reboot ... ", option.HostIP, string(result))
-	_, _ = s.CombinedOutput("reboot")
+	// result, err := s.CombinedOutput("uname -r")
+	// if err != nil {
+	// 	klog.Errorf("err: %+v", err)
+	// 	return err
+	// }
+	// versionStr := strings.TrimSpace(string(result))
+	// versions := strings.Split(strings.TrimSpace(string(result)), ".")
+	// if len(versions) < 2 {
+	// 	return errors.Errorf("parse version error:%s", versionStr)
+	// }
+	// kernelVersion, err := strconv.Atoi(versions[0])
+	// if err != nil {
+	// 	return errors.Wrapf(err, "parse kernelVersion")
+	// }
+	//
+	// if kernelVersion >= 4 {
+	// 	return nil
+	// }
+	//
+	// klog.Infof("node: %s now kernel: %s,  start reboot ... ", option.HostIP, string(result))
+	// _, _ = s.CombinedOutput("reboot")
 	return nil
 }
 

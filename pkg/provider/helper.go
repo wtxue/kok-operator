@@ -21,18 +21,17 @@ type ProviderManager struct {
 var AddToCpManagerFuncs []func(*clusterprovider.CpManager, *config.Config) error
 var AddToMpManagerFuncs []func(*machineprovider.MpManager, *config.Config) error
 
-func NewProvider() (*ProviderManager, error) {
+func NewProvider(config *config.Config) (*ProviderManager, error) {
 	AddToCpManagerFuncs = append(AddToCpManagerFuncs, baremetalcluster.Add)
 	AddToCpManagerFuncs = append(AddToCpManagerFuncs, hostedcluster.Add)
 
 	AddToMpManagerFuncs = append(AddToMpManagerFuncs, baremetalmachine.Add)
 	AddToMpManagerFuncs = append(AddToMpManagerFuncs, hostedmachine.Add)
 
-	cfg, _ := config.NewDefaultConfig()
 	mgr := &ProviderManager{
 		CpManager: cluster.New(),
 		MpManager: machine.New(),
-		Cfg:       cfg,
+		Cfg:       config,
 	}
 
 	for _, f := range AddToCpManagerFuncs {

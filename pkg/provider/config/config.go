@@ -2,19 +2,23 @@ package config
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"path"
 	"strings"
+
+	"github.com/spf13/pflag"
+	"github.com/wtxue/kok-operator/pkg/constants"
+	"k8s.io/klog/v2"
 )
 
 type Config struct {
-	Registry       Registry
-	Audit          Audit
-	Feature        Feature
-	CustomRegistry string
-	CustomeCert    bool
-	CustomeImages  bool
+	Registry           Registry
+	Audit              Audit
+	Feature            Feature
+	SupportK8sVersion  []string
+	CustomRegistry     string
+	EnableCustomCert   bool
+	EnableCustomImages bool
 }
 
 type Registry struct {
@@ -32,24 +36,17 @@ type Feature struct {
 	SkipConditions []string
 }
 
-func NewDefaultConfig() (*Config, error) {
-	config := &Config{
+func NewDefaultConfig() *Config {
+	return &Config{
 		Registry: Registry{
-			Prefix: "registry.cn-hangzhou.aliyuncs.com/wtxue",
+			Prefix: "docker.io/wtxue",
 			// Prefix: "registry.aliyuncs.com/google_containers",
 		},
-		CustomRegistry: "registry.cn-hangzhou.aliyuncs.com/wtxue",
+		CustomRegistry:     "docker.io/wtxue",
+		EnableCustomCert:   false,
+		EnableCustomImages: false,
+		SupportK8sVersion:  constants.K8sVersions,
 	}
-
-	s := strings.Split(config.Registry.Prefix, "/")
-	if len(s) != 2 {
-		return nil, errors.New("invalid registry prefix")
-	}
-	config.Registry.Domain = s[0]
-	config.Registry.Namespace = s[1]
-	config.CustomeCert = true
-	config.CustomeImages = true
-	return config, nil
 }
 
 func (r *Config) NeedSetHosts() bool {
@@ -67,6 +64,9 @@ func (r *Config) ImageFullName(name, tag string) string {
 		}
 	}
 
+	s := strings.Split(r.Registry.Prefix, "/")
+	r.Registry.Domain = s[0]
+	r.Registry.Namespace = s[1]
 	return path.Join(r.Registry.Domain, r.Registry.Namespace, b.String())
 }
 
@@ -84,4 +84,22 @@ func (r *Config) KubeProxyImagesName(tag string) string {
 	}
 
 	return fmt.Sprintf("%s/%s:%s", r.CustomRegistry, "kube-proxy", tag)
+}
+
+func (r *Config) IsK8sSupport(version string) bool {
+	for _, v := range r.SupportK8sVersion {
+		if v == version {
+			return true
+		}
+	}
+
+	klog.Errorf("k8s version only support: %#v", r.SupportK8sVersion)
+	return false
+}
+
+func (r *Config) AddFlags(fs *pflag.FlagSet) {
+	fs.StringVar(&r.Registry.Prefix, "images-profix", r.Registry.Prefix, "the image profix")
+	fs.BoolVar(&r.EnableCustomCert, "enable-custom-cert", r.EnableCustomCert, "enable custom cert")
+	fs.BoolVar(&r.EnableCustomImages, "enable-custom-images", r.EnableCustomImages, "enable custom images")
+	fs.StringArrayVar(&r.SupportK8sVersion, "support-k8s-version", r.SupportK8sVersion, "the support k8s version")
 }

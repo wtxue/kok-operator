@@ -149,7 +149,7 @@ func (r *clusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return reconcile.Result{}, nil
 	}
 
-	if !constants.IsK8sSupport(c.Spec.Version) {
+	if !r.GManager.IsK8sSupport(c.Spec.Version) {
 		if c.Status.Phase != devopsv1.ClusterNotSupport {
 			logger.V(4).Info("not support", "version", c.Spec.Version)
 			c.Status.Phase = devopsv1.ClusterNotSupport
@@ -266,7 +266,7 @@ func (r *clusterReconciler) cleanClusterResources(ctx context.Context, rc *clust
 	}
 
 	if started, ok := r.ClusterStarted[rc.Cluster.Name]; ok && started {
-		rc.Logger.Info("start delete with cluster manager")
+		rc.Logger.Info("start clean with cluster manager")
 		r.ClusterManager.Delete(rc.Cluster.Name)
 		delete(r.ClusterStarted, rc.Cluster.Name)
 	}
@@ -274,7 +274,7 @@ func (r *clusterReconciler) cleanClusterResources(ctx context.Context, rc *clust
 	credential := &devopsv1.ClusterCredential{}
 	err = r.Client.Get(ctx, types.NamespacedName{Name: rc.Cluster.Name, Namespace: rc.Cluster.Namespace}, credential)
 	if err == nil {
-		rc.Logger.Info("start delete clusterCredential")
+		rc.Logger.Info("start clean clusterCredential")
 		r.Client.Delete(ctx, credential)
 	}
 
@@ -283,7 +283,7 @@ func (r *clusterReconciler) cleanClusterResources(ctx context.Context, rc *clust
 	if err == nil {
 		for i := range cms.Items {
 			cm := &cms.Items[i]
-			rc.Logger.Info("start Delete", "configmap", cm.Name)
+			rc.Logger.Info("start clean", "configmap", cm.Name)
 			r.Client.Delete(ctx, cm)
 		}
 		r.Client.Delete(ctx, credential)
@@ -293,7 +293,7 @@ func (r *clusterReconciler) cleanClusterResources(ctx context.Context, rc *clust
 	rc.Logger.Info("start clean worker node")
 	for i := range ms.Items {
 		m := &ms.Items[i]
-		rc.Logger.Info("start Delete", "machine", m.Name)
+		rc.Logger.Info("start clean", "machine", m.Name)
 		r.Client.Delete(ctx, m)
 	}
 
@@ -307,7 +307,7 @@ func (r *clusterReconciler) cleanClusterResources(ctx context.Context, rc *clust
 			return err
 		}
 
-		rc.Logger.Info("start Delete", "machine", m.IP)
+		rc.Logger.Info("start clean", "machine", m.IP)
 		err = clean.CleanNode(ssh)
 		if err != nil {
 			rc.Logger.Error(err, "failed clean machine node", "node", m.IP)
