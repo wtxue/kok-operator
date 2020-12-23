@@ -93,13 +93,13 @@ EOF
 
 function Download_k3s_depend() {
  if [ ! -f /usr/local/bin/etcd ]; then
-  if [ ! -f etcd-v${EtcdVersion}-linux-amd64.zip ]; then
-		wget https://github.com/etcd-io/etcd/releases/download/${EtcdVersion}/etcd-${EtcdVersion}-linux-amd64.zip
+  if [ ! -f etcd-${EtcdVersion}-linux-amd64.tar.gz ]; then
+		https://github.com/etcd-io/etcd/releases/download/${EtcdVersion}/etcd-${EtcdVersion}-linux-amd64.tar.gz
 	fi
 
-  tar -xf etcd-${EtcdVersion}-linux-amd64.zip
+  tar -xf etcd-${EtcdVersion}-linux-amd64.tar.gz
   cp -f etcd-${EtcdVersion}-linux-amd64/etcd* /usr/local/bin/
-  rm -rf etcd-${EtcdVersion}-linux-amd64.zip etcd-${EtcdVersion}-linux-amd64
+  rm -rf etcd-${EtcdVersion}-linux-amd64.tar.gz etcd-${EtcdVersion}-linux-amd64
  fi
 
   if [ ! -f /usr/local/bin/k3s ]; then
