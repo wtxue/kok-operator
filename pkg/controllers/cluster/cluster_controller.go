@@ -41,6 +41,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+const (
+	controllerName = "cluster"
+)
+
 // clusterReconciler reconciles a Cluster object
 type clusterReconciler struct {
 	client.Client
@@ -52,16 +56,17 @@ type clusterReconciler struct {
 }
 
 type clusterContext struct {
+	Ctx     context.Context
 	Key     types.NamespacedName
-	Logger  logr.Logger
 	Cluster *devopsv1.Cluster
+	logr.Logger
 }
 
 func Add(mgr manager.Manager, pMgr *gmanager.GManager) error {
 	reconciler := &clusterReconciler{
 		Client:         mgr.GetClient(),
 		Mgr:            mgr,
-		Log:            ctrl.Log.WithName("controllers").WithName("cluster"),
+		Log:            ctrl.Log.WithName("controller").WithName(controllerName),
 		Scheme:         mgr.GetScheme(),
 		GManager:       pMgr,
 		ClusterStarted: make(map[string]bool),
@@ -86,7 +91,7 @@ func (r *clusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *clusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	logger := r.Log.WithValues("cluster", req.NamespacedName.String())
+	logger := r.Log.WithValues(controllerName, req.NamespacedName.String())
 
 	startTime := time.Now()
 	defer func() {
@@ -114,14 +119,15 @@ func (r *clusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return reconcile.Result{}, err
 	}
 
-	rc := &clusterContext{
+	clusterCtx := &clusterContext{
+		Ctx:     ctx,
 		Key:     req.NamespacedName,
 		Logger:  logger,
 		Cluster: c,
 	}
 
 	if !c.ObjectMeta.DeletionTimestamp.IsZero() {
-		err := r.cleanClusterResources(ctx, rc)
+		err := r.cleanClusterResources(ctx, clusterCtx)
 		if err != nil {
 			logger.Error(err, "failed to clean cluster resources")
 			return reconcile.Result{}, err
@@ -172,7 +178,7 @@ func (r *clusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return ctrl.Result{}, nil
 	}
 
-	r.reconcile(ctx, rc)
+	r.reconcile(clusterCtx)
 	return ctrl.Result{}, nil
 }
 
@@ -197,59 +203,59 @@ func (r *clusterReconciler) addClusterCheck(ctx context.Context, c *common.Clust
 	return nil
 }
 
-func (r *clusterReconciler) reconcile(ctx context.Context, rc *clusterContext) error {
-	phaseRestore := constants.GetAnnotationKey(rc.Cluster.Annotations, constants.ClusterPhaseRestore)
+func (r *clusterReconciler) reconcile(ctx *clusterContext) error {
+	phaseRestore := constants.GetAnnotationKey(ctx.Cluster.Annotations, constants.ClusterPhaseRestore)
 	if len(phaseRestore) > 0 {
-		klog.Infof("cluster: %s phaseRestore: %s", rc.Cluster.Name, phaseRestore)
+		klog.Infof("cluster: %s phaseRestore: %s", ctx.Cluster.Name, phaseRestore)
 		conditions := make([]devopsv1.ClusterCondition, 0)
-		for i := range rc.Cluster.Status.Conditions {
-			if rc.Cluster.Status.Conditions[i].Type == phaseRestore {
+		for i := range ctx.Cluster.Status.Conditions {
+			if ctx.Cluster.Status.Conditions[i].Type == phaseRestore {
 				break
 			} else {
-				conditions = append(conditions, rc.Cluster.Status.Conditions[i])
+				conditions = append(conditions, ctx.Cluster.Status.Conditions[i])
 			}
 		}
-		rc.Cluster.Status.Conditions = conditions
-		rc.Cluster.Status.Phase = devopsv1.ClusterInitializing
-		err := r.Client.Status().Update(ctx, rc.Cluster)
+		ctx.Cluster.Status.Conditions = conditions
+		ctx.Cluster.Status.Phase = devopsv1.ClusterInitializing
+		err := r.Client.Status().Update(ctx.Ctx, ctx.Cluster)
 		if err != nil {
 			return err
 		}
 
 		objBak := &devopsv1.Cluster{}
-		r.Client.Get(ctx, rc.Key, objBak)
+		r.Client.Get(ctx.Ctx, ctx.Key, objBak)
 		delete(objBak.Annotations, constants.ClusterPhaseRestore)
-		err = r.Client.Update(ctx, objBak)
+		err = r.Client.Update(ctx.Ctx, objBak)
 		if err != nil {
 			return err
 		}
 		return nil
 	}
 
-	p, err := r.CpManager.GetProvider(rc.Cluster.Spec.Type)
+	p, err := r.CpManager.GetProvider(ctx.Cluster.Spec.Type)
 	if err != nil {
 		return err
 	}
 
-	clusterWrapper, err := common.GetCluster(ctx, r.Client, rc.Cluster, r.ClusterManager)
+	clusterWrapper, err := common.GetCluster(ctx.Ctx, r.Client, ctx.Cluster, r.ClusterManager)
 	if err != nil {
 		return err
 	}
 
-	switch rc.Cluster.Status.Phase {
+	switch ctx.Cluster.Status.Phase {
 	case devopsv1.ClusterInitializing:
-		rc.Logger.Info("onCreate")
-		r.onCreate(ctx, rc, p, clusterWrapper)
+		ctx.Info("onCreate")
+		r.onCreate(ctx, p, clusterWrapper)
 	case devopsv1.ClusterRunning:
-		rc.Logger.Info("onUpdate")
-		r.addClusterCheck(ctx, clusterWrapper)
-		r.onUpdate(ctx, rc, p, clusterWrapper)
+		ctx.Info("onUpdate")
+		r.addClusterCheck(ctx.Ctx, clusterWrapper)
+		r.onUpdate(ctx, p, clusterWrapper)
 	default:
-		rc.Logger.Info("cluster status %q unknown", rc.Cluster.Status.Phase)
-		return fmt.Errorf("no handler for status %q", rc.Cluster.Status.Phase)
+		ctx.Info("cluster status %q unknown", ctx.Cluster.Status.Phase)
+		return fmt.Errorf("no handler for status %q", ctx.Cluster.Status.Phase)
 	}
 
-	return r.applyStatus(ctx, rc, clusterWrapper)
+	return r.applyStatus(ctx, clusterWrapper)
 }
 
 func (r *clusterReconciler) cleanClusterResources(ctx context.Context, rc *clusterContext) error {

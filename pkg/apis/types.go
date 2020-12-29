@@ -12,19 +12,22 @@ import (
 )
 
 var Scheme = runtime.NewScheme()
+
 var Codecs = serializer.NewCodecFactory(Scheme)
+
 var localSchemeBuilder = runtime.SchemeBuilder{
 	kubeadmv1beta2.AddToScheme,
 	kubeletv1beta1.AddToScheme,
 	kubeproxyv1alpha1.AddToScheme,
 }
+
 var AddToScheme = localSchemeBuilder.AddToScheme
 
 func init() {
 	utilruntime.Must(AddToScheme(Scheme))
 }
 
-// MarshalToYaml marshals an object into yaml.
+// MarshalToYAML marshals an object into yaml.
 func MarshalToYAML(obj runtime.Object, gv schema.GroupVersion) ([]byte, error) {
 	const mediaType = runtime.ContentTypeYAML
 	info, ok := runtime.SerializerInfoForMediaType(Codecs.SupportedMediaTypes(), mediaType)

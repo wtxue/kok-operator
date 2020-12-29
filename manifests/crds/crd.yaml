@@ -3,7 +3,6 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.0
-    "api-approved.kubernetes.io": "https://github.com/kubernetes/kubernetes/pull/78458"
   creationTimestamp: null
   name: clustercredentials.devops.k8s.io
 spec:
@@ -104,7 +103,6 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.0
-    "api-approved.kubernetes.io": "https://github.com/kubernetes/kubernetes/pull/78458"
   creationTimestamp: null
   name: clusters.devops.k8s.io
 spec:
@@ -579,7 +577,6 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.0
-    "api-approved.kubernetes.io": "https://github.com/kubernetes/kubernetes/pull/78458"
   creationTimestamp: null
   name: machines.devops.k8s.io
 spec:

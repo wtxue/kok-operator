@@ -272,7 +272,7 @@ func (p *Provider) EnsureKubeMiscPhase(ctx context.Context, c *common.Cluster) e
 		klog.V(4).Infof("node: %s start write misc config [%s] ...", sh.HostIP(), pathName)
 		err = sh.WriteFile(strings.NewReader(va), pathName)
 		if err != nil {
-			klog.Errorf("node: %s start write misc config: %s, err: %+v", pathName, err)
+			klog.Errorf("node: %s start write misc config: %s, err: %+v", pathName, va, err)
 			return err
 		}
 	}

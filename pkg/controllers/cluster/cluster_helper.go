@@ -17,7 +17,6 @@ limitations under the License.
 package cluster
 
 import (
-	"context"
 	"time"
 
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
@@ -36,16 +35,16 @@ const (
 	reasonFailedUpdate = "FailedUpdate"
 )
 
-func (r *clusterReconciler) applyStatus(ctx context.Context, rc *clusterContext, cluster *common.Cluster) error {
+func (r *clusterReconciler) applyStatus(ctx *clusterContext, cluster *common.Cluster) error {
 	credential := &devopsv1.ClusterCredential{}
-	err := r.Client.Get(ctx, rc.Key, credential)
+	err := r.Client.Get(ctx.Ctx, ctx.Key, credential)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			rc.Logger.Error(err, "not find cluster credential")
+			ctx.Error(err, "not find cluster credential")
 			return nil
 		}
 
-		rc.Logger.Error(err, "failed to get cluster credential")
+		ctx.Error(err, "failed to get cluster credential")
 		return err
 	}
 
@@ -53,27 +52,27 @@ func (r *clusterReconciler) applyStatus(ctx context.Context, rc *clusterContext,
 		metaAccessor := meta.NewAccessor()
 		currentResourceVersion, err := metaAccessor.ResourceVersion(credential)
 		if err != nil {
-			rc.Logger.Error(err, "failed to metaAccessor")
+			ctx.Error(err, "failed to metaAccessor")
 			return err
 		}
 		metaAccessor.SetResourceVersion(cluster.ClusterCredential, currentResourceVersion)
-		err = r.Client.Update(ctx, cluster.ClusterCredential)
+		err = r.Client.Update(ctx.Ctx, cluster.ClusterCredential)
 		if err != nil {
-			rc.Logger.Error(err, "failed to update cluster credential")
+			ctx.Error(err, "failed to update cluster credential")
 			return err
 		}
-		rc.Logger.V(4).Info("update cluster credential success")
+		ctx.V(4).Info("update cluster credential success")
 	}
 
 	c := &devopsv1.Cluster{}
-	err = r.Client.Get(ctx, rc.Key, c)
+	err = r.Client.Get(ctx.Ctx, ctx.Key, c)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			rc.Logger.Error(err, "not find cluster")
+			ctx.Error(err, "not find cluster")
 			return nil
 		}
 
-		rc.Logger.Error(err, "failed to get cluster")
+		ctx.Error(err, "failed to get cluster")
 		return err
 	}
 
@@ -81,25 +80,25 @@ func (r *clusterReconciler) applyStatus(ctx context.Context, rc *clusterContext,
 		metaAccessor := meta.NewAccessor()
 		currentResourceVersion, err := metaAccessor.ResourceVersion(c)
 		if err != nil {
-			rc.Logger.Error(err, "failed to metaAccessor")
+			ctx.Error(err, "failed to metaAccessor")
 			return err
 		}
 
 		metaAccessor.SetResourceVersion(cluster.Cluster, currentResourceVersion)
-		err = r.Client.Status().Update(ctx, cluster.Cluster)
+		err = r.Client.Status().Update(ctx.Ctx, cluster.Cluster)
 		if err != nil {
-			rc.Logger.Error(err, "failed to update cluster status")
+			ctx.Error(err, "failed to update cluster status")
 			return err
 		}
 
-		rc.Logger.V(4).Info("update cluster status success")
+		ctx.V(4).Info("update cluster status success")
 	}
 
 	return nil
 }
 
-func (r *clusterReconciler) onCreate(ctx context.Context, rc *clusterContext, p cluster.Provider, clusterWrapper *common.Cluster) error {
-	err := p.OnCreate(ctx, clusterWrapper)
+func (r *clusterReconciler) onCreate(ctx *clusterContext, p cluster.Provider, clusterWrapper *common.Cluster) error {
+	err := p.OnCreate(ctx.Ctx, clusterWrapper)
 	if err != nil {
 		clusterWrapper.Cluster.Status.Message = err.Error()
 		clusterWrapper.Cluster.Status.Reason = reasonFailedInit
@@ -117,8 +116,8 @@ func (r *clusterReconciler) onCreate(ctx context.Context, rc *clusterContext, p 
 	return nil
 }
 
-func (r *clusterReconciler) onUpdate(ctx context.Context, rc *clusterContext, p cluster.Provider, clusterWrapper *common.Cluster) error {
-	err := p.OnUpdate(ctx, clusterWrapper)
+func (r *clusterReconciler) onUpdate(ctx *clusterContext, p cluster.Provider, clusterWrapper *common.Cluster) error {
+	err := p.OnUpdate(ctx.Ctx, clusterWrapper)
 	if err != nil {
 		clusterWrapper.Cluster.Status.Message = err.Error()
 		clusterWrapper.Cluster.Status.Reason = reasonFailedUpdate

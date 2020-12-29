@@ -36,6 +36,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+const (
+	controllerName = "machine"
+)
+
 // machineReconciler reconciles a machine object
 type machineReconciler struct {
 	client.Client
@@ -46,18 +50,19 @@ type machineReconciler struct {
 }
 
 type manchineContext struct {
-	Key    types.NamespacedName
-	Logger logr.Logger
+	Ctx context.Context
+	Key types.NamespacedName
 	*devopsv1.Cluster
 	*devopsv1.Machine
 	*devopsv1.ClusterCredential
+	logr.Logger
 }
 
 func Add(mgr manager.Manager, pMgr *gmanager.GManager) error {
 	reconciler := &machineReconciler{
 		Client:   mgr.GetClient(),
 		Mgr:      mgr,
-		Log:      ctrl.Log.WithName("controllers").WithName("machine"),
+		Log:      ctrl.Log.WithName("controller").WithName(controllerName),
 		Scheme:   mgr.GetScheme(),
 		GManager: pMgr,
 	}
@@ -81,7 +86,7 @@ func (r *machineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *machineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	ctx := context.Background()
-	logger := r.Log.WithValues("machine", req.NamespacedName.Name)
+	logger := r.Log.WithValues(controllerName, req.NamespacedName.String())
 
 	startTime := time.Now()
 	defer func() {

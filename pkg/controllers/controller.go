@@ -43,6 +43,10 @@ func AddToManager(m manager.Manager, opt *option.ControllersManagerOption, confi
 		AddToManagerWithProviderFuncs = append(AddToManagerWithProviderFuncs, machine.Add)
 	}
 
+	if opt.EnableAddons {
+		AddToManagerWithProviderFuncs = append(AddToManagerWithProviderFuncs, machine.Add)
+	}
+
 	pMgr, err := provider.NewProvider(config)
 	if err != nil {
 		klog.Errorf("NewProvider err: %v", err)
