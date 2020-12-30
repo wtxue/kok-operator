@@ -32,10 +32,10 @@ const (
 
 const (
 	ClusterAnnotationAction  = "k8s.io/action"
-	ClusterPhaseRestore      = "k8s.io/phaseRestore"
-	ClusterApiSvcType        = "k8s.io/apiSvcType"
-	ClusterApiSvcVip         = "k8s.io/apiSvcVip"
-	ClusterAnnoLocalDebugDir = "k8s.io/localDebugDir"
+	ClusterPhaseRestore      = "k8s.io/step.restore"
+	ClusterApiSvcType        = "k8s.io/apiserver.type"
+	ClusterApiSvcVip         = "k8s.io/apiserver.vip"
+	ClusterAnnoLocalDebugDir = "k8s.io/local.dir"
 )
 
 var KubeApiServerLabels = map[string]string{

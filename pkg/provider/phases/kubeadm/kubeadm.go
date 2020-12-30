@@ -103,14 +103,14 @@ func Init(s ssh.Interface, kubeadmConfig *Config, extraCmd string) error {
 	return nil
 }
 
-func InitCerts(cfg *Config, c *common.Cluster, isHosted bool) error {
+func InitCerts(cfg *Config, ctx *common.ClusterContext, isHosted bool) error {
 	var lastCACert *certs.CaAll
 	cfgMaps := make(map[string][]byte)
 
 	warp := &kubeadmv1beta2.WarpperConfiguration{
 		InitConfiguration:    cfg.InitConfiguration,
 		ClusterConfiguration: cfg.ClusterConfiguration,
-		IPs:                  c.IPs(),
+		IPs:                  ctx.IPs(),
 	}
 
 	var certList certs.Certificates
@@ -147,36 +147,36 @@ func InitCerts(cfg *Config, c *common.Cluster, isHosted bool) error {
 		return fmt.Errorf("no cert build")
 	}
 
-	if c.ClusterCredential.CertsBinaryData == nil {
-		c.ClusterCredential.CertsBinaryData = make(map[string][]byte)
+	if ctx.Credential.CertsBinaryData == nil {
+		ctx.Credential.CertsBinaryData = make(map[string][]byte)
 	}
 
 	for pathFile, v := range cfgMaps {
 		if pathFile == constants.CACertName {
-			c.ClusterCredential.CACert = v
+			ctx.Credential.CACert = v
 		}
 
 		if pathFile == constants.CAKeyName {
-			c.ClusterCredential.CAKey = v
+			ctx.Credential.CAKey = v
 		}
 
 		if pathFile == constants.EtcdCACertName {
-			c.ClusterCredential.ETCDCACert = v
+			ctx.Credential.ETCDCACert = v
 		}
 
 		if pathFile == constants.EtcdCAKeyName {
-			c.ClusterCredential.ETCDCAKey = v
+			ctx.Credential.ETCDCAKey = v
 		}
 
 		if pathFile == constants.APIServerEtcdClientCertName {
-			c.ClusterCredential.ETCDAPIClientCert = v
+			ctx.Credential.ETCDAPIClientCert = v
 		}
 
 		if pathFile == constants.APIServerEtcdClientKeyName {
-			c.ClusterCredential.ETCDAPIClientKey = v
+			ctx.Credential.ETCDAPIClientKey = v
 		}
 
-		c.ClusterCredential.CertsBinaryData[pathFile] = v
+		ctx.Credential.CertsBinaryData[pathFile] = v
 	}
 
 	return nil
@@ -189,11 +189,11 @@ type JoinControlPlaneOption struct {
 	ControlPlaneEndpoint string
 }
 
-func JoinControlPlane(s ssh.Interface, c *common.Cluster) error {
+func JoinControlPlane(s ssh.Interface, ctx *common.ClusterContext) error {
 	option := &JoinControlPlaneOption{
-		BootstrapToken:       *c.ClusterCredential.BootstrapToken,
-		CertificateKey:       *c.ClusterCredential.CertificateKey,
-		ControlPlaneEndpoint: fmt.Sprintf("%s:6443", c.Spec.Machines[0].IP),
+		BootstrapToken:       *ctx.Credential.BootstrapToken,
+		CertificateKey:       *ctx.Credential.CertificateKey,
+		ControlPlaneEndpoint: fmt.Sprintf("%s:6443", ctx.Cluster.Spec.Machines[0].IP),
 		NodeName:             s.HostIP(),
 	}
 
@@ -339,17 +339,17 @@ type Option struct {
 	TokenClusterName string
 }
 
-func BuildMasterEtcdPeerCluster(c *common.Cluster) string {
+func BuildMasterEtcdPeerCluster(ctx *common.ClusterContext) string {
 	etcdPeerEndpoints := []string{}
 
-	for _, machine := range c.Spec.Machines {
+	for _, machine := range ctx.Cluster.Spec.Machines {
 		etcdPeerEndpoints = append(etcdPeerEndpoints, fmt.Sprintf("%s=https://%s:2380", machine.IP, machine.IP))
 	}
 
 	return strings.Join(etcdPeerEndpoints, ",")
 }
 
-func ApplyCustomComponent(s ssh.Interface, c *common.Cluster, image string, podManifest string) error {
+func ApplyCustomComponent(s ssh.Interface, ctx *common.ClusterContext, image string, podManifest string) error {
 	// var err error
 	// var podBytes []byte
 	// if podManifest == constants.EtcdPodManifestFile {
@@ -409,9 +409,9 @@ func ApplyCustomComponent(s ssh.Interface, c *common.Cluster, image string, podM
 	return nil
 }
 
-func RebuildMasterManifestFile(s ssh.Interface, c *common.Cluster, cfg *config.Config) error {
-	if c.ClusterCredential.ManifestsData == nil {
-		c.ClusterCredential.ManifestsData = make(map[string]string)
+func RebuildMasterManifestFile(s ssh.Interface, ctx *common.ClusterContext, cfg *config.Config) error {
+	if ctx.Credential.ManifestsData == nil {
+		ctx.Credential.ManifestsData = make(map[string]string)
 	}
 
 	manifestFileList := []string{
@@ -421,9 +421,9 @@ func RebuildMasterManifestFile(s ssh.Interface, c *common.Cluster, cfg *config.C
 		constants.KubeSchedulerPodManifestFile,
 	}
 
-	images := cfg.KubeAllImageFullName(constants.KubernetesAllImageName, c.Cluster.Spec.Version)
+	images := cfg.KubeAllImageFullName(constants.KubernetesAllImageName, ctx.Cluster.Spec.Version)
 	for _, name := range manifestFileList {
-		err := ApplyCustomComponent(s, c, images, name)
+		err := ApplyCustomComponent(s, ctx, images, name)
 		if err != nil {
 			klog.Errorf("applyCustomComponent %s err: %v", name, err)
 			return err

@@ -9,6 +9,7 @@ import (
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/util/ssh"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -39,16 +40,15 @@ ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELE
 `
 )
 
-func Install(s ssh.Interface, c *common.Cluster) error {
-	// dir := "k8s/linuxbin/" // local debug config dir
-	var k8sDir string
-	var otherDir string
-	if dir := constants.GetAnnotationKey(c.Cluster.Annotations, constants.ClusterAnnoLocalDebugDir); len(dir) > 0 {
-		k8sDir = dir
-		otherDir = dir
-	} else {
-		k8sDir = fmt.Sprintf("/k8s-%s/bin/", c.Cluster.Spec.Version)
-		otherDir = "/k8s/bin/"
+var logger = log.Log.WithName("component")
+
+func Install(s ssh.Interface, ctx *common.ClusterContext) error {
+	// dir := "bin/linux/" // local debug config dir
+	k8sDir := fmt.Sprintf("/k8s-%s/bin/", ctx.Cluster.Spec.Version)
+	otherDir := "/k8s/bin/"
+	if dir := constants.GetAnnotationKey(ctx.Cluster.Annotations, constants.ClusterAnnoLocalDebugDir); len(dir) > 0 {
+		k8sDir = dir + k8sDir
+		otherDir = dir + otherDir
 	}
 
 	var CopyList = []devopsv1.File{
@@ -72,12 +72,13 @@ func Install(s ssh.Interface, c *common.Cluster) error {
 
 	for _, ls := range CopyList {
 		if ok, err := s.Exist(ls.Dst); err == nil && ok {
+			logger.Info("file exist ignoring", "node", s.HostIP(), "dst", ls.Dst)
 			continue
 		}
 
 		err := s.CopyFile(ls.Src, ls.Dst)
 		if err != nil {
-			klog.Errorf("node: %s copy %s err: %v", s.HostIP(), ls.Src, err)
+			logger.Error(err, "CopyFile", "node", s.HostIP(), "src", ls.Src)
 			return err
 		}
 
@@ -96,25 +97,88 @@ func Install(s ssh.Interface, c *common.Cluster) error {
 				return err
 			}
 		}
+
 		klog.Errorf("node: %s copy %s success", s.HostIP(), ls.Dst)
 	}
 
-	klog.Infof("node: %s start write %s ... ", s.HostIP(), constants.KubeletSystemdUnitFilePath)
+	logger.Info("write kubelet systemd unit file", "node", s.HostIP(), "dst", constants.KubeletSystemdUnitFilePath)
 	err := s.WriteFile(strings.NewReader(kubeletService), constants.KubeletSystemdUnitFilePath)
 	if err != nil {
 		return err
 	}
 
-	klog.Infof("node: %s start write %s ... ", s.HostIP(), constants.KubeletServiceRunConfig)
+	logger.Info("write kubelet systemd service run config", "node", s.HostIP(), "path", constants.KubeletServiceRunConfig)
 	err = s.WriteFile(strings.NewReader(KubeletServiceRunConfig), constants.KubeletServiceRunConfig)
 	if err != nil {
 		return err
 	}
 
-	unitName := fmt.Sprintf("%s.service", "kubelet")
-	cmd := fmt.Sprintf("mkdir -p /etc/kubernetes/manifests/ && systemctl -f enable %s && systemctl daemon-reload && systemctl restart %s", unitName, unitName)
+	cmd := "mkdir -p /etc/kubernetes/manifests/ && systemctl enable kubelet && systemctl daemon-reload && systemctl restart kubelet"
 	if _, stderr, exit, err := s.Execf(cmd); err != nil || exit != 0 {
-		cmd = fmt.Sprintf("journalctl --unit %s -n10 --no-pager", unitName)
+		cmd = "journalctl --unit kubelet -n10 --no-pager"
+		jStdout, _, jExit, jErr := s.Execf(cmd)
+		if jErr != nil || jExit != 0 {
+			return fmt.Errorf("exec %q:error %s", cmd, err)
+		}
+		klog.Infof("log:\n%s", jStdout)
+
+		return fmt.Errorf("Exec %s failed:exit %d:stderr %s:error %s:log:\n%s", cmd, exit, stderr, err, jStdout)
+	}
+	logger.Info("exec successfully", "node", s.HostIP(), "cmd", cmd)
+
+	cmd = fmt.Sprintf("kubectl completion bash > /etc/bash_completion.d/kubectl")
+	_, err = s.CombinedOutput(cmd)
+	if err != nil {
+		return err
+	}
+
+	logger.Info("exec successfully", "node", s.HostIP(), "cmd", cmd)
+	return nil
+}
+
+func InstallCRI(s ssh.Interface, ctx *common.ClusterContext) error {
+	// dir := "bin/linux/" // local debug config dir
+	otherDir := "/k8s/bin/"
+	if dir := constants.GetAnnotationKey(ctx.Cluster.Annotations, constants.ClusterAnnoLocalDebugDir); len(dir) > 0 {
+		otherDir = dir + otherDir
+	}
+
+	var CopyList = []devopsv1.File{
+		{
+			Src: otherDir + "containerd.tar.gz",
+			Dst: "/opt/containerd.tar.gz",
+		},
+	}
+
+	for _, ls := range CopyList {
+		if ok, err := s.Exist(ls.Dst); err == nil && ok {
+			logger.Info("file exist ignoring", "node", s.HostIP(), "dst", ls.Dst)
+			continue
+		}
+
+		if strings.Contains(ls.Dst, "containerd") {
+			cmd := "mkdir -p /usr/local/bin /usr/local/sbin /etc/systemd/system /opt/containerd &&" +
+				"tar -C /opt/containerd -xzf /opt/containerd.tar.gz &&" +
+				"cp -rf /opt/containerd/usr/local/sbin/* /usr/local/sbin/ &&" +
+				"cp -rf /opt/containerd/usr/local/bin/* /usr/local/bin/ &&" +
+				"cp -rf /opt/containerd/etc/crictl.yaml /etc/ &&" +
+				"cp -rf /opt/containerd/etc/systemd/system/containerd.service /etc/systemd/system/ &&" +
+				"rm -rf /opt/containerd/"
+
+			_, err := s.CombinedOutput(cmd)
+			if err != nil {
+				klog.Errorf("node: %s exec cmd %s err: %v", s.HostIP(), cmd, err)
+				return err
+			}
+		}
+		logger.Info("copy successfully", "node", s.HostIP(), "path", ls.Dst)
+	}
+
+	// mkdir /etc/containerd && containerd config default > /etc/containerd/config.toml
+	// systemctl enable containerd && systemctl daemon-reload && systemctl restart containerd
+	cmd := "systemctl enable containerd && systemctl daemon-reload && systemctl restart containerd"
+	if _, stderr, exit, err := s.Execf(cmd); err != nil || exit != 0 {
+		cmd = "journalctl --unit containerd -n10 --no-pager"
 		jStdout, _, jExit, jErr := s.Execf(cmd)
 		if jErr != nil || jExit != 0 {
 			return fmt.Errorf("exec %q:error %s", cmd, err)
@@ -124,11 +188,6 @@ func Install(s ssh.Interface, c *common.Cluster) error {
 		return fmt.Errorf("Exec %s failed:exit %d:stderr %s:error %s:log:\n%s", cmd, exit, stderr, err, jStdout)
 	}
 
-	cmd = fmt.Sprintf("kubectl completion bash > /etc/bash_completion.d/kubectl")
-	_, err = s.CombinedOutput(cmd)
-	if err != nil {
-		return err
-	}
-
+	logger.Info("exec successfully", "node", s.HostIP(), "cmd", cmd)
 	return nil
 }

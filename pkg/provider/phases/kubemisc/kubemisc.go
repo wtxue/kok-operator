@@ -64,12 +64,12 @@ func install(s ssh.Interface, option *Option) error {
 }
 
 // Install creates all the requested kubeconfig files.
-func Install(s ssh.Interface, c *common.Cluster) error {
+func Install(s ssh.Interface, ctx *common.ClusterContext) error {
 	option := &Option{
 		MasterEndpoint: "https://127.0.0.1:6443",
-		ClusterName:    c.Name,
-		CACert:         c.ClusterCredential.CACert,
-		Token:          *c.ClusterCredential.Token,
+		ClusterName:    ctx.Cluster.Name,
+		CACert:         ctx.Credential.CACert,
+		Token:          *ctx.Credential.Token,
 	}
 
 	return install(s, option)
@@ -79,13 +79,13 @@ func InstallNode(s ssh.Interface, option *Option) error {
 	return install(s, option)
 }
 
-func ApplyKubeletKubeconfig(c *common.Cluster, apiserver string, kubeletNodeAddr string, kubeMaps map[string]string) error {
-	if c.ClusterCredential.CACert == nil {
+func ApplyKubeletKubeconfig(ctx *common.ClusterContext, apiserver string, kubeletNodeAddr string, kubeMaps map[string]string) error {
+	if ctx.Credential.CACert == nil {
 		return fmt.Errorf("ca is nil")
 	}
 
-	cfgMaps, err := certs.CreateKubeletKubeConfigFile(c.ClusterCredential.CAKey, c.ClusterCredential.CACert,
-		apiserver, kubeletNodeAddr, c.Cluster.Name)
+	cfgMaps, err := certs.CreateKubeletKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert,
+		apiserver, kubeletNodeAddr, ctx.Cluster.Name)
 	if err != nil {
 		klog.Errorf("create kubeconfg err: %+v", err)
 		return err
@@ -104,23 +104,23 @@ func ApplyKubeletKubeconfig(c *common.Cluster, apiserver string, kubeletNodeAddr
 	return nil
 }
 
-func BuildMasterMiscConfigToMap(c *common.Cluster, apiserver string) error {
-	if c.ClusterCredential.CACert == nil {
+func BuildMasterMiscConfigToMap(ctx *common.ClusterContext, apiserver string) error {
+	if ctx.Credential.CACert == nil {
 		return fmt.Errorf("ca is nil")
 	}
 
-	cfgMaps, err := certs.CreateMasterKubeConfigFile(c.ClusterCredential.CAKey, c.ClusterCredential.CACert,
-		apiserver, c.Cluster.Name)
+	cfgMaps, err := certs.CreateMasterKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert,
+		apiserver, ctx.Cluster.Name)
 	if err != nil {
 		klog.Errorf("create kubeconfg err: %+v", err)
 		return err
 	}
 
-	if c.ClusterCredential.KubeData == nil {
-		c.ClusterCredential.KubeData = make(map[string]string)
+	if ctx.Credential.KubeData == nil {
+		ctx.Credential.KubeData = make(map[string]string)
 	}
 
-	klog.Infof("[%s/%s] start build kubeconfig ...", c.Cluster.Namespace, c.Cluster.Name)
+	klog.Infof("[%s/%s] start build kubeconfig ...", ctx.Cluster.Namespace, ctx.Cluster.Name)
 	for noPathFile, v := range cfgMaps {
 		by, err := certs.BuildKubeConfigByte(v)
 		if err != nil {
@@ -128,14 +128,14 @@ func BuildMasterMiscConfigToMap(c *common.Cluster, apiserver string) error {
 		}
 
 		key := filepath.Join(constants.KubernetesDir, noPathFile)
-		c.ClusterCredential.KubeData[key] = string(by)
+		ctx.Credential.KubeData[key] = string(by)
 	}
 
 	key := filepath.Join(constants.KubernetesDir, "audit-policy.yaml")
-	c.ClusterCredential.KubeData[key] = additPolicy
+	ctx.Credential.KubeData[key] = additPolicy
 
-	tokenData := fmt.Sprintf(tokenFileTemplate, *c.ClusterCredential.Token)
-	c.ClusterCredential.KubeData[constants.TokenFile] = tokenData
+	tokenData := fmt.Sprintf(tokenFileTemplate, *ctx.Credential.Token)
+	ctx.Credential.KubeData[constants.TokenFile] = tokenData
 	return nil
 }
 
@@ -149,11 +149,11 @@ func hasContains(s string, ss []string) bool {
 	return false
 }
 
-func CovertMasterKubeConfig(s ssh.Interface, c *common.Cluster) error {
+func CovertMasterKubeConfig(s ssh.Interface, ctx *common.ClusterContext) error {
 	fileMaps := make(map[string]string)
 
 	apiserver := certs.BuildApiserverEndpoint(s.HostIP(), 6443)
-	for pathName, va := range c.ClusterCredential.KubeData {
+	for pathName, va := range ctx.Credential.KubeData {
 		if !hasContains(pathName, certs.GetMasterKubeConfigList()) {
 			continue
 		}
@@ -176,12 +176,12 @@ func CovertMasterKubeConfig(s ssh.Interface, c *common.Cluster) error {
 		fileMaps[pathName] = string(covertByte)
 	}
 
-	err := ApplyKubeletKubeconfig(c, apiserver, s.HostIP(), fileMaps)
+	err := ApplyKubeletKubeconfig(ctx, apiserver, s.HostIP(), fileMaps)
 	if err != nil {
 		return err
 	}
 
-	for name, data := range c.ClusterCredential.KubeData {
+	for name, data := range ctx.Credential.KubeData {
 		if strings.Contains(name, "known_tokens.csv") {
 			fileMaps[name] = data
 			break

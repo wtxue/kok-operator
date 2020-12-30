@@ -34,6 +34,9 @@ const (
 	MachineFinalize FinalizerName = "machine"
 )
 
+// NetworkType defines the network type of cluster.
+type NetworkType string
+
 // GPUType defines the gpu type of cluster.
 type GPUType string
 
@@ -45,24 +48,21 @@ const (
 )
 
 // OperatingSystem defines the operating of system.
-type OperatingSystem string
+type OSType string
 
 const (
-	CentosType OperatingSystem = "centos"
-	DebianType OperatingSystem = "debian"
-	UbuntuType OperatingSystem = "ubuntu"
+	CentosType OSType = "centos"
+	DebianType OSType = "debian"
+	UbuntuType OSType = "ubuntu"
 )
 
 // RuntimeType defines the runtime of Container.
-type RuntimeType string
+type CRIType string
 
 const (
-	DockerRuntime     RuntimeType = "docker"
-	ContainerdRuntime RuntimeType = "containerd"
+	DockerCRI     CRIType = "docker"
+	ContainerdCRI CRIType = "containerd"
 )
-
-// NetworkType defines the network type of cluster.
-type NetworkType string
 
 // ResourceList is a set of (resource name, quantity) pairs.
 type ResourceList map[string]resource.Quantity
@@ -307,13 +307,12 @@ type ClusterSpec struct {
 	Finalizers []FinalizerName `json:"finalizers,omitempty"`
 	TenantID   string          `json:"tenantID"`
 	// +optional
-	DisplayName string `json:"displayName"`
-	Type        string `json:"type"`
-	Version     string `json:"version"`
-	// +optional
-	OperatingSystem OperatingSystem `json:"operatingSystem,omitempty"`
-	RuntimeType     RuntimeType     `json:"runtimeType,omitempty"`
-	NetworkType     NetworkType     `json:"networkType,omitempty"`
+	DisplayName string      `json:"displayName,omitempty"`
+	ClusterType string      `json:"clusterType,omitempty"`
+	OSType      OSType      `json:"osType,omitempty"`
+	CRIType     CRIType     `json:"criType,omitempty"`
+	NetworkType NetworkType `json:"networkType,omitempty"`
+	Version     string      `json:"version,omitempty"`
 	// +optional
 	NetworkDevice string `json:"networkDevice,omitempty"`
 	// +optional

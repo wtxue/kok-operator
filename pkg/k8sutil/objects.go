@@ -16,6 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // MarshalToYaml marshals an object into yaml.
@@ -79,7 +80,7 @@ func RemoveNonYAMLLines(yms string) string {
 	return strings.TrimSpace(out)
 }
 
-func LoadObjs(f io.Reader) ([]runtime.Object, error) {
+func LoadObjs(f io.Reader) ([]client.Object, error) {
 	var b bytes.Buffer
 
 	var yamls []string
@@ -103,7 +104,7 @@ func LoadObjs(f io.Reader) ([]runtime.Object, error) {
 		yamls = append(yamls, s)
 	}
 
-	objs := make([]runtime.Object, 0)
+	objs := make([]client.Object, 0)
 	for _, yaml := range yamls {
 		yaml = RemoveNonYAMLLines(yaml)
 		if yaml == "" {
@@ -119,7 +120,7 @@ func LoadObjs(f io.Reader) ([]runtime.Object, error) {
 			continue
 		}
 
-		objs = append(objs, obj)
+		objs = append(objs, obj.(client.Object))
 
 	}
 

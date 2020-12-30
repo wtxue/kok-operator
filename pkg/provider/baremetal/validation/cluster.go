@@ -20,8 +20,8 @@ var (
 )
 
 // ValidateCluster validates a given Cluster.
-func ValidateCluster(obj *common.Cluster) field.ErrorList {
-	allErrs := ValidatClusterSpec(&obj.Spec, field.NewPath("spec"), obj.Cluster.Status.Phase)
+func ValidateCluster(ctx *common.ClusterContext) field.ErrorList {
+	allErrs := ValidatClusterSpec(&ctx.Cluster.Spec, field.NewPath("spec"), ctx.Cluster.Status.Phase)
 
 	return allErrs
 }

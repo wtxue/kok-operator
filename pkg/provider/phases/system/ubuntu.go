@@ -24,7 +24,7 @@ function Install_depend_software(){
     sudo apt-get install -y curl wget vim  telnet  \
            ipvsadm ipset tree telnet wget net-tools  \
            tcpdump bash-completion sysstat chrony jq psmisc socat \
-           sysstat conntrack iproute2 lsof perl 
+           sysstat conntrack iproute2 lsof perl libseccomp2 util-linux apt-transport-https 
 }
 
 function Install_ipvs(){
@@ -184,8 +184,7 @@ EOF
 echo -e "\033[32;32m 开始初始化结点 @{{ .HostIP }}@ \033[0m \n"
 Firewalld_process && \
 Install_depend_software && \
-Install_ipvs && \
 Install_depend_environment && \
-Install_docker 
+Install_ipvs 
 `
 )

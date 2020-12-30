@@ -21,6 +21,7 @@ import (
 	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 	componentbaseconfigv1alpha1 "k8s.io/component-base/config/v1alpha1"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -150,9 +151,9 @@ func GetProxyEnvVars() []corev1.EnvVar {
 	return envs
 }
 
-func getKubeProxyConfiguration(c *common.Cluster) *kubeproxyv1alpha1.KubeProxyConfiguration {
+func getKubeProxyConfiguration(ctx *common.ClusterContext) *kubeproxyv1alpha1.KubeProxyConfiguration {
 	kubeProxyMode := "iptables"
-	if c.Spec.Features.IPVS != nil && *c.Spec.Features.IPVS {
+	if ctx.Cluster.Spec.Features.IPVS != nil && *ctx.Cluster.Spec.Features.IPVS {
 		kubeProxyMode = "ipvs"
 	}
 
@@ -181,14 +182,14 @@ func kubeproxyMarshal(cfg *kubeproxyv1alpha1.KubeProxyConfiguration) ([]byte, er
 	return yamlData, nil
 }
 
-func BuildKubeproxyAddon(cfg *config.Config, c *common.Cluster) ([]runtime.Object, error) {
-	objs := make([]runtime.Object, 0)
+func BuildKubeproxyAddon(cfg *config.Config, ctx *common.ClusterContext) ([]client.Object, error) {
+	objs := make([]client.Object, 0)
 
-	kubeproxyBytes, err := kubeproxyMarshal(getKubeProxyConfiguration(c))
+	kubeproxyBytes, err := kubeproxyMarshal(getKubeProxyConfiguration(ctx))
 	if err != nil {
 		return nil, errors.Wrap(err, "error when kubeproxyMarshal")
 	}
-	apiserver := certs.BuildApiserverEndpoint(c.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(c.Cluster))
+	apiserver := certs.BuildApiserverEndpoint(ctx.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(ctx.Cluster))
 	proxyConfigMapBytes, err := template.ParseString(KubeProxyConfigMap19,
 		struct {
 			ControlPlaneEndpoint string
@@ -213,7 +214,7 @@ func BuildKubeproxyAddon(cfg *config.Config, c *common.Cluster) ([]runtime.Objec
 	objs = append(objs, kubeproxyConfigMap)
 
 	proxyDaemonSetBytes, err := template.ParseString(KubeProxyDaemonSet19, struct{ Image, ProxyConfigMap, ProxyConfigMapKey string }{
-		Image:             cfg.KubeProxyImagesName(c.Cluster.Spec.Version),
+		Image:             cfg.KubeProxyImagesName(ctx.Cluster.Spec.Version),
 		ProxyConfigMap:    constants.KubeProxyConfigMap,
 		ProxyConfigMapKey: constants.KubeProxyConfigMapKey,
 	})
@@ -228,8 +229,8 @@ func BuildKubeproxyAddon(cfg *config.Config, c *common.Cluster) ([]runtime.Objec
 
 	kubeproxyDaemonSet.Spec.Template.Spec.HostAliases = []corev1.HostAlias{
 		{
-			IP:        c.Cluster.Spec.Features.HA.ThirdPartyHA.VIP,
-			Hostnames: []string{c.Cluster.Spec.PublicAlternativeNames[0]},
+			IP:        ctx.Cluster.Spec.Features.HA.ThirdPartyHA.VIP,
+			Hostnames: []string{ctx.Cluster.Spec.PublicAlternativeNames[0]},
 		},
 	}
 

@@ -37,7 +37,7 @@ func newCommonChecks(s ssh.Interface) []Checker {
 }
 
 // RunMasterChecks checks for master
-func RunMasterChecks(s ssh.Interface, c *common.Cluster) error {
+func RunMasterChecks(s ssh.Interface, ctx *common.ClusterContext) error {
 	checks := newCommonChecks(s)
 	checks = append(checks, []Checker{
 		NumCPUCheck{Interface: s, NumCPU: 1},

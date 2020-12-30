@@ -243,8 +243,8 @@ func (m *ClusterManager) DeletePods(opts *client.ListOptions, clusterNames ...st
 			}
 			return err
 		}
-		for _, pod := range podList.Items {
-			err = cluster.Client.Delete(ctx, pod.DeepCopyObject())
+		for i := range podList.Items {
+			err = cluster.Client.Delete(ctx, &podList.Items[i])
 			if err != nil {
 				klog.Errorf("delete pod error: %v", err)
 			}

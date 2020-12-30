@@ -2,11 +2,11 @@ package kubeadm
 
 import (
 	"bytes"
+	"fmt"
 	"reflect"
 
-	"fmt"
-
 	"github.com/wtxue/kok-operator/pkg/apis"
+	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
 	kubeletv1beta1 "github.com/wtxue/kok-operator/pkg/apis/kubelet/config/v1beta1"
 	kubeproxyv1alpha1 "github.com/wtxue/kok-operator/pkg/apis/kubeproxy/config/v1alpha1"
@@ -56,22 +56,22 @@ func (c *Config) Marshal() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func GetKubeadmConfigByMaster0(c *common.Cluster, cfg *config.Config) *Config {
-	controlPlaneEndpoint := fmt.Sprintf("%s:6443", c.Spec.Machines[0].IP)
-	return GetKubeadmConfig(c, cfg, controlPlaneEndpoint)
+func GetKubeadmConfigByMaster0(ctx *common.ClusterContext, cfg *config.Config) *Config {
+	controlPlaneEndpoint := fmt.Sprintf("%s:6443", ctx.Cluster.Spec.Machines[0].IP)
+	return GetKubeadmConfig(ctx, cfg, controlPlaneEndpoint)
 }
 
-func GetKubeadmConfig(c *common.Cluster, cfg *config.Config, controlPlaneEndpoint string) *Config {
+func GetKubeadmConfig(ctx *common.ClusterContext, cfg *config.Config, controlPlaneEndpoint string) *Config {
 	return &Config{
-		InitConfiguration:      GetInitConfiguration(c),
-		ClusterConfiguration:   GetClusterConfiguration(c, cfg, controlPlaneEndpoint),
-		KubeletConfiguration:   GetKubeletConfiguration(c),
-		KubeProxyConfiguration: GetKubeProxyConfiguration(c),
+		InitConfiguration:      GetInitConfiguration(ctx),
+		ClusterConfiguration:   GetClusterConfiguration(ctx, cfg, controlPlaneEndpoint),
+		KubeletConfiguration:   GetKubeletConfiguration(ctx),
+		KubeProxyConfiguration: GetKubeProxyConfiguration(ctx),
 	}
 }
 
-func GetInitConfiguration(c *common.Cluster) *kubeadmv1beta2.InitConfiguration {
-	token, _ := kubeadmv1beta2.NewBootstrapTokenString(*c.ClusterCredential.BootstrapToken)
+func GetInitConfiguration(ctx *common.ClusterContext) *kubeadmv1beta2.InitConfiguration {
+	token, _ := kubeadmv1beta2.NewBootstrapTokenString(*ctx.Credential.BootstrapToken)
 
 	initCfg := &kubeadmv1beta2.InitConfiguration{
 		BootstrapTokens: []kubeadmv1beta2.BootstrapToken{
@@ -81,24 +81,28 @@ func GetInitConfiguration(c *common.Cluster) *kubeadmv1beta2.InitConfiguration {
 				TTL:         &metav1.Duration{Duration: 0},
 			},
 		},
-		CertificateKey: *c.ClusterCredential.CertificateKey,
+		CertificateKey: *ctx.Credential.CertificateKey,
 	}
 
-	if len(c.Cluster.Spec.Machines) > 0 {
+	if len(ctx.Cluster.Spec.Machines) > 0 {
 		initCfg.NodeRegistration = kubeadmv1beta2.NodeRegistrationOptions{
-			Name: c.Spec.Machines[0].IP,
+			Name: ctx.Cluster.Spec.Machines[0].IP,
 		}
 
 		initCfg.LocalAPIEndpoint = kubeadmv1beta2.APIEndpoint{
-			AdvertiseAddress: c.Spec.Machines[0].IP,
+			AdvertiseAddress: ctx.Cluster.Spec.Machines[0].IP,
 			BindPort:         6443,
 		}
+	}
+
+	if ctx.Cluster.Spec.CRIType == devopsv1.ContainerdCRI {
+		initCfg.NodeRegistration.CRISocket = "unix:///run/containerd/containerd.sock"
 	}
 
 	return initCfg
 }
 
-func GetClusterConfiguration(c *common.Cluster, cfg *config.Config, controlPlaneEndpoint string) *kubeadmv1beta2.ClusterConfiguration {
+func GetClusterConfiguration(ctx *common.ClusterContext, cfg *config.Config, controlPlaneEndpoint string) *kubeadmv1beta2.ClusterConfiguration {
 	kubernetesVolume := kubeadmv1beta2.HostPathMount{
 		Name:      "vol-dir-0",
 		HostPath:  "/etc/kubernetes",
@@ -115,41 +119,41 @@ func GetClusterConfiguration(c *common.Cluster, cfg *config.Config, controlPlane
 	kubeadmCfg := &kubeadmv1beta2.ClusterConfiguration{
 		CertificatesDir: constants.CertificatesDir,
 		Networking: kubeadmv1beta2.Networking{
-			DNSDomain:     c.Spec.DNSDomain,
-			ServiceSubnet: c.Cluster.Status.ServiceCIDR,
+			DNSDomain:     ctx.Cluster.Spec.DNSDomain,
+			ServiceSubnet: ctx.Cluster.Status.ServiceCIDR,
 		},
-		KubernetesVersion:    c.Spec.Version,
+		KubernetesVersion:    ctx.Cluster.Spec.Version,
 		ControlPlaneEndpoint: controlPlaneEndpoint,
 		APIServer: kubeadmv1beta2.APIServer{
 			ControlPlaneComponent: kubeadmv1beta2.ControlPlaneComponent{
-				ExtraArgs:    GetAPIServerExtraArgs(c),
+				ExtraArgs:    GetAPIServerExtraArgs(ctx),
 				ExtraVolumes: []kubeadmv1beta2.HostPathMount{kubernetesVolume, auditVolume},
 			},
-			CertSANs: k8sutil.GetAPIServerCertSANs(c.Cluster),
+			CertSANs: k8sutil.GetAPIServerCertSANs(ctx.Cluster),
 		},
 		ControllerManager: kubeadmv1beta2.ControlPlaneComponent{
-			ExtraArgs:    GetControllerManagerExtraArgs(c),
+			ExtraArgs:    GetControllerManagerExtraArgs(ctx),
 			ExtraVolumes: []kubeadmv1beta2.HostPathMount{kubernetesVolume},
 		},
 		Scheduler: kubeadmv1beta2.ControlPlaneComponent{
-			ExtraArgs:    GetSchedulerExtraArgs(c),
+			ExtraArgs:    GetSchedulerExtraArgs(ctx),
 			ExtraVolumes: []kubeadmv1beta2.HostPathMount{kubernetesVolume},
 		},
 		DNS: kubeadmv1beta2.DNS{
 			Type: kubeadmv1beta2.CoreDNS,
 		},
 		ImageRepository: cfg.Registry.Prefix,
-		ClusterName:     c.Name,
+		ClusterName:     ctx.Cluster.Name,
 	}
 
-	utilruntime.Must(json.Merge(&kubeadmCfg.Etcd, &c.Spec.Etcd))
+	utilruntime.Must(json.Merge(&kubeadmCfg.Etcd, &ctx.Cluster.Spec.Etcd))
 
 	return kubeadmCfg
 }
 
-func GetKubeProxyConfiguration(c *common.Cluster) *kubeproxyv1alpha1.KubeProxyConfiguration {
+func GetKubeProxyConfiguration(ctx *common.ClusterContext) *kubeproxyv1alpha1.KubeProxyConfiguration {
 	kubeProxyMode := "iptables"
-	if c.Spec.Features.IPVS != nil && *c.Spec.Features.IPVS {
+	if ctx.Cluster.Spec.Features.IPVS != nil && *ctx.Cluster.Spec.Features.IPVS {
 		kubeProxyMode = "ipvs"
 	}
 
@@ -158,7 +162,7 @@ func GetKubeProxyConfiguration(c *common.Cluster) *kubeproxyv1alpha1.KubeProxyCo
 	}
 }
 
-func GetKubeletConfiguration(c *common.Cluster) *kubeletv1beta1.KubeletConfiguration {
+func GetKubeletConfiguration(ctx *common.ClusterContext) *kubeletv1beta1.KubeletConfiguration {
 	return &kubeletv1beta1.KubeletConfiguration{
 		KubeReserved: map[string]string{
 			"cpu":    "100m",
@@ -168,11 +172,11 @@ func GetKubeletConfiguration(c *common.Cluster) *kubeletv1beta1.KubeletConfigura
 			"cpu":    "100m",
 			"memory": "500Mi",
 		},
-		MaxPods: *c.Spec.Properties.MaxNodePodNum,
+		MaxPods: *ctx.Cluster.Spec.Properties.MaxNodePodNum,
 	}
 }
 
-func GetFullKubeletConfiguration(c *common.Cluster) *kubeletv1beta1.KubeletConfiguration {
+func GetFullKubeletConfiguration(ctx *common.ClusterContext) *kubeletv1beta1.KubeletConfiguration {
 	return &kubeletv1beta1.KubeletConfiguration{
 		StaticPodPath: constants.KubeletPodManifestDir,
 		Authentication: kubeletv1beta1.KubeletAuthentication{
@@ -190,8 +194,8 @@ func GetFullKubeletConfiguration(c *common.Cluster) *kubeletv1beta1.KubeletConfi
 			Mode:    kubeletv1beta1.KubeletAuthorizationModeWebhook,
 			Webhook: kubeletv1beta1.KubeletWebhookAuthorization{},
 		},
-		ClusterDNS:    []string{c.Cluster.Status.DNSIP},
-		ClusterDomain: c.Cluster.Spec.DNSDomain,
+		ClusterDNS:    []string{ctx.Cluster.Status.DNSIP},
+		ClusterDomain: ctx.Cluster.Spec.DNSDomain,
 
 		KubeReserved: map[string]string{
 			"cpu":    "100m",
@@ -201,45 +205,45 @@ func GetFullKubeletConfiguration(c *common.Cluster) *kubeletv1beta1.KubeletConfi
 			"cpu":    "100m",
 			"memory": "500Mi",
 		},
-		MaxPods: *c.Spec.Properties.MaxNodePodNum,
+		MaxPods: *ctx.Cluster.Spec.Properties.MaxNodePodNum,
 	}
 }
 
-func GetAPIServerExtraArgs(c *common.Cluster) map[string]string {
+func GetAPIServerExtraArgs(ctx *common.ClusterContext) map[string]string {
 	args := map[string]string{
 		"token-auth-file": constants.TokenFile,
 	}
 
-	for k, v := range c.Spec.APIServerExtraArgs {
+	for k, v := range ctx.Cluster.Spec.APIServerExtraArgs {
 		args[k] = v
 	}
 
 	return args
 }
 
-func GetControllerManagerExtraArgs(c *common.Cluster) map[string]string {
+func GetControllerManagerExtraArgs(ctx *common.ClusterContext) map[string]string {
 	args := map[string]string{}
 
-	if len(c.Spec.ClusterCIDR) > 0 {
+	if len(ctx.Cluster.Spec.ClusterCIDR) > 0 {
 		args["allocate-node-cidrs"] = "true"
-		args["cluster-cidr"] = c.Spec.ClusterCIDR
-		args["node-cidr-mask-size"] = fmt.Sprintf("%v", c.Cluster.Status.NodeCIDRMaskSize)
+		args["cluster-cidr"] = ctx.Cluster.Spec.ClusterCIDR
+		args["node-cidr-mask-size"] = fmt.Sprintf("%v", ctx.Cluster.Status.NodeCIDRMaskSize)
 	}
 
-	for k, v := range c.Spec.ControllerManagerExtraArgs {
+	for k, v := range ctx.Cluster.Spec.ControllerManagerExtraArgs {
 		args[k] = v
 	}
 
 	return args
 }
 
-func GetSchedulerExtraArgs(c *common.Cluster) map[string]string {
+func GetSchedulerExtraArgs(ctx *common.ClusterContext) map[string]string {
 	args := map[string]string{}
 
 	// args["use-legacy-policy-config"] = "true"
 	// args["policy-config-file"] = constants.SchedulerPolicyConfigFile
 
-	for k, v := range c.Spec.SchedulerExtraArgs {
+	for k, v := range ctx.Cluster.Spec.SchedulerExtraArgs {
 		args[k] = v
 	}
 

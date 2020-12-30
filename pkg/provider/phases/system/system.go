@@ -30,8 +30,8 @@ type Option struct {
 	ExtraArgs          map[string]string
 }
 
-func shellTemplate(c *common.Cluster) string {
-	switch c.Spec.OperatingSystem {
+func shellTemplate(ctx *common.ClusterContext) string {
+	switch ctx.Cluster.Spec.OSType {
 	case devopsv1.DebianType:
 		return debianShellTemplate
 	case devopsv1.UbuntuType:
@@ -41,25 +41,25 @@ func shellTemplate(c *common.Cluster) string {
 	}
 }
 
-func Install(s ssh.Interface, c *common.Cluster) error {
+func Install(s ssh.Interface, ctx *common.ClusterContext) error {
 	dockerVersion := "19.03.13"
-	if v, ok := c.Spec.DockerExtraArgs["version"]; ok {
+	if v, ok := ctx.Cluster.Spec.DockerExtraArgs["version"]; ok {
 		dockerVersion = v
 	}
 
 	cgroupDriver := "cgroupfs"
-	if v, ok := c.Spec.DockerExtraArgs["cgroupDriver"]; ok {
+	if v, ok := ctx.Cluster.Spec.DockerExtraArgs["cgroupDriver"]; ok {
 		dockerVersion = v
 	}
 	option := &Option{
-		K8sVersion:    c.Spec.Version,
+		K8sVersion:    ctx.Cluster.Spec.Version,
 		DockerVersion: dockerVersion,
 		Cgroupdriver:  cgroupDriver,
-		ExtraArgs:     c.Spec.KubeletExtraArgs,
+		ExtraArgs:     ctx.Cluster.Spec.KubeletExtraArgs,
 		HostIP:        s.HostIP(),
 	}
 
-	initData, err := template.ParseString(shellTemplate(c), option)
+	initData, err := template.ParseString(shellTemplate(ctx), option)
 	if err != nil {
 		return err
 	}

@@ -22,21 +22,19 @@ const (
 	DesiredStateAbsent  DesiredState = "absent"
 )
 
-func Reconcile(log logr.Logger, cli client.Client, desired runtime.Object, desiredState DesiredState) error {
+func Reconcile(log logr.Logger, cli client.Client, desired client.Object, desiredState DesiredState) error {
 	if desiredState == "" {
 		desiredState = DesiredStatePresent
 	}
 
 	desiredType := reflect.TypeOf(desired)
-	var current = desired.DeepCopyObject()
-	var desiredCopy = desired.DeepCopyObject()
-	key, err := client.ObjectKeyFromObject(current)
-	if err != nil {
-		return emperror.With(err, "kind", desiredType)
-	}
+	current := desired.DeepCopyObject().(client.Object)
+	desiredCopy := desired.DeepCopyObject().(client.Object)
+	key := client.ObjectKeyFromObject(current)
+
 	log = log.WithValues("kind", desiredType, "name", key.Name)
 
-	err = cli.Get(context.TODO(), key, current)
+	err := cli.Get(context.TODO(), key, current)
 	if err != nil && !apierrors.IsNotFound(err) {
 		return emperror.WrapWith(err, "getting resource failed", "kind", desiredType, "name", key.Name)
 	}

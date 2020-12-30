@@ -129,7 +129,7 @@ func BuildKubeletDynamicEnvFile(imageRepository string, nodeReg *kubeadmv1beta2.
 	return envFileContent
 }
 
-func getKubeletConfiguration(c *common.Cluster) *kubeletv1beta1.KubeletConfiguration {
+func getKubeletConfiguration(ctx *common.ClusterContext) *kubeletv1beta1.KubeletConfiguration {
 	return &kubeletv1beta1.KubeletConfiguration{
 		StaticPodPath: constants.KubeletPodManifestDir,
 		Authentication: kubeletv1beta1.KubeletAuthentication{
@@ -147,8 +147,8 @@ func getKubeletConfiguration(c *common.Cluster) *kubeletv1beta1.KubeletConfigura
 			Mode:    kubeletv1beta1.KubeletAuthorizationModeWebhook,
 			Webhook: kubeletv1beta1.KubeletWebhookAuthorization{},
 		},
-		ClusterDNS:    []string{c.Cluster.Status.DNSIP},
-		ClusterDomain: c.Cluster.Spec.DNSDomain,
+		ClusterDNS:    []string{ctx.Cluster.Status.DNSIP},
+		ClusterDomain: ctx.Cluster.Spec.DNSDomain,
 		KubeReserved: map[string]string{
 			"cpu":    "100m",
 			"memory": "500Mi",

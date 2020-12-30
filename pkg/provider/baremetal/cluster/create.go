@@ -61,12 +61,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/klog"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func (p *Provider) EnsureCopyFiles(ctx context.Context, c *common.Cluster) error {
-	for _, file := range c.Spec.Features.Files {
-		for _, machine := range c.Spec.Machines {
+func (p *Provider) EnsureCopyFiles(ctx *common.ClusterContext) error {
+	for _, file := range ctx.Cluster.Spec.Features.Files {
+		for _, machine := range ctx.Cluster.Spec.Machines {
 			machineSSH, err := machine.SSH()
 			if err != nil {
 				return err
@@ -82,26 +81,26 @@ func (p *Provider) EnsureCopyFiles(ctx context.Context, c *common.Cluster) error
 	return nil
 }
 
-func (p *Provider) EnsurePreflight(ctx context.Context, c *common.Cluster) error {
-	for _, machine := range c.Spec.Machines {
-		machineSSH, err := machine.SSH()
+func (p *Provider) EnsurePreflight(ctx *common.ClusterContext) error {
+	for _, m := range ctx.Cluster.Spec.Machines {
+		machineSSH, err := m.SSH()
 		if err != nil {
 			return err
 		}
 
-		klog.Infof("start check node: %s ... ", machine.IP)
-		err = preflight.RunMasterChecks(machineSSH, c)
+		ctx.Info("node preflight start ...", "node", m.IP)
+		err = preflight.RunMasterChecks(machineSSH, ctx)
 		if err != nil {
-			klog.Errorf("node:%s check err: %+v", machine.IP, err)
-			return errors.Wrap(err, machine.IP)
+			ctx.Error(err, "node preflight", "node", m.IP)
+			return errors.Wrap(err, m.IP)
 		}
 	}
 
 	return nil
 }
 
-func (p *Provider) EnsureClusterComplete(ctx context.Context, c *common.Cluster) error {
-	funcs := []func(cluster *common.Cluster) error{
+func (p *Provider) EnsureClusterComplete(ctx *common.ClusterContext) error {
+	funcs := []func(ctx *common.ClusterContext) error{
 		completeK8sVersion,
 		completeNetworking,
 		completeDNS,
@@ -109,100 +108,100 @@ func (p *Provider) EnsureClusterComplete(ctx context.Context, c *common.Cluster)
 		completeCredential,
 	}
 	for _, f := range funcs {
-		if err := f(c); err != nil {
+		if err := f(ctx); err != nil {
 			return err
 		}
 	}
 
-	c.Cluster.Status.Version = c.Spec.Version
+	ctx.Cluster.Status.Version = ctx.Cluster.Spec.Version
 	return nil
 }
 
-func completeK8sVersion(cluster *common.Cluster) error {
-	cluster.Cluster.Status.Version = cluster.Spec.Version
+func completeK8sVersion(ctx *common.ClusterContext) error {
+	ctx.Cluster.Status.Version = ctx.Cluster.Spec.Version
 	return nil
 }
 
-func completeNetworking(cluster *common.Cluster) error {
+func completeNetworking(ctx *common.ClusterContext) error {
 	var (
 		serviceCIDR      string
 		nodeCIDRMaskSize int32
 		err              error
 	)
 
-	if cluster.Spec.ServiceCIDR != nil {
-		serviceCIDR = *cluster.Spec.ServiceCIDR
-		nodeCIDRMaskSize, err = k8sutil.GetNodeCIDRMaskSize(cluster.Spec.ClusterCIDR, *cluster.Spec.Properties.MaxNodePodNum)
+	if ctx.Cluster.Spec.ServiceCIDR != nil {
+		serviceCIDR = *ctx.Cluster.Spec.ServiceCIDR
+		nodeCIDRMaskSize, err = k8sutil.GetNodeCIDRMaskSize(ctx.Cluster.Spec.ClusterCIDR, *ctx.Cluster.Spec.Properties.MaxNodePodNum)
 		if err != nil {
 			return errors.Wrap(err, "GetNodeCIDRMaskSize error")
 		}
 	} else {
-		serviceCIDR, nodeCIDRMaskSize, err = k8sutil.GetServiceCIDRAndNodeCIDRMaskSize(cluster.Spec.ClusterCIDR, *cluster.Spec.Properties.MaxClusterServiceNum, *cluster.Spec.Properties.MaxNodePodNum)
+		serviceCIDR, nodeCIDRMaskSize, err = k8sutil.GetServiceCIDRAndNodeCIDRMaskSize(ctx.Cluster.Spec.ClusterCIDR, *ctx.Cluster.Spec.Properties.MaxClusterServiceNum, *ctx.Cluster.Spec.Properties.MaxNodePodNum)
 		if err != nil {
 			return errors.Wrap(err, "GetServiceCIDRAndNodeCIDRMaskSize error")
 		}
 	}
-	cluster.Cluster.Status.ServiceCIDR = serviceCIDR
-	cluster.Cluster.Status.NodeCIDRMaskSize = nodeCIDRMaskSize
+	ctx.Cluster.Status.ServiceCIDR = serviceCIDR
+	ctx.Cluster.Status.NodeCIDRMaskSize = nodeCIDRMaskSize
 
 	return nil
 }
 
-func completeDNS(cluster *common.Cluster) error {
-	ip, err := k8sutil.GetIndexedIP(cluster.Cluster.Status.ServiceCIDR, constants.DNSIPIndex)
+func completeDNS(ctx *common.ClusterContext) error {
+	ip, err := k8sutil.GetIndexedIP(ctx.Cluster.Status.ServiceCIDR, constants.DNSIPIndex)
 	if err != nil {
 		return errors.Wrap(err, "get DNS IP error")
 	}
-	cluster.Cluster.Status.DNSIP = ip.String()
+	ctx.Cluster.Status.DNSIP = ip.String()
 
 	return nil
 }
 
-func completeAddresses(cluster *common.Cluster) error {
-	for _, m := range cluster.Spec.Machines {
-		cluster.AddAddress(devopsv1.AddressReal, m.IP, 6443)
+func completeAddresses(ctx *common.ClusterContext) error {
+	for _, m := range ctx.Cluster.Spec.Machines {
+		ctx.Cluster.AddAddress(devopsv1.AddressReal, m.IP, 6443)
 	}
 
-	if cluster.Spec.Features.HA != nil {
-		if cluster.Spec.Features.HA.DKEHA != nil {
-			cluster.AddAddress(devopsv1.AddressAdvertise, cluster.Spec.Features.HA.DKEHA.VIP, 6443)
+	if ctx.Cluster.Spec.Features.HA != nil {
+		if ctx.Cluster.Spec.Features.HA.DKEHA != nil {
+			ctx.Cluster.AddAddress(devopsv1.AddressAdvertise, ctx.Cluster.Spec.Features.HA.DKEHA.VIP, 6443)
 		}
-		if cluster.Spec.Features.HA.ThirdPartyHA != nil {
-			cluster.AddAddress(devopsv1.AddressAdvertise, cluster.Spec.Features.HA.ThirdPartyHA.VIP, cluster.Spec.Features.HA.ThirdPartyHA.VPort)
+		if ctx.Cluster.Spec.Features.HA.ThirdPartyHA != nil {
+			ctx.Cluster.AddAddress(devopsv1.AddressAdvertise, ctx.Cluster.Spec.Features.HA.ThirdPartyHA.VIP, ctx.Cluster.Spec.Features.HA.ThirdPartyHA.VPort)
 		}
 	}
 
 	return nil
 }
 
-func completeCredential(cluster *common.Cluster) error {
+func completeCredential(ctx *common.ClusterContext) error {
 	token := ksuid.New().String()
-	cluster.ClusterCredential.Token = &token
+	ctx.Credential.Token = &token
 
 	bootstrapToken, err := bootstraputil.GenerateBootstrapToken()
 	if err != nil {
 		return err
 	}
-	cluster.ClusterCredential.BootstrapToken = &bootstrapToken
 
+	ctx.Credential.BootstrapToken = &bootstrapToken
 	certBytes := make([]byte, 32)
 	if _, err := rand.Read(certBytes); err != nil {
 		return err
 	}
-	certificateKey := hex.EncodeToString(certBytes)
-	cluster.ClusterCredential.CertificateKey = &certificateKey
 
+	certificateKey := hex.EncodeToString(certBytes)
+	ctx.Credential.CertificateKey = &certificateKey
 	return nil
 }
 
-func (p *Provider) EnsureBuildLocalKubeconfig(ctx context.Context, c *common.Cluster) error {
-	for _, machine := range c.Spec.Machines {
+func (p *Provider) EnsureBuildLocalKubeconfig(ctx *common.ClusterContext) error {
+	for _, machine := range ctx.Cluster.Spec.Machines {
 		machineSSH, err := machine.SSH()
 		if err != nil {
 			return err
 		}
 
-		err = kubemisc.Install(machineSSH, c)
+		err = kubemisc.Install(machineSSH, ctx)
 		if err != nil {
 			return errors.Wrap(err, machine.IP)
 		}
@@ -211,29 +210,29 @@ func (p *Provider) EnsureBuildLocalKubeconfig(ctx context.Context, c *common.Clu
 	return nil
 }
 
-func (p *Provider) EnsureKubeadmInitKubeletStartPhase(ctx context.Context, c *common.Cluster) error {
-	sh, err := c.Spec.Machines[0].SSH()
+func (p *Provider) EnsureKubeadmInitKubeletStartPhase(ctx *common.ClusterContext) error {
+	sh, err := ctx.Cluster.Spec.Machines[0].SSH()
 	if err != nil {
 		return err
 	}
-	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(c, p.Cfg),
-		fmt.Sprintf("kubelet-start --node-name=%s", c.Spec.Machines[0].IP))
+	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg),
+		fmt.Sprintf("kubelet-start --node-name=%s", ctx.Cluster.Spec.Machines[0].IP))
 }
 
-func (p *Provider) EnsureCerts(ctx context.Context, c *common.Cluster) error {
-	cfg := kubeadm.GetKubeadmConfigByMaster0(c, p.Cfg)
-	err := kubeadm.InitCerts(cfg, c, false)
+func (p *Provider) EnsureCerts(ctx *common.ClusterContext) error {
+	cfg := kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg)
+	err := kubeadm.InitCerts(cfg, ctx, false)
 	if err != nil {
 		return err
 	}
 
-	for _, machine := range c.Spec.Machines {
+	for _, machine := range ctx.Cluster.Spec.Machines {
 		sh, err := machine.SSH()
 		if err != nil {
 			return err
 		}
 
-		for pathFile, va := range c.ClusterCredential.CertsBinaryData {
+		for pathFile, va := range ctx.Credential.CertsBinaryData {
 			klog.Infof("node: %s start write BinaryData [%s] ...", sh.HostIP(), pathFile)
 			err = sh.WriteFile(bytes.NewReader(va), pathFile)
 			if err != nil {
@@ -246,25 +245,25 @@ func (p *Provider) EnsureCerts(ctx context.Context, c *common.Cluster) error {
 	return nil
 }
 
-func (p *Provider) EnsureKubeMiscPhase(ctx context.Context, c *common.Cluster) error {
-	sh, err := c.Spec.Machines[0].SSH()
+func (p *Provider) EnsureKubeMiscPhase(ctx *common.ClusterContext) error {
+	sh, err := ctx.Cluster.Spec.Machines[0].SSH()
 	if err != nil {
 		return err
 	}
 
-	apiserver := certs.BuildApiserverEndpoint(c.Spec.Machines[0].IP, 6443)
+	apiserver := certs.BuildApiserverEndpoint(ctx.Cluster.Spec.Machines[0].IP, 6443)
 	kubeMaps := make(map[string]string)
-	err = kubemisc.ApplyKubeletKubeconfig(c, apiserver, sh.HostIP(), kubeMaps)
+	err = kubemisc.ApplyKubeletKubeconfig(ctx, apiserver, sh.HostIP(), kubeMaps)
 	if err != nil {
 		return err
 	}
 
-	err = kubemisc.BuildMasterMiscConfigToMap(c, apiserver)
+	err = kubemisc.BuildMasterMiscConfigToMap(ctx, apiserver)
 	if err != nil {
 		return err
 	}
 
-	for k, v := range c.ClusterCredential.KubeData {
+	for k, v := range ctx.Credential.KubeData {
 		kubeMaps[k] = v
 	}
 
@@ -280,21 +279,21 @@ func (p *Provider) EnsureKubeMiscPhase(ctx context.Context, c *common.Cluster) e
 	return nil
 }
 
-func (p *Provider) EnsureKubeadmInitControlPlanePhase(ctx context.Context, c *common.Cluster) error {
-	machineSSH, err := c.Spec.Machines[0].SSH()
+func (p *Provider) EnsureKubeadmInitControlPlanePhase(ctx *common.ClusterContext) error {
+	machineSSH, err := ctx.Cluster.Spec.Machines[0].SSH()
 	if err != nil {
 		return err
 	}
 
-	return kubeadm.Init(machineSSH, kubeadm.GetKubeadmConfigByMaster0(c, p.Cfg), "control-plane all")
+	return kubeadm.Init(machineSSH, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "control-plane all")
 }
 
-func (p *Provider) EnsureKubeadmInitEtcdPhase(ctx context.Context, c *common.Cluster) error {
-	sh, err := c.Spec.Machines[0].SSH()
+func (p *Provider) EnsureKubeadmInitEtcdPhase(ctx *common.ClusterContext) error {
+	sh, err := ctx.Cluster.Spec.Machines[0].SSH()
 	if err != nil {
 		return err
 	}
-	err = kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(c, p.Cfg), "etcd local")
+	err = kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "etcd local")
 	if err != nil {
 		return err
 	}
@@ -303,7 +302,7 @@ func (p *Provider) EnsureKubeadmInitEtcdPhase(ctx context.Context, c *common.Clu
 		return nil
 	}
 
-	err = kubeadm.RebuildMasterManifestFile(sh, c, p.Cfg)
+	err = kubeadm.RebuildMasterManifestFile(sh, ctx, p.Cfg)
 	if err != nil {
 		klog.Errorf("modify same master config err: %v", err)
 		return err
@@ -312,50 +311,50 @@ func (p *Provider) EnsureKubeadmInitEtcdPhase(ctx context.Context, c *common.Clu
 	return nil
 }
 
-func (p *Provider) EnsureKubeadmInitUploadConfigPhase(ctx context.Context, c *common.Cluster) error {
-	sh, err := c.Spec.Machines[0].SSH()
+func (p *Provider) EnsureKubeadmInitUploadConfigPhase(ctx *common.ClusterContext) error {
+	sh, err := ctx.Cluster.Spec.Machines[0].SSH()
 	if err != nil {
 		return err
 	}
-	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(c, p.Cfg), "upload-config all ")
+	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "upload-config all ")
 }
 
-func (p *Provider) EnsureKubeadmInitUploadCertsPhase(ctx context.Context, c *common.Cluster) error {
-	sh, err := c.Spec.Machines[0].SSH()
+func (p *Provider) EnsureKubeadmInitUploadCertsPhase(ctx *common.ClusterContext) error {
+	sh, err := ctx.Cluster.Spec.Machines[0].SSH()
 	if err != nil {
 		return err
 	}
-	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(c, p.Cfg), "upload-certs --upload-certs")
+	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "upload-certs --upload-certs")
 }
 
-func (p *Provider) EnsureKubeadmInitBootstrapTokenPhase(ctx context.Context, c *common.Cluster) error {
-	sh, err := c.Spec.Machines[0].SSH()
+func (p *Provider) EnsureKubeadmInitBootstrapTokenPhase(ctx *common.ClusterContext) error {
+	sh, err := ctx.Cluster.Spec.Machines[0].SSH()
 	if err != nil {
 		return err
 	}
-	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(c, p.Cfg), "bootstrap-token")
+	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "bootstrap-token")
 }
 
-func (p *Provider) EnsureKubeadmInitAddonPhase(ctx context.Context, c *common.Cluster) error {
-	sh, err := c.Spec.Machines[0].SSH()
+func (p *Provider) EnsureKubeadmInitAddonPhase(ctx *common.ClusterContext) error {
+	sh, err := ctx.Cluster.Spec.Machines[0].SSH()
 	if err != nil {
 		return err
 	}
-	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(c, p.Cfg), "addon all")
+	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "addon all")
 }
 
-func (p *Provider) EnsureJoinControlePlane(ctx context.Context, c *common.Cluster) error {
-	if len(c.Spec.Machines) <= 1 {
+func (p *Provider) EnsureJoinControlePlane(ctx *common.ClusterContext) error {
+	if len(ctx.Cluster.Spec.Machines) <= 1 {
 		return nil
 	}
 
-	for _, machine := range c.Spec.Machines[1:] {
+	for _, machine := range ctx.Cluster.Spec.Machines[1:] {
 		sh, err := machine.SSH()
 		if err != nil {
 			return err
 		}
 
-		clientset, err := c.ClientsetForBootstrap()
+		clientset, err := ctx.ClientsetForBootstrap()
 		if err != nil {
 			klog.Errorf("ClientsetForBootstrap err: %v", clientset)
 			return err
@@ -372,7 +371,7 @@ func (p *Provider) EnsureJoinControlePlane(ctx context.Context, c *common.Cluste
 		// 	return errors.Wrapf(err, "node: %s JoinNodePhase", sh.HostIP())
 		// }
 
-		err = kubeadm.JoinControlPlane(sh, c)
+		err = kubeadm.JoinControlPlane(sh, ctx)
 		if err != nil {
 			return errors.Wrap(err, machine.IP)
 		}
@@ -381,7 +380,7 @@ func (p *Provider) EnsureJoinControlePlane(ctx context.Context, c *common.Cluste
 			continue
 		}
 
-		err = kubeadm.RebuildMasterManifestFile(sh, c, p.Cfg)
+		err = kubeadm.RebuildMasterManifestFile(sh, ctx, p.Cfg)
 		if err != nil {
 			return errors.Wrap(err, machine.IP)
 		}
@@ -390,14 +389,14 @@ func (p *Provider) EnsureJoinControlePlane(ctx context.Context, c *common.Cluste
 	return nil
 }
 
-func (p *Provider) EnsureComponent(ctx context.Context, c *common.Cluster) error {
-	for _, machine := range c.Spec.Machines {
+func (p *Provider) EnsureComponent(ctx *common.ClusterContext) error {
+	for _, machine := range ctx.Cluster.Spec.Machines {
 		machineSSH, err := machine.SSH()
 		if err != nil {
 			return err
 		}
 
-		err = component.Install(machineSSH, c)
+		err = component.Install(machineSSH, ctx)
 		if err != nil {
 			return errors.Wrap(err, machine.IP)
 		}
@@ -406,11 +405,11 @@ func (p *Provider) EnsureComponent(ctx context.Context, c *common.Cluster) error
 	return nil
 }
 
-func (p *Provider) EnsureSystem(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsureSystem(ctx *common.ClusterContext) error {
 	wg := sync.WaitGroup{}
 	quitErrors := make(chan error)
 	wgDone := make(chan struct{})
-	for _, mach := range c.Spec.Machines {
+	for _, mach := range ctx.Cluster.Spec.Machines {
 		sh, err := mach.SSH()
 		if err != nil {
 			return err
@@ -419,7 +418,7 @@ func (p *Provider) EnsureSystem(ctx context.Context, c *common.Cluster) error {
 		wg.Add(1)
 		go func(s ssh.Interface) {
 			defer wg.Done()
-			err = system.Install(s, c)
+			err = system.Install(s, ctx)
 			if err != nil {
 				quitErrors <- errors.Wrap(err, sh.HostIP())
 			}
@@ -441,21 +440,37 @@ func (p *Provider) EnsureSystem(ctx context.Context, c *common.Cluster) error {
 		return err
 	}
 
-	klog.Infof("clster: %s ensureSystem all host executed successfully", c.Cluster.Name)
+	klog.Infof("clster: %s ensureSystem all host executed successfully", ctx.Cluster.Name)
 	return nil
 }
 
-func (p *Provider) EnsureKubeadmInitWaitControlPlanePhase(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsureCRI(ctx *common.ClusterContext) error {
+	for _, machine := range ctx.Cluster.Spec.Machines {
+		machineSSH, err := machine.SSH()
+		if err != nil {
+			return err
+		}
+
+		err = component.InstallCRI(machineSSH, ctx)
+		if err != nil {
+			return errors.Wrap(err, machine.IP)
+		}
+	}
+
+	return nil
+}
+
+func (p *Provider) EnsureKubeadmInitWaitControlPlanePhase(ctx *common.ClusterContext) error {
 	start := time.Now()
 	return wait.PollImmediate(5*time.Second, 30*time.Second, func() (bool, error) {
 		healthStatus := 0
-		clientset, err := c.ClientsetForBootstrap()
+		clientset, err := ctx.ClientsetForBootstrap()
 		if err != nil {
 			log.Warn(err.Error())
 			return false, nil
 		}
 
-		res := clientset.Discovery().RESTClient().Get().AbsPath("/healthz").Do(ctx)
+		res := clientset.Discovery().RESTClient().Get().AbsPath("/healthz").Do(ctx.Ctx)
 		res.StatusCode(&healthStatus)
 		if healthStatus != http.StatusOK {
 			klog.Errorf("Discovery healthz err: %+v", res.Error())
@@ -467,19 +482,19 @@ func (p *Provider) EnsureKubeadmInitWaitControlPlanePhase(ctx context.Context, c
 	})
 }
 
-func (p *Provider) EnsureMarkControlPlane(ctx context.Context, c *common.Cluster) error {
-	clientset, err := c.ClientsetForBootstrap()
+func (p *Provider) EnsureMarkControlPlane(ctx *common.ClusterContext) error {
+	clientset, err := ctx.ClientsetForBootstrap()
 	if err != nil {
 		return err
 	}
 
-	for _, machine := range c.Spec.Machines {
+	for _, machine := range ctx.Cluster.Spec.Machines {
 		if machine.Labels == nil {
 			machine.Labels = make(map[string]string)
 		}
 
 		machine.Labels[constants.LabelNodeRoleMaster] = ""
-		if !c.Spec.Features.EnableMasterSchedule {
+		if !ctx.Cluster.Spec.Features.EnableMasterSchedule {
 			taint := corev1.Taint{
 				Key:    constants.LabelNodeRoleMaster,
 				Effect: corev1.TaintEffectNoSchedule,
@@ -488,7 +503,7 @@ func (p *Provider) EnsureMarkControlPlane(ctx context.Context, c *common.Cluster
 				machine.Taints = append(machine.Taints, taint)
 			}
 		}
-		err := apiclient.MarkNode(ctx, clientset, machine.IP, machine.Labels, machine.Taints)
+		err := apiclient.MarkNode(ctx.Ctx, clientset, machine.IP, machine.Labels, machine.Taints)
 		if err != nil {
 			return errors.Wrap(err, machine.IP)
 		}
@@ -497,16 +512,16 @@ func (p *Provider) EnsureMarkControlPlane(ctx context.Context, c *common.Cluster
 	return nil
 }
 
-func (p *Provider) EnsureRegistryHosts(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsureRegistryHosts(ctx *common.ClusterContext) error {
 	if !p.Cfg.NeedSetHosts() {
 		return nil
 	}
 
 	domains := []string{
 		p.Cfg.Registry.Domain,
-		c.Spec.TenantID + "." + p.Cfg.Registry.Domain,
+		ctx.Cluster.Spec.TenantID + "." + p.Cfg.Registry.Domain,
 	}
-	for _, machine := range c.Spec.Machines {
+	for _, machine := range ctx.Cluster.Spec.Machines {
 		machineSSH, err := machine.SSH()
 		if err != nil {
 			return err
@@ -524,18 +539,18 @@ func (p *Provider) EnsureRegistryHosts(ctx context.Context, c *common.Cluster) e
 	return nil
 }
 
-func (p *Provider) EnsurePreInstallHook(ctx context.Context, c *common.Cluster) error {
-	if c.Spec.Features.Hooks == nil {
+func (p *Provider) EnsurePreInstallHook(ctx *common.ClusterContext) error {
+	if ctx.Cluster.Spec.Features.Hooks == nil {
 		return nil
 	}
 
-	hook := c.Spec.Features.Hooks[devopsv1.HookPreInstall]
+	hook := ctx.Cluster.Spec.Features.Hooks[devopsv1.HookPreInstall]
 	if hook == "" {
 		return nil
 	}
 	cmd := strings.Split(hook, " ")[0]
 
-	for _, machine := range c.Spec.Machines {
+	for _, machine := range ctx.Cluster.Spec.Machines {
 		machineSSH, err := machine.SSH()
 		if err != nil {
 			return err
@@ -550,18 +565,18 @@ func (p *Provider) EnsurePreInstallHook(ctx context.Context, c *common.Cluster) 
 	return nil
 }
 
-func (p *Provider) EnsurePostInstallHook(ctx context.Context, c *common.Cluster) error {
-	if c.Spec.Features.Hooks == nil {
+func (p *Provider) EnsurePostInstallHook(ctx *common.ClusterContext) error {
+	if ctx.Cluster.Spec.Features.Hooks == nil {
 		return nil
 	}
 
-	hook := c.Spec.Features.Hooks[devopsv1.HookPostInstall]
+	hook := ctx.Cluster.Spec.Features.Hooks[devopsv1.HookPostInstall]
 	if hook == "" {
 		return nil
 	}
 	cmd := strings.Split(hook, " ")[0]
 
-	for _, machine := range c.Spec.Machines {
+	for _, machine := range ctx.Cluster.Spec.Machines {
 		machineSSH, err := machine.SSH()
 		if err != nil {
 			return err
@@ -576,15 +591,15 @@ func (p *Provider) EnsurePostInstallHook(ctx context.Context, c *common.Cluster)
 	return nil
 }
 
-func (p *Provider) EnsureRebuildEtcd(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsureRebuildEtcd(ctx *common.ClusterContext) error {
 	etcdPeerEndpoints := []string{}
 	etcdClusterEndpoints := []string{}
-	for _, machine := range c.Spec.Machines {
+	for _, machine := range ctx.Cluster.Spec.Machines {
 		etcdPeerEndpoints = append(etcdPeerEndpoints, fmt.Sprintf("%s=https://%s:2380", machine.IP, machine.IP))
 		etcdClusterEndpoints = append(etcdClusterEndpoints, fmt.Sprintf("https://%s:2379", machine.IP))
 	}
 
-	for _, machine := range c.Spec.Machines {
+	for _, machine := range ctx.Cluster.Spec.Machines {
 		sh, err := machine.SSH()
 		if err != nil {
 			return err
@@ -669,13 +684,13 @@ func (p *Provider) EnsureRebuildEtcd(ctx context.Context, c *common.Cluster) err
 	return nil
 }
 
-func (p *Provider) EnsureRebuildControlPlane(ctx context.Context, c *common.Cluster) error {
-	for _, machine := range c.Spec.Machines[1:] {
+func (p *Provider) EnsureRebuildControlPlane(ctx *common.ClusterContext) error {
+	for _, machine := range ctx.Cluster.Spec.Machines[1:] {
 		sh, err := machine.SSH()
 		if err != nil {
 			return err
 		}
-		err = kubemisc.CovertMasterKubeConfig(sh, c)
+		err = kubemisc.CovertMasterKubeConfig(sh, ctx)
 		if err != nil {
 			return err
 		}
@@ -701,20 +716,20 @@ func (p *Provider) EnsureRebuildControlPlane(ctx context.Context, c *common.Clus
 	return nil
 }
 
-func (p *Provider) EnsureExtKubeconfig(ctx context.Context, c *common.Cluster) error {
-	if c.ClusterCredential.ExtData == nil {
-		c.ClusterCredential.ExtData = make(map[string]string)
+func (p *Provider) EnsureExtKubeconfig(ctx *common.ClusterContext) error {
+	if ctx.Credential.ExtData == nil {
+		ctx.Credential.ExtData = make(map[string]string)
 	}
 
-	apiserver := certs.BuildExternalApiserverEndpoint(c)
+	apiserver := certs.BuildExternalApiserverEndpoint(ctx)
 	klog.Infof("external apiserver url: %s", apiserver)
-	cfgMaps, err := certs.CreateApiserverKubeConfigFile(c.ClusterCredential.CAKey, c.ClusterCredential.CACert,
-		apiserver, c.Cluster.Name)
+	cfgMaps, err := certs.CreateApiserverKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert,
+		apiserver, ctx.Cluster.Name)
 	if err != nil {
 		klog.Errorf("build apiserver kubeconfg err: %+v", err)
 		return err
 	}
-	klog.Infof("[%s/%s] start convert apiserver kubeconfig ...", c.Cluster.Namespace, c.Cluster.Name)
+	klog.Infof("[%s/%s] start convert apiserver kubeconfig ...", ctx.Cluster.Namespace, ctx.Cluster.Name)
 	for _, v := range cfgMaps {
 		by, err := certs.BuildKubeConfigByte(v)
 		if err != nil {
@@ -722,24 +737,24 @@ func (p *Provider) EnsureExtKubeconfig(ctx context.Context, c *common.Cluster) e
 		}
 
 		externalKubeconfig := string(by)
-		klog.Infof("cluster: %s externalKubeconfig: \n%s", c.Cluster.Name, externalKubeconfig)
-		c.ClusterCredential.ExtData[pkiutil.ExternalAdminKubeConfigFileName] = externalKubeconfig
+		klog.Infof("cluster: %s externalKubeconfig: \n%s", ctx.Cluster.Name, externalKubeconfig)
+		ctx.Credential.ExtData[pkiutil.ExternalAdminKubeConfigFileName] = externalKubeconfig
 	}
 
 	return nil
 }
 
-func (p *Provider) EnsureMetricsServer(ctx context.Context, c *common.Cluster) error {
-	clusterCtx, err := c.ClusterManager.Get(c.Name)
+func (p *Provider) EnsureMetricsServer(ctx *common.ClusterContext) error {
+	clusterCtx, err := ctx.ClusterManager.Get(ctx.Cluster.Name)
 	if err != nil {
 		return nil
 	}
-	objs, err := metricsserver.BuildMetricsServerAddon(c)
+	objs, err := metricsserver.BuildMetricsServerAddon(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "build metrics-server err: %v", err)
 	}
 
-	logger := ctrl.Log.WithValues("cluster", c.Name, "component", "metrics-server")
+	logger := ctx.WithValues("component", "metrics-server")
 	logger.Info("start reconcile ...")
 	for _, obj := range objs {
 		err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStatePresent)
@@ -751,11 +766,11 @@ func (p *Provider) EnsureMetricsServer(ctx context.Context, c *common.Cluster) e
 	return nil
 }
 
-func (p *Provider) EnsureEth(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsureEth(ctx *common.ClusterContext) error {
 	var cniType string
 	var ok bool
 
-	if cniType, ok = c.Cluster.Spec.Features.Hooks[devopsv1.HookCniInstall]; !ok {
+	if cniType, ok = ctx.Cluster.Spec.Features.Hooks[devopsv1.HookCniInstall]; !ok {
 		return nil
 	}
 
@@ -763,13 +778,13 @@ func (p *Provider) EnsureEth(ctx context.Context, c *common.Cluster) error {
 		return nil
 	}
 
-	for _, machine := range c.Spec.Machines {
+	for _, machine := range ctx.Cluster.Spec.Machines {
 		sh, err := machine.SSH()
 		if err != nil {
 			return err
 		}
 
-		err = cni.ApplyEth(sh, c)
+		err = cni.ApplyEth(sh, ctx)
 		if err != nil {
 			klog.Errorf("node: %s apply eth err: %v", sh.HostIP(), err)
 			return err
@@ -779,39 +794,39 @@ func (p *Provider) EnsureEth(ctx context.Context, c *common.Cluster) error {
 	return nil
 }
 
-func (p *Provider) EnsureDeployCni(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsureDeployCni(ctx *common.ClusterContext) error {
 	var cniType string
 	var ok bool
 
-	if cniType, ok = c.Cluster.Spec.Features.Hooks[devopsv1.HookCniInstall]; !ok {
+	if cniType, ok = ctx.Cluster.Spec.Features.Hooks[devopsv1.HookCniInstall]; !ok {
 		return nil
 	}
 
 	switch cniType {
 	case "dke-cni":
-		for _, machine := range c.Spec.Machines {
+		for _, machine := range ctx.Cluster.Spec.Machines {
 			sh, err := machine.SSH()
 			if err != nil {
 				return err
 			}
 
-			err = cni.ApplyCniCfg(sh, c)
+			err = cni.ApplyCniCfg(sh, ctx)
 			if err != nil {
 				klog.Errorf("node: %s apply cni cfg err: %v", sh.HostIP(), err)
 				return err
 			}
 		}
 	case "flannel":
-		clusterCtx, err := c.ClusterManager.Get(c.Name)
+		clusterCtx, err := ctx.ClusterManager.Get(ctx.Cluster.Name)
 		if err != nil {
 			return nil
 		}
-		objs, err := flannel.BuildFlannelAddon(p.Cfg, c)
+		objs, err := flannel.BuildFlannelAddon(p.Cfg, ctx)
 		if err != nil {
 			return errors.Wrapf(err, "build flannel err: %v", err)
 		}
 
-		logger := ctrl.Log.WithValues("cluster", c.Name, "component", "flannel")
+		logger := ctx.WithValues("component", "flannel")
 		logger.Info("start reconcile ...")
 		for _, obj := range objs {
 			err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStatePresent)
@@ -826,19 +841,19 @@ func (p *Provider) EnsureDeployCni(ctx context.Context, c *common.Cluster) error
 	return nil
 }
 
-func (p *Provider) EnsureMasterNode(ctx context.Context, c *common.Cluster) error {
-	clusterCtx, err := c.ClusterManager.Get(c.Name)
+func (p *Provider) EnsureMasterNode(ctx *common.ClusterContext) error {
+	clusterCtx, err := ctx.ClusterManager.Get(ctx.Cluster.Name)
 	if err != nil {
 		return nil
 	}
 
 	node := &corev1.Node{}
 	var noReadNode *devopsv1.ClusterMachine
-	for _, machine := range c.Spec.Machines {
-		err := clusterCtx.Client.Get(ctx, types.NamespacedName{Name: machine.IP}, node)
+	for _, machine := range ctx.Cluster.Spec.Machines {
+		err := clusterCtx.Client.Get(ctx.Ctx, types.NamespacedName{Name: machine.IP}, node)
 		if err != nil {
-			klog.Warningf("failed get cluster: %s node: %s", c.Cluster.Name, machine.IP)
-			return errors.Wrapf(err, "failed get cluster: %s node: %s", c.Cluster.Name, machine.IP)
+			klog.Warningf("failed get cluster: %s node: %s", ctx.Cluster.Name, machine.IP)
+			return errors.Wrapf(err, "failed get cluster: %s node: %s", ctx.Cluster.Name, machine.IP)
 		}
 
 		isNoReady := false
@@ -869,14 +884,14 @@ func (p *Provider) EnsureMasterNode(ctx context.Context, c *common.Cluster) erro
 		return err
 	}
 
-	for _, file := range c.Spec.Features.Files {
+	for _, file := range ctx.Cluster.Spec.Features.Files {
 		err = system.CopyFile(sh, &file)
 		if err != nil {
 			return err
 		}
 	}
 
-	phases := []func(s ssh.Interface, c *common.Cluster) error{
+	phases := []func(s ssh.Interface, ctx *common.ClusterContext) error{
 		system.Install,
 		component.Install,
 		preflight.RunMasterChecks,
@@ -885,7 +900,7 @@ func (p *Provider) EnsureMasterNode(ctx context.Context, c *common.Cluster) erro
 	}
 
 	for _, phase := range phases {
-		err = phase(sh, c)
+		err = phase(sh, ctx)
 		if err != nil {
 			return err
 		}

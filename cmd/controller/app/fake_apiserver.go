@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"context"
+
 	"github.com/spf13/cobra"
 	"github.com/wtxue/kok-operator/cmd/controller/app/app_option"
 	"github.com/wtxue/kok-operator/pkg/apiserver"
@@ -67,10 +69,10 @@ func CreateKubeConfigFile(outDir string, kubeConfigFileName string, cfg *rest.Co
 	return nil
 }
 
-func tryRun(opt *option.ApiServerOption, stopCh <-chan struct{}) error {
+func tryRun(opt *option.ApiServerOption, ctx context.Context) error {
 	if opt.IsLocalKube {
 		svc := apiserver.New(opt)
-		cfg, err := svc.Start(stopCh)
+		cfg, err := svc.Start(ctx.Done())
 		if err != nil {
 			return err
 		}
@@ -92,14 +94,14 @@ func NewFakeApiserverCmd(opt *app_option.Options) *cobra.Command {
 		Use:   "fake",
 		Short: "Manage with a fake apiserver",
 		Run: func(cmd *cobra.Command, args []string) {
-			stopCh := signals.SetupSignalHandler()
-			err := tryRun(apiServerOpt, stopCh)
+			ctx := signals.SetupSignalHandler()
+			err := tryRun(apiServerOpt, ctx)
 			if err != nil {
 				klog.Errorf("err: %+v", err)
 				return
 			}
 
-			<-stopCh
+			<-ctx.Done()
 			klog.Infof("stop fake api server")
 		},
 	}

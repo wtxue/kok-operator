@@ -84,7 +84,7 @@ func ComponentTolerations() []corev1.Toleration {
 	}
 }
 
-func ComponentEnv(config *Cluster) []corev1.EnvVar {
+func ComponentEnv(ctx *ClusterContext) []corev1.EnvVar {
 	envs := []corev1.EnvVar{
 		{
 			Name: "POD_NAME",

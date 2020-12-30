@@ -35,7 +35,7 @@ const (
 	reasonFailedUpdate = "FailedUpdate"
 )
 
-func (r *clusterReconciler) applyStatus(ctx *clusterContext, cluster *common.Cluster) error {
+func (r *clusterReconciler) applyStatus(ctx *common.ClusterContext) error {
 	credential := &devopsv1.ClusterCredential{}
 	err := r.Client.Get(ctx.Ctx, ctx.Key, credential)
 	if err != nil {
@@ -48,15 +48,15 @@ func (r *clusterReconciler) applyStatus(ctx *clusterContext, cluster *common.Clu
 		return err
 	}
 
-	if !equality.Semantic.DeepEqual(credential.CredentialInfo, cluster.ClusterCredential.CredentialInfo) {
+	if !equality.Semantic.DeepEqual(credential.CredentialInfo, ctx.Credential.CredentialInfo) {
 		metaAccessor := meta.NewAccessor()
 		currentResourceVersion, err := metaAccessor.ResourceVersion(credential)
 		if err != nil {
 			ctx.Error(err, "failed to metaAccessor")
 			return err
 		}
-		metaAccessor.SetResourceVersion(cluster.ClusterCredential, currentResourceVersion)
-		err = r.Client.Update(ctx.Ctx, cluster.ClusterCredential)
+		metaAccessor.SetResourceVersion(ctx.Credential, currentResourceVersion)
+		err = r.Client.Update(ctx.Ctx, ctx.Credential)
 		if err != nil {
 			ctx.Error(err, "failed to update cluster credential")
 			return err
@@ -76,7 +76,7 @@ func (r *clusterReconciler) applyStatus(ctx *clusterContext, cluster *common.Clu
 		return err
 	}
 
-	if !equality.Semantic.DeepEqual(c.Status, cluster.Cluster.Status) {
+	if !equality.Semantic.DeepEqual(c.Status, ctx.Cluster.Status) {
 		metaAccessor := meta.NewAccessor()
 		currentResourceVersion, err := metaAccessor.ResourceVersion(c)
 		if err != nil {
@@ -84,8 +84,8 @@ func (r *clusterReconciler) applyStatus(ctx *clusterContext, cluster *common.Clu
 			return err
 		}
 
-		metaAccessor.SetResourceVersion(cluster.Cluster, currentResourceVersion)
-		err = r.Client.Status().Update(ctx.Ctx, cluster.Cluster)
+		metaAccessor.SetResourceVersion(ctx.Cluster, currentResourceVersion)
+		err = r.Client.Status().Update(ctx.Ctx, ctx.Cluster)
 		if err != nil {
 			ctx.Error(err, "failed to update cluster status")
 			return err
@@ -97,33 +97,33 @@ func (r *clusterReconciler) applyStatus(ctx *clusterContext, cluster *common.Clu
 	return nil
 }
 
-func (r *clusterReconciler) onCreate(ctx *clusterContext, p cluster.Provider, clusterWrapper *common.Cluster) error {
-	err := p.OnCreate(ctx.Ctx, clusterWrapper)
+func (r *clusterReconciler) onCreate(ctx *common.ClusterContext, p cluster.Provider) error {
+	err := p.OnCreate(ctx)
 	if err != nil {
-		clusterWrapper.Cluster.Status.Message = err.Error()
-		clusterWrapper.Cluster.Status.Reason = reasonFailedInit
+		ctx.Cluster.Status.Message = err.Error()
+		ctx.Cluster.Status.Reason = reasonFailedInit
 	} else {
-		condition := clusterWrapper.Cluster.Status.Conditions[len(clusterWrapper.Cluster.Status.Conditions)-1]
+		condition := ctx.Cluster.Status.Conditions[len(ctx.Cluster.Status.Conditions)-1]
 		if condition.Status == devopsv1.ConditionFalse { // means current condition run into error
-			clusterWrapper.Cluster.Status.Message = condition.Message
-			clusterWrapper.Cluster.Status.Reason = condition.Reason
+			ctx.Cluster.Status.Message = condition.Message
+			ctx.Cluster.Status.Reason = condition.Reason
 		} else {
-			clusterWrapper.Cluster.Status.Message = ""
-			clusterWrapper.Cluster.Status.Reason = ""
+			ctx.Cluster.Status.Message = ""
+			ctx.Cluster.Status.Reason = ""
 		}
 	}
 
 	return nil
 }
 
-func (r *clusterReconciler) onUpdate(ctx *clusterContext, p cluster.Provider, clusterWrapper *common.Cluster) error {
-	err := p.OnUpdate(ctx.Ctx, clusterWrapper)
+func (r *clusterReconciler) onUpdate(ctx *common.ClusterContext, p cluster.Provider) error {
+	err := p.OnUpdate(ctx)
 	if err != nil {
-		clusterWrapper.Cluster.Status.Message = err.Error()
-		clusterWrapper.Cluster.Status.Reason = reasonFailedUpdate
+		ctx.Cluster.Status.Message = err.Error()
+		ctx.Cluster.Status.Reason = reasonFailedUpdate
 	} else {
-		clusterWrapper.Cluster.Status.Message = ""
-		clusterWrapper.Cluster.Status.Reason = ""
+		ctx.Cluster.Status.Message = ""
+		ctx.Cluster.Status.Reason = ""
 	}
 
 	return nil

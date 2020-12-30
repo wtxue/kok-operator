@@ -1,8 +1,6 @@
 package cluster
 
 import (
-	"context"
-
 	"fmt"
 	"net/http"
 
@@ -24,10 +22,9 @@ import (
 	"github.com/wtxue/kok-operator/pkg/provider/phases/kubeadm"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/kubemisc"
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
-	"k8s.io/apimachinery/pkg/runtime"
 	bootstraputil "k8s.io/cluster-bootstrap/token/util"
 	"k8s.io/klog"
-	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -41,79 +38,79 @@ rules:
 `
 )
 
-func completeK8sVersion(cluster *common.Cluster) error {
-	cluster.Cluster.Status.Version = cluster.Spec.Version
+func completeK8sVersion(ctx *common.ClusterContext) error {
+	ctx.Cluster.Status.Version = ctx.Cluster.Spec.Version
 	return nil
 }
 
-func completeNetworking(cluster *common.Cluster) error {
+func completeNetworking(ctx *common.ClusterContext) error {
 	var (
 		serviceCIDR      string
 		nodeCIDRMaskSize int32
 		err              error
 	)
 
-	if cluster.Spec.ServiceCIDR != nil {
-		serviceCIDR = *cluster.Spec.ServiceCIDR
-		nodeCIDRMaskSize, err = k8sutil.GetNodeCIDRMaskSize(cluster.Spec.ClusterCIDR, *cluster.Spec.Properties.MaxNodePodNum)
+	if ctx.Cluster.Spec.ServiceCIDR != nil {
+		serviceCIDR = *ctx.Cluster.Spec.ServiceCIDR
+		nodeCIDRMaskSize, err = k8sutil.GetNodeCIDRMaskSize(ctx.Cluster.Spec.ClusterCIDR, *ctx.Cluster.Spec.Properties.MaxNodePodNum)
 		if err != nil {
 			return errors.Wrap(err, "GetNodeCIDRMaskSize error")
 		}
 	} else {
-		serviceCIDR, nodeCIDRMaskSize, err = k8sutil.GetServiceCIDRAndNodeCIDRMaskSize(cluster.Spec.ClusterCIDR, *cluster.Spec.Properties.MaxClusterServiceNum, *cluster.Spec.Properties.MaxNodePodNum)
+		serviceCIDR, nodeCIDRMaskSize, err = k8sutil.GetServiceCIDRAndNodeCIDRMaskSize(ctx.Cluster.Spec.ClusterCIDR, *ctx.Cluster.Spec.Properties.MaxClusterServiceNum, *ctx.Cluster.Spec.Properties.MaxNodePodNum)
 		if err != nil {
 			return errors.Wrap(err, "GetServiceCIDRAndNodeCIDRMaskSize error")
 		}
 	}
-	cluster.Cluster.Status.ServiceCIDR = serviceCIDR
-	cluster.Cluster.Status.NodeCIDRMaskSize = nodeCIDRMaskSize
+	ctx.Cluster.Status.ServiceCIDR = serviceCIDR
+	ctx.Cluster.Status.NodeCIDRMaskSize = nodeCIDRMaskSize
 
 	return nil
 }
 
-func completeDNS(cluster *common.Cluster) error {
-	ip, err := k8sutil.GetIndexedIP(cluster.Cluster.Status.ServiceCIDR, constants.DNSIPIndex)
+func completeDNS(ctx *common.ClusterContext) error {
+	ip, err := k8sutil.GetIndexedIP(ctx.Cluster.Status.ServiceCIDR, constants.DNSIPIndex)
 	if err != nil {
 		return errors.Wrap(err, "get DNS IP error")
 	}
-	cluster.Cluster.Status.DNSIP = ip.String()
+	ctx.Cluster.Status.DNSIP = ip.String()
 
 	return nil
 }
 
-func completeAddresses(cluster *common.Cluster) error {
-	for _, m := range cluster.Spec.Machines {
-		cluster.AddAddress(devopsv1.AddressReal, m.IP, 6443)
+func completeAddresses(ctx *common.ClusterContext) error {
+	for _, m := range ctx.Cluster.Spec.Machines {
+		ctx.Cluster.AddAddress(devopsv1.AddressReal, m.IP, 6443)
 	}
 
-	if cluster.Spec.Features.HA != nil {
-		if cluster.Spec.Features.HA.DKEHA != nil {
-			cluster.AddAddress(devopsv1.AddressAdvertise, cluster.Spec.Features.HA.DKEHA.VIP, 6443)
+	if ctx.Cluster.Spec.Features.HA != nil {
+		if ctx.Cluster.Spec.Features.HA.DKEHA != nil {
+			ctx.Cluster.AddAddress(devopsv1.AddressAdvertise, ctx.Cluster.Spec.Features.HA.DKEHA.VIP, 6443)
 		}
-		if cluster.Spec.Features.HA.ThirdPartyHA != nil {
-			cluster.AddAddress(devopsv1.AddressAdvertise, cluster.Spec.Features.HA.ThirdPartyHA.VIP, cluster.Spec.Features.HA.ThirdPartyHA.VPort)
+		if ctx.Cluster.Spec.Features.HA.ThirdPartyHA != nil {
+			ctx.Cluster.AddAddress(devopsv1.AddressAdvertise, ctx.Cluster.Spec.Features.HA.ThirdPartyHA.VIP, ctx.Cluster.Spec.Features.HA.ThirdPartyHA.VPort)
 		}
 	}
 
 	return nil
 }
 
-func completeCredential(cluster *common.Cluster) error {
+func completeCredential(ctx *common.ClusterContext) error {
 	token := ksuid.New().String()
-	cluster.ClusterCredential.Token = &token
+	ctx.Credential.Token = &token
 
 	bootstrapToken, err := bootstraputil.GenerateBootstrapToken()
 	if err != nil {
 		return err
 	}
-	cluster.ClusterCredential.BootstrapToken = &bootstrapToken
+	ctx.Credential.BootstrapToken = &bootstrapToken
 
 	certBytes := make([]byte, 32)
 	if _, err := rand.Read(certBytes); err != nil {
 		return err
 	}
 	certificateKey := hex.EncodeToString(certBytes)
-	cluster.ClusterCredential.CertificateKey = &certificateKey
+	ctx.Credential.CertificateKey = &certificateKey
 
 	return nil
 }
@@ -122,20 +119,20 @@ func (p *Provider) ping(resp http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(resp, "pong")
 }
 
-func (p *Provider) EnsureCopyFiles(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsureCopyFiles(ctctx *common.ClusterContext) error {
 	return nil
 }
 
-func (p *Provider) EnsurePreInstallHook(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsurePreInstallHook(ctx *common.ClusterContext) error {
 	return nil
 }
 
-func (p *Provider) EnsurePostInstallHook(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsurePostInstallHook(ctx *common.ClusterContext) error {
 	return nil
 }
 
-func (p *Provider) EnsureClusterComplete(ctx context.Context, cluster *common.Cluster) error {
-	funcs := []func(cluster *common.Cluster) error{
+func (p *Provider) EnsureClusterComplete(ctx *common.ClusterContext) error {
+	funcs := []func(ctx *common.ClusterContext) error{
 		completeK8sVersion,
 		completeNetworking,
 		completeDNS,
@@ -143,53 +140,53 @@ func (p *Provider) EnsureClusterComplete(ctx context.Context, cluster *common.Cl
 		completeCredential,
 	}
 	for _, f := range funcs {
-		if err := f(cluster); err != nil {
+		if err := f(ctx); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (p *Provider) EnsureCerts(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsureCerts(ctx *common.ClusterContext) error {
 	apiserver := certs.BuildApiserverEndpoint(constants.KubeApiServer, 6443)
-	err := kubeadm.InitCerts(kubeadm.GetKubeadmConfig(c, p.Cfg, apiserver), c, true)
+	err := kubeadm.InitCerts(kubeadm.GetKubeadmConfig(ctx, p.Cfg, apiserver), ctx, true)
 	if err != nil {
 		return err
 	}
 
-	return ApplyCertsConfigmap(c.Client, c, c.ClusterCredential.CertsBinaryData)
+	return ApplyCertsConfigmap(ctx, ctx.Credential.CertsBinaryData)
 }
 
-func (p *Provider) EnsureKubeMisc(ctx context.Context, c *common.Cluster) error {
-	apiserver := certs.BuildApiserverEndpoint(constants.KubeApiServer, kubemisc.GetBindPort(c.Cluster))
-	err := kubemisc.BuildMasterMiscConfigToMap(c, apiserver)
+func (p *Provider) EnsureKubeMisc(ctx *common.ClusterContext) error {
+	apiserver := certs.BuildApiserverEndpoint(constants.KubeApiServer, kubemisc.GetBindPort(ctx.Cluster))
+	err := kubemisc.BuildMasterMiscConfigToMap(ctx, apiserver)
 	if err != nil {
 		return err
 	}
 
-	return ApplyKubeMiscConfigmap(c.Client, c, c.ClusterCredential.KubeData)
+	return ApplyKubeMiscConfigmap(ctx, ctx.Credential.KubeData)
 }
 
-func (p *Provider) EnsureEtcd(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsureEtcd(ctx *common.ClusterContext) error {
 	return nil
 }
 
-func (p *Provider) EnsureKubeMaster(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsureKubeMaster(ctx *common.ClusterContext) error {
 	r := &Reconciler{
-		Obj:      c,
+		Ctx:      ctx,
 		Provider: p,
 	}
 
-	var fs []func() runtime.Object
+	var fs []func() client.Object
 	fs = append(fs, r.apiServerDeployment)
 	fs = append(fs, r.apiServerSvc)
 	fs = append(fs, r.controllerManagerDeployment)
 	fs = append(fs, r.schedulerDeployment)
 
-	logger := ctrl.Log.WithValues("cluster", c.Name)
+	logger := ctx.WithValues("cluster", ctx.Cluster.Name)
 	for _, f := range fs {
 		obj := f()
-		err := k8sutil.Reconcile(logger, c.Client, obj, k8sutil.DesiredStatePresent)
+		err := k8sutil.Reconcile(logger, ctx.Client, obj, k8sutil.DesiredStatePresent)
 		if err != nil {
 			return errors.Wrapf(err, "apply object err: %v", err)
 		}
@@ -198,42 +195,42 @@ func (p *Provider) EnsureKubeMaster(ctx context.Context, c *common.Cluster) erro
 	return nil
 }
 
-func (p *Provider) EnsureExtKubeconfig(ctx context.Context, c *common.Cluster) error {
-	if c.ClusterCredential.ExtData == nil {
-		c.ClusterCredential.ExtData = make(map[string]string)
+func (p *Provider) EnsureExtKubeconfig(ctx *common.ClusterContext) error {
+	if ctx.Credential.ExtData == nil {
+		ctx.Credential.ExtData = make(map[string]string)
 	}
 
-	apiserver := certs.BuildApiserverEndpoint(c.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(c.Cluster))
+	apiserver := certs.BuildApiserverEndpoint(ctx.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(ctx.Cluster))
 	klog.Infof("external apiserver url: %s", apiserver)
-	cfgMaps, err := certs.CreateApiserverKubeConfigFile(c.ClusterCredential.CAKey, c.ClusterCredential.CACert,
-		apiserver, c.Cluster.Name)
+	cfgMaps, err := certs.CreateApiserverKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert,
+		apiserver, ctx.Cluster.Name)
 	if err != nil {
 		klog.Errorf("create kubeconfg err: %+v", err)
 		return err
 	}
-	klog.Infof("[%s/%s] start build kubeconfig ...", c.Cluster.Namespace, c.Cluster.Name)
+	klog.Infof("[%s/%s] start build kubeconfig ...", ctx.Cluster.Namespace, ctx.Cluster.Name)
 	for _, v := range cfgMaps {
 		by, err := certs.BuildKubeConfigByte(v)
 		if err != nil {
 			return err
 		}
-		c.ClusterCredential.ExtData[pkiutil.ExternalAdminKubeConfigFileName] = string(by)
+		ctx.Credential.ExtData[pkiutil.ExternalAdminKubeConfigFileName] = string(by)
 	}
 
 	return nil
 }
 
-func (p *Provider) EnsureAddons(ctx context.Context, c *common.Cluster) error {
-	clusterCtx, err := c.ClusterManager.Get(c.Name)
+func (p *Provider) EnsureAddons(ctx *common.ClusterContext) error {
+	clusterCtx, err := ctx.ClusterManager.Get(ctx.Cluster.Name)
 	if err != nil {
 		return nil
 	}
-	kubeproxyObjs, err := kubeproxy.BuildKubeproxyAddon(p.Cfg, c)
+	kubeproxyObjs, err := kubeproxy.BuildKubeproxyAddon(p.Cfg, ctx)
 	if err != nil {
 		return errors.Wrapf(err, "build kube-proxy err: %+v", err)
 	}
 
-	logger := ctrl.Log.WithValues("cluster", c.Name)
+	logger := ctx.WithValues("cluster", ctx.Cluster.Name)
 	logger.Info("start apply kube-proxy")
 	for _, obj := range kubeproxyObjs {
 		err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStatePresent)
@@ -243,7 +240,7 @@ func (p *Provider) EnsureAddons(ctx context.Context, c *common.Cluster) error {
 	}
 
 	logger.Info("start apply coredns")
-	corednsObjs, err := coredns.BuildCoreDNSAddon(p.Cfg, c)
+	corednsObjs, err := coredns.BuildCoreDNSAddon(p.Cfg, ctx)
 	if err != nil {
 		return errors.Wrapf(err, "build coredns err: %+v", err)
 	}
@@ -256,39 +253,39 @@ func (p *Provider) EnsureAddons(ctx context.Context, c *common.Cluster) error {
 	return nil
 }
 
-func (p *Provider) EnsureCni(ctx context.Context, c *common.Cluster) error {
+func (p *Provider) EnsureCni(ctx *common.ClusterContext) error {
 	var cniType string
 	var ok bool
 
-	if cniType, ok = c.Cluster.Spec.Features.Hooks[devopsv1.HookCniInstall]; !ok {
+	if cniType, ok = ctx.Cluster.Spec.Features.Hooks[devopsv1.HookCniInstall]; !ok {
 		return nil
 	}
 
 	switch cniType {
 	case "dke-cni":
-		for _, machine := range c.Spec.Machines {
+		for _, machine := range ctx.Cluster.Spec.Machines {
 			sh, err := machine.SSH()
 			if err != nil {
 				return err
 			}
 
-			err = cni.ApplyCniCfg(sh, c)
+			err = cni.ApplyCniCfg(sh, ctx)
 			if err != nil {
 				klog.Errorf("node: %s apply cni cfg err: %v", sh.HostIP(), err)
 				return err
 			}
 		}
 	case "flannel":
-		clusterCtx, err := c.ClusterManager.Get(c.Name)
+		clusterCtx, err := ctx.ClusterManager.Get(ctx.Cluster.Name)
 		if err != nil {
 			return nil
 		}
-		objs, err := flannel.BuildFlannelAddon(p.Cfg, c)
+		objs, err := flannel.BuildFlannelAddon(p.Cfg, ctx)
 		if err != nil {
 			return errors.Wrapf(err, "build flannel err: %v", err)
 		}
 
-		logger := ctrl.Log.WithValues("cluster", c.Name, "component", "flannel")
+		logger := ctx.WithValues("component", "flannel")
 		logger.Info("start reconcile ...")
 		for _, obj := range objs {
 			err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStatePresent)
@@ -303,17 +300,17 @@ func (p *Provider) EnsureCni(ctx context.Context, c *common.Cluster) error {
 	return nil
 }
 
-func (p *Provider) EnsureMetricsServer(ctx context.Context, c *common.Cluster) error {
-	clusterCtx, err := c.ClusterManager.Get(c.Name)
+func (p *Provider) EnsureMetricsServer(ctx *common.ClusterContext) error {
+	clusterCtx, err := ctx.ClusterManager.Get(ctx.Cluster.Name)
 	if err != nil {
 		return nil
 	}
-	objs, err := metricsserver.BuildMetricsServerAddon(c)
+	objs, err := metricsserver.BuildMetricsServerAddon(ctx)
 	if err != nil {
 		return errors.Wrapf(err, "build metrics-server err: %v", err)
 	}
 
-	logger := ctrl.Log.WithValues("cluster", c.Name, "component", "metrics-server")
+	logger := ctx.WithValues("component", "metrics-server")
 	logger.Info("start reconcile ...")
 	for _, obj := range objs {
 		err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStateAbsent)

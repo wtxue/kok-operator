@@ -1,10 +1,6 @@
-FROM centos:7.8.2003
+FROM centos:8.3.2011
 
 RUN yum update -y && yum install -y --nogpgcheck \
-    deltarpm  \
-    device-mapper \
-    bind-utils  \
-    bridge-utils \
     iptables \
     lsof \
     curl \
@@ -12,11 +8,8 @@ RUN yum update -y && yum install -y --nogpgcheck \
     tree \
     tcpdump \
     ipvsadm \
-    vim \
-    netstat \
     ipset \
     telnet \
-    iproute \
     strace \
     file \
     sysstat \

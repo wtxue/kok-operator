@@ -214,23 +214,23 @@ func CreateKubeConfigFiles(CAKey, CACert []byte, apiserver string, kubeletNodeAd
 	return cfgMaps, nil
 }
 
-func BuildExternalApiserverEndpoint(c *common.Cluster) string {
+func BuildExternalApiserverEndpoint(ctx *common.ClusterContext) string {
 	var vip string
 	port := "6443"
-	vipMasterKey := constants.GetAnnotationKey(c.Cluster.Annotations, constants.ClusterApiSvcVip)
+	vipMasterKey := constants.GetAnnotationKey(ctx.Cluster.Annotations, constants.ClusterApiSvcVip)
 	if vipMasterKey != "" {
 		vip = vipMasterKey
 	}
 
-	if c.Cluster.Spec.Features.HA != nil && c.Cluster.Spec.Features.HA.ThirdPartyHA != nil {
-		port = fmt.Sprintf("%d", c.Cluster.Spec.Features.HA.ThirdPartyHA.VPort)
+	if ctx.Cluster.Spec.Features.HA != nil && ctx.Cluster.Spec.Features.HA.ThirdPartyHA != nil {
+		port = fmt.Sprintf("%d", ctx.Cluster.Spec.Features.HA.ThirdPartyHA.VPort)
 		if vip == "" {
-			vip = c.Cluster.Spec.Features.HA.ThirdPartyHA.VIP
+			vip = ctx.Cluster.Spec.Features.HA.ThirdPartyHA.VIP
 		}
 	}
 
-	if vip == "" && len(c.Cluster.Spec.Machines) > 0 {
-		vip = c.Cluster.Spec.Machines[0].IP
+	if vip == "" && len(ctx.Cluster.Spec.Machines) > 0 {
+		vip = ctx.Cluster.Spec.Machines[0].IP
 	}
 
 	controlPlaneURL := &url.URL{

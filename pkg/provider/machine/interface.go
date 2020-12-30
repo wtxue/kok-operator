@@ -1,7 +1,6 @@
 package machine
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"reflect"
@@ -37,14 +36,14 @@ type Provider interface {
 	PreCreate(machine *devopsv1.Machine) error
 	AfterCreate(machine *devopsv1.Machine) error
 
-	OnCreate(ctx context.Context, machine *devopsv1.Machine, cluster *common.Cluster) error
-	OnUpdate(ctx context.Context, machine *devopsv1.Machine, cluster *common.Cluster) error
-	OnDelete(ctx context.Context, machine *devopsv1.Machine, cluster *common.Cluster) error
+	OnCreate(ctx *common.ClusterContext, machine *devopsv1.Machine) error
+	OnUpdate(ctx *common.ClusterContext, machine *devopsv1.Machine) error
+	OnDelete(ctx *common.ClusterContext, machine *devopsv1.Machine) error
 }
 
 var _ Provider = &DelegateProvider{}
 
-type Handler func(context.Context, *devopsv1.Machine, *common.Cluster) error
+type Handler func(*common.ClusterContext, *devopsv1.Machine) error
 
 type DelegateProvider struct {
 	ProviderName string
@@ -98,15 +97,15 @@ func (p *DelegateProvider) AfterCreate(machine *devopsv1.Machine) error {
 	return nil
 }
 
-func (p *DelegateProvider) OnCreate(ctx context.Context, machine *devopsv1.Machine, cluster *common.Cluster) error {
+func (p *DelegateProvider) OnCreate(ctx *common.ClusterContext, machine *devopsv1.Machine) error {
 	condition, err := p.getCreateCurrentCondition(machine)
 	if err != nil {
 		return err
 	}
 
 	now := metav1.Now()
-	if cluster.Spec.Features.SkipConditions != nil &&
-		funk.ContainsString(cluster.Spec.Features.SkipConditions, condition.Type) {
+	if ctx.Cluster.Spec.Features.SkipConditions != nil &&
+		funk.ContainsString(ctx.Cluster.Spec.Features.SkipConditions, condition.Type) {
 		machine.SetCondition(devopsv1.MachineCondition{
 			Type:               condition.Type,
 			Status:             devopsv1.ConditionTrue,
@@ -122,9 +121,9 @@ func (p *DelegateProvider) OnCreate(ctx context.Context, machine *devopsv1.Machi
 		}
 		handlerName := f.Name()
 		klog.Infof("machineName: %s OnCreate handler: %s", machine.Name, handlerName)
-		err = f(ctx, machine, cluster)
+		err = f(ctx, machine)
 		if err != nil {
-			klog.Errorf("cluster: %s OnCreate handler: %s err: %+v", cluster.Name, handlerName, err)
+			klog.Errorf("cluster: %s OnCreate handler: %s err: %+v", ctx.Cluster.Name, handlerName, err)
 			machine.SetCondition(devopsv1.MachineCondition{
 				Type:          condition.Type,
 				Status:        devopsv1.ConditionFalse,
@@ -160,10 +159,10 @@ func (p *DelegateProvider) OnCreate(ctx context.Context, machine *devopsv1.Machi
 	return nil
 }
 
-func (p *DelegateProvider) OnUpdate(ctx context.Context, machine *devopsv1.Machine, cluster *common.Cluster) error {
+func (p *DelegateProvider) OnUpdate(ctx *common.ClusterContext, machine *devopsv1.Machine) error {
 	for _, f := range p.UpdateHandlers {
 		klog.Infof("machineName: %s OnUpdate handler: %s", machine.Name, f.Name())
-		err := f(ctx, machine, cluster)
+		err := f(ctx, machine)
 		if err != nil {
 			return err
 		}
@@ -174,10 +173,10 @@ func (p *DelegateProvider) OnUpdate(ctx context.Context, machine *devopsv1.Machi
 	return nil
 }
 
-func (p *DelegateProvider) OnDelete(ctx context.Context, machine *devopsv1.Machine, cluster *common.Cluster) error {
+func (p *DelegateProvider) OnDelete(ctx *common.ClusterContext, machine *devopsv1.Machine) error {
 	for _, f := range p.DeleteHandlers {
 		klog.Infof("machineName: %s OnDelete handler: %s", machine.Name, f.Name())
-		err := f(ctx, machine, cluster)
+		err := f(ctx, machine)
 		if err != nil {
 			return err
 		}

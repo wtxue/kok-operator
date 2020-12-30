@@ -111,7 +111,7 @@ type Option struct {
 	Gw         string `json:"gw,omitempty"`
 }
 
-func ApplyEth(s ssh.Interface, c *common.Cluster) error {
+func ApplyEth(s ssh.Interface, ctx *common.ClusterContext) error {
 	err := s.WriteFile(strings.NewReader(cniInitShell), constants.SystemInitCniFile)
 	if err != nil {
 		return err
@@ -140,18 +140,18 @@ func ApplyEth(s ssh.Interface, c *common.Cluster) error {
 	return nil
 }
 
-func ApplyCniCfg(s ssh.Interface, c *common.Cluster) error {
+func ApplyCniCfg(s ssh.Interface, ctx *common.ClusterContext) error {
 	cfgMap := &corev1.ConfigMap{}
-	err := c.Client.Get(context.TODO(), types.NamespacedName{Namespace: c.Cluster.Namespace, Name: CniHostLocalConfig}, cfgMap)
+	err := ctx.Client.Get(context.TODO(), types.NamespacedName{Namespace: ctx.Cluster.Namespace, Name: CniHostLocalConfig}, cfgMap)
 	if err != nil {
-		klog.Warningf("cluster: %s get cni cfgMap err: %v", c.Cluster.Name, err)
+		klog.Warningf("cluster: %s get cni cfgMap err: %v", ctx.Cluster.Name, err)
 		return nil
 	}
 
 	var objDate string
 	var ok bool
 	if objDate, ok = cfgMap.Data[s.HostIP()]; !ok {
-		klog.Warningf("cluster: %s can't find node: %s cni config ", c.Cluster.Name, s.HostIP())
+		klog.Warningf("cluster: %s can't find node: %s cni config ", ctx.Cluster.Name, s.HostIP())
 		return nil
 	}
 

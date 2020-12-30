@@ -61,12 +61,13 @@ func NewProvider(mgr *clusterprovider.CpManager, cfg *config.Config) (*Provider,
 	p.DelegateProvider = &clusterprovider.DelegateProvider{
 		ProviderName: "baremetal",
 		CreateHandlers: []clusterprovider.Handler{
-			// p.EnsureCopyFiles,
-			// p.EnsurePreInstallHook,
-			// p.EnsureEth,
-			// p.EnsureSystem,
-			// p.EnsureComponent,
-			p.EnsurePreflight, // wait basic setting done
+			p.EnsureCopyFiles,
+			p.EnsurePreInstallHook,
+			p.EnsureEth,
+			p.EnsureSystem,
+			p.EnsureCRI,
+			p.EnsureComponent,
+			p.EnsurePreflight,
 			p.EnsureClusterComplete,
 
 			p.EnsureCerts,
@@ -111,37 +112,37 @@ func (p *Provider) RegisterHandler(mux *mux.PathRecorderMux) {
 	mux.HandleFunc(path.Join(prefix, "ping"), p.ping)
 }
 
-func (p *Provider) Validate(cluster *common.Cluster) field.ErrorList {
-	return validation.ValidateCluster(cluster)
+func (p *Provider) Validate(ctx *common.ClusterContext) field.ErrorList {
+	return validation.ValidateCluster(ctx)
 }
 
-func (p *Provider) PreCreate(cluster *common.Cluster) error {
-	if cluster.Spec.Version == "" {
-		cluster.Spec.Version = constants.K8sVersions[0]
+func (p *Provider) PreCreate(ctx *common.ClusterContext) error {
+	if ctx.Cluster.Spec.Version == "" {
+		ctx.Cluster.Spec.Version = constants.K8sVersions[0]
 	}
-	if cluster.Spec.ClusterCIDR == "" {
-		cluster.Spec.ClusterCIDR = "10.244.0.0/16"
+	if ctx.Cluster.Spec.ClusterCIDR == "" {
+		ctx.Cluster.Spec.ClusterCIDR = "10.244.0.0/16"
 	}
-	if cluster.Spec.NetworkDevice == "" {
-		cluster.Spec.NetworkDevice = "eth0"
-	}
-
-	if cluster.Spec.Features.IPVS == nil {
-		cluster.Spec.Features.IPVS = pointer.ToBool(true)
+	if ctx.Cluster.Spec.NetworkDevice == "" {
+		ctx.Cluster.Spec.NetworkDevice = "eth0"
 	}
 
-	if cluster.Spec.Properties.MaxClusterServiceNum == nil && cluster.Spec.ServiceCIDR == nil {
-		cluster.Spec.Properties.MaxClusterServiceNum = pointer.ToInt32(256)
-	}
-	if cluster.Spec.Properties.MaxNodePodNum == nil {
-		cluster.Spec.Properties.MaxNodePodNum = pointer.ToInt32(256)
-	}
-	if cluster.Spec.Features.SkipConditions == nil {
-		cluster.Spec.Features.SkipConditions = p.Cfg.Feature.SkipConditions
+	if ctx.Cluster.Spec.Features.IPVS == nil {
+		ctx.Cluster.Spec.Features.IPVS = pointer.ToBool(true)
 	}
 
-	if cluster.Spec.Etcd == nil {
-		cluster.Spec.Etcd = &devopsv1.Etcd{Local: &devopsv1.LocalEtcd{}}
+	if ctx.Cluster.Spec.Properties.MaxClusterServiceNum == nil && ctx.Cluster.Spec.ServiceCIDR == nil {
+		ctx.Cluster.Spec.Properties.MaxClusterServiceNum = pointer.ToInt32(256)
+	}
+	if ctx.Cluster.Spec.Properties.MaxNodePodNum == nil {
+		ctx.Cluster.Spec.Properties.MaxNodePodNum = pointer.ToInt32(256)
+	}
+	if ctx.Cluster.Spec.Features.SkipConditions == nil {
+		ctx.Cluster.Spec.Features.SkipConditions = p.Cfg.Feature.SkipConditions
+	}
+
+	if ctx.Cluster.Spec.Etcd == nil {
+		ctx.Cluster.Spec.Etcd = &devopsv1.Etcd{Local: &devopsv1.LocalEtcd{}}
 	}
 
 	return nil

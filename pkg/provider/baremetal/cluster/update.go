@@ -17,7 +17,6 @@ limitations under the License.
 package cluster
 
 import (
-	"context"
 	"fmt"
 	"reflect"
 	"time"
@@ -34,8 +33,8 @@ import (
 	certutil "k8s.io/client-go/util/cert"
 )
 
-func (p *Provider) EnsureRenewCerts(ctx context.Context, c *common.Cluster) error {
-	for _, machine := range c.Spec.Machines {
+func (p *Provider) EnsureRenewCerts(ctx *common.ClusterContext) error {
+	for _, machine := range ctx.Cluster.Spec.Machines {
 		s, err := machine.SSH()
 		if err != nil {
 			return err
@@ -65,14 +64,14 @@ func (p *Provider) EnsureRenewCerts(ctx context.Context, c *common.Cluster) erro
 	return nil
 }
 
-func (p *Provider) EnsureAPIServerCert(ctx context.Context, c *common.Cluster) error {
-	apiserver := certs.BuildApiserverEndpoint(c.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(c.Cluster))
+func (p *Provider) EnsureAPIServerCert(ctx *common.ClusterContext) error {
+	apiserver := certs.BuildApiserverEndpoint(ctx.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(ctx.Cluster))
 
-	kubeadmConfig := kubeadm.GetKubeadmConfig(c, p.Cfg, apiserver)
-	exptectCertSANs := k8sutil.GetAPIServerCertSANs(c.Cluster)
+	kubeadmConfig := kubeadm.GetKubeadmConfig(ctx, p.Cfg, apiserver)
+	exptectCertSANs := k8sutil.GetAPIServerCertSANs(ctx.Cluster)
 
 	needUpload := false
-	for _, machine := range c.Spec.Machines {
+	for _, machine := range ctx.Cluster.Spec.Machines {
 		s, err := machine.SSH()
 		if err != nil {
 			return err
@@ -112,7 +111,7 @@ func (p *Provider) EnsureAPIServerCert(ctx context.Context, c *common.Cluster) e
 	}
 
 	if needUpload {
-		err := p.EnsureKubeadmInitUploadConfigPhase(ctx, c)
+		err := p.EnsureKubeadmInitUploadConfigPhase(ctx)
 		if err != nil {
 			return err
 		}

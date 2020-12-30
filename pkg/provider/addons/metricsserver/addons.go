@@ -6,8 +6,8 @@ import (
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/k8sutil"
 	"github.com/wtxue/kok-operator/pkg/util/template"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -172,7 +172,7 @@ type Option struct {
 	ImageName string
 }
 
-func BuildMetricsServerAddon(c *common.Cluster) ([]runtime.Object, error) {
+func BuildMetricsServerAddon(ctx *common.ClusterContext) ([]client.Object, error) {
 	opt := &Option{
 		ImageName: "",
 	}

@@ -19,12 +19,12 @@ import (
 	"k8s.io/klog"
 )
 
-func ApplyPodManifest(hostIP string, c *common.Cluster, cfg *config.Config, pathName string, podManifest string, fileMaps map[string]string) error {
+func ApplyPodManifest(hostIP string, ctx *common.ClusterContext, cfg *config.Config, pathName string, podManifest string, fileMaps map[string]string) error {
 	opt := &kubeadm.Option{
 		HostIP:           hostIP,
-		Images:           cfg.KubeAllImageFullName(constants.KubernetesAllImageName, c.Cluster.Spec.Version),
-		EtcdPeerCluster:  kubeadm.BuildMasterEtcdPeerCluster(c),
-		TokenClusterName: c.Cluster.Name,
+		Images:           cfg.KubeAllImageFullName(constants.KubernetesAllImageName, ctx.Cluster.Spec.Version),
+		EtcdPeerCluster:  kubeadm.BuildMasterEtcdPeerCluster(ctx),
+		TokenClusterName: ctx.Cluster.Name,
 	}
 
 	serialized, err := template.ParseString(podManifest, opt)
@@ -36,9 +36,9 @@ func ApplyPodManifest(hostIP string, c *common.Cluster, cfg *config.Config, path
 	return nil
 }
 
-func BuildKubeletKubeconfig(hostIP string, c *common.Cluster, apiserver string, fileMaps map[string]string) error {
-	cfgMaps, err := certs.CreateKubeConfigFiles(c.ClusterCredential.CAKey, c.ClusterCredential.CACert,
-		apiserver, hostIP, c.Cluster.Name, pkiutil.KubeletKubeConfigFileName)
+func BuildKubeletKubeconfig(hostIP string, ctx *common.ClusterContext, apiserver string, fileMaps map[string]string) error {
+	cfgMaps, err := certs.CreateKubeConfigFiles(ctx.Credential.CAKey, ctx.Credential.CACert,
+		apiserver, hostIP, ctx.Cluster.Name, pkiutil.KubeletKubeConfigFileName)
 	if err != nil {
 		klog.Errorf("create node: %s kubelet kubeconfg err: %+v", hostIP, err)
 		return err
@@ -64,36 +64,36 @@ func BuildKubeletKubeconfig(hostIP string, c *common.Cluster, apiserver string, 
 	return nil
 }
 
-func JoinMasterNode(hostIP string, c *common.Cluster, cfg *config.Config, isMaster bool, fileMaps map[string]string) error {
+func JoinMasterNode(hostIP string, ctx *common.ClusterContext, cfg *config.Config, isMaster bool, fileMaps map[string]string) error {
 	if !isMaster {
-		fileMaps[constants.CACertName] = string(c.ClusterCredential.CACert)
+		fileMaps[constants.CACertName] = string(ctx.Credential.CACert)
 		return nil
 	}
 
-	for pathName, va := range c.ClusterCredential.CertsBinaryData {
+	for pathName, va := range ctx.Credential.CertsBinaryData {
 		fileMaps[pathName] = string(va)
 	}
 
-	for pathName, va := range c.ClusterCredential.KubeData {
+	for pathName, va := range ctx.Credential.KubeData {
 		fileMaps[pathName] = va
 	}
 
-	for pathName, va := range c.ClusterCredential.ManifestsData {
-		ApplyPodManifest(hostIP, c, cfg, pathName, va, fileMaps)
+	for pathName, va := range ctx.Credential.ManifestsData {
+		ApplyPodManifest(hostIP, ctx, cfg, pathName, va, fileMaps)
 	}
 
 	return nil
 }
 
-func JoinNodePhase(s ssh.Interface, cfg *config.Config, c *common.Cluster, apiserver string, isMaster bool) error {
+func JoinNodePhase(s ssh.Interface, cfg *config.Config, ctx *common.ClusterContext, apiserver string, isMaster bool) error {
 	hostIP := s.HostIP()
 	fileMaps := make(map[string]string)
-	err := JoinMasterNode(hostIP, c, cfg, isMaster, fileMaps)
+	err := JoinMasterNode(hostIP, ctx, cfg, isMaster, fileMaps)
 	if err != nil {
 		return errors.Wrapf(err, "node: %s failed build misc file", hostIP)
 	}
 
-	err = BuildKubeletKubeconfig(hostIP, c, apiserver, fileMaps)
+	err = BuildKubeletKubeconfig(hostIP, ctx, apiserver, fileMaps)
 	if err != nil {
 		return errors.Wrapf(err, "node: %s failed build kubelet file", hostIP)
 	}
@@ -104,7 +104,7 @@ func JoinNodePhase(s ssh.Interface, cfg *config.Config, c *common.Cluster, apise
 	flagsEnv := BuildKubeletDynamicEnvFile(cfg.Registry.Prefix, nodeOpt)
 	fileMaps[constants.KubeletEnvFileName] = flagsEnv
 
-	kubeletCfg := kubeadm.GetFullKubeletConfiguration(c)
+	kubeletCfg := kubeadm.GetFullKubeletConfiguration(ctx)
 	cfgYaml, err := KubeletMarshal(kubeletCfg)
 	if err != nil {
 		return errors.Wrapf(err, "node: %s failed marshal kubelet file", hostIP)

@@ -17,9 +17,7 @@ limitations under the License.
 package machine
 
 import (
-	"context"
 	"fmt"
-
 	"time"
 
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
@@ -34,80 +32,76 @@ const (
 	reasonFailedUpdate = "FailedUpdate"
 )
 
-func (r *machineReconciler) onCreate(ctx context.Context, rc *manchineContext) error {
-	p, err := r.MpManager.GetProvider(rc.Cluster.Spec.Type)
+func (r *machineReconciler) onCreate(ctx *common.ClusterContext, machine *devopsv1.Machine) error {
+	p, err := r.MpManager.GetProvider(ctx.Cluster.Spec.ClusterType)
 	if err != nil {
 		return err
 	}
 
-	clusterWrapper := &common.Cluster{
-		Cluster:           rc.Cluster,
-		ClusterCredential: rc.ClusterCredential,
-		Client:            r.Client,
-		ClusterManager:    r.ClusterManager,
-	}
-	err = p.OnCreate(ctx, rc.Machine, clusterWrapper)
+	err = p.OnCreate(ctx, machine)
 	if err != nil {
-		rc.Machine.Status.Message = err.Error()
-		rc.Machine.Status.Reason = reasonFailedInit
-		r.Client.Status().Update(ctx, rc.Machine)
+		machine.Status.Message = err.Error()
+		machine.Status.Reason = reasonFailedInit
+		r.Client.Status().Update(ctx.Ctx, machine)
 		return err
 	}
 
-	condition := rc.Machine.Status.Conditions[len(rc.Machine.Status.Conditions)-1]
+	condition := machine.Status.Conditions[len(machine.Status.Conditions)-1]
 	if condition.Status == devopsv1.ConditionFalse { // means current condition run into error
-		rc.Machine.Status.Message = condition.Message
-		rc.Machine.Status.Reason = condition.Reason
-		r.Client.Status().Update(ctx, rc.Machine)
+		machine.Status.Message = condition.Message
+		machine.Status.Reason = condition.Reason
+		r.Client.Status().Update(ctx.Ctx, machine)
 		return fmt.Errorf("Provider.OnCreate.%s [Failed] reason: %s message: %s",
 			condition.Type, condition.Reason, condition.Message)
 	}
 
-	rc.Machine.Status.Message = ""
-	rc.Machine.Status.Reason = ""
-	err = r.Client.Status().Update(ctx, rc.Machine)
+	machine.Status.Message = ""
+	machine.Status.Reason = ""
+	err = r.Client.Status().Update(ctx.Ctx, machine)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *machineReconciler) onUpdate(ctx context.Context, rc *manchineContext) error {
-	p, err := r.MpManager.GetProvider(rc.Cluster.Spec.Type)
+func (r *machineReconciler) onUpdate(ctx *common.ClusterContext, machine *devopsv1.Machine) error {
+	p, err := r.MpManager.GetProvider(ctx.Cluster.Spec.ClusterType)
 	if err != nil {
 		return err
 	}
 
-	clusterWrapper := &common.Cluster{
-		Cluster:           rc.Cluster,
-		ClusterCredential: rc.ClusterCredential,
-		Client:            r.Client,
-		ClusterManager:    r.ClusterManager,
-	}
-
-	err = p.OnUpdate(ctx, rc.Machine, clusterWrapper)
+	err = p.OnUpdate(ctx, machine)
 	if err != nil {
-		clusterWrapper.Cluster.Status.Message = err.Error()
-		clusterWrapper.Cluster.Status.Reason = reasonFailedUpdate
-		r.Client.Status().Update(ctx, rc.Cluster)
+		ctx.Cluster.Status.Message = err.Error()
+		ctx.Cluster.Status.Reason = reasonFailedUpdate
+		r.Client.Status().Update(ctx.Ctx, ctx.Cluster)
 		return err
 	}
-	clusterWrapper.Cluster.Status.Message = ""
-	clusterWrapper.Cluster.Status.Reason = ""
-	r.Client.Status().Update(ctx, clusterWrapper.ClusterCredential)
-	r.Client.Status().Update(ctx, clusterWrapper.Cluster)
+	ctx.Cluster.Status.Message = ""
+	ctx.Cluster.Status.Reason = ""
+	r.Client.Status().Update(ctx.Ctx, ctx.Credential)
+	r.Client.Status().Update(ctx.Ctx, ctx.Cluster)
 	return nil
 }
 
-func (r *machineReconciler) reconcile(ctx context.Context, rc *manchineContext) error {
+func (r *machineReconciler) reconcile(rc *manchineContext) error {
+	ctx := &common.ClusterContext{
+		Ctx:            rc.Ctx,
+		Cluster:        rc.Cluster,
+		Credential:     rc.ClusterCredential,
+		Client:         r.Client,
+		ClusterManager: r.ClusterManager,
+		Logger:         rc.Logger,
+	}
+
 	var err error
 	switch rc.Machine.Status.Phase {
 	case devopsv1.MachineInitializing:
 		rc.Logger.Info("onCreate")
-		err = r.onCreate(ctx, rc)
+		err = r.onCreate(ctx, rc.Machine)
 	case devopsv1.MachineRunning:
 		rc.Logger.Info("onUpdate")
-		err = r.onUpdate(ctx, rc)
+		err = r.onUpdate(ctx, rc.Machine)
 	default:
 		err = fmt.Errorf("no handler for %q", rc.Cluster.Status.Phase)
 	}

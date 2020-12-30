@@ -5,6 +5,7 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.0
+    "api-approved.kubernetes.io": "https://github.com/kubernetes/kubernetes/pull/78458"
   creationTimestamp: null
   name: clusters.devops.k8s.io
 spec:
@@ -62,10 +63,15 @@ spec:
                 type: object
               clusterCIDR:
                 type: string
+              clusterType:
+                type: string
               controllerManagerExtraArgs:
                 additionalProperties:
                   type: string
                 type: object
+              criType:
+                description: RuntimeType defines the runtime of Container.
+                type: string
               displayName:
                 type: string
               dnsDomain:
@@ -273,7 +279,7 @@ spec:
               networkType:
                 description: NetworkType defines the network type of cluster.
                 type: string
-              operatingSystem:
+              osType:
                 description: OperatingSystem defines the operating of system.
                 type: string
               pause:
@@ -298,9 +304,6 @@ spec:
                 items:
                   type: string
                 type: array
-              runtimeType:
-                description: RuntimeType defines the runtime of Container.
-                type: string
               schedulerExtraArgs:
                 additionalProperties:
                   type: string
@@ -310,8 +313,6 @@ spec:
                   it's exclusive with MaxClusterServiceNum.
                 type: string
               tenantID:
-                type: string
-              type:
                 type: string
               upgrade:
                 description: Upgrade control upgrade process.
@@ -338,8 +339,6 @@ spec:
                 type: string
             required:
             - tenantID
-            - type
-            - version
             type: object
           status:
             description: ClusterStatus represents information about the status of

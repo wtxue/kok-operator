@@ -15,32 +15,30 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/klog"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Reconciler struct {
-	Obj     *common.Cluster
+	Ctx     *common.ClusterContext
 	dynamic dynamic.Interface
 	*Provider
 }
 
-func GetPodBindPort(obj *common.Cluster) int32 {
+func GetPodBindPort(ctx *common.ClusterContext) int32 {
 	var port int32
 	port = 6443
-	if obj.Cluster.Spec.Features.HA != nil && obj.Cluster.Spec.Features.HA.ThirdPartyHA != nil {
-		port = obj.Cluster.Spec.Features.HA.ThirdPartyHA.VPort
+	if ctx.Cluster.Spec.Features.HA != nil && ctx.Cluster.Spec.Features.HA.ThirdPartyHA != nil {
+		port = ctx.Cluster.Spec.Features.HA.ThirdPartyHA.VPort
 	}
 	return port
 }
 
-func GetSvcNodePort(obj *common.Cluster) int32 {
-	port := GetPodBindPort(obj)
+func GetSvcNodePort(ctx *common.ClusterContext) int32 {
+	port := GetPodBindPort(ctx)
 
 	if port < 30000 {
 		port = port + 30000
@@ -48,10 +46,10 @@ func GetSvcNodePort(obj *common.Cluster) int32 {
 	return port
 }
 
-func GetAdvertiseAddress(obj *common.Cluster) string {
+func GetAdvertiseAddress(ctx *common.ClusterContext) string {
 	advertiseAddress := "$(INSTANCE_IP)"
-	if obj.Cluster.Spec.Features.HA != nil && obj.Cluster.Spec.Features.HA.ThirdPartyHA != nil {
-		advertiseAddress = obj.Cluster.Spec.Features.HA.ThirdPartyHA.VIP
+	if ctx.Cluster.Spec.Features.HA != nil && ctx.Cluster.Spec.Features.HA.ThirdPartyHA != nil {
+		advertiseAddress = ctx.Cluster.Spec.Features.HA.ThirdPartyHA.VIP
 	}
 
 	return advertiseAddress
@@ -72,7 +70,7 @@ func GetHPAReplicaCountOrDefault(client client.Client, name types.NamespacedName
 	return hpa.Status.DesiredReplicas
 }
 
-func ApplyCertsConfigmap(cli client.Client, obj *common.Cluster, pathCerts map[string][]byte) error {
+func ApplyCertsConfigmap(ctx *common.ClusterContext, pathCerts map[string][]byte) error {
 	noPathCerts := make(map[string]string, len(pathCerts))
 	for pathName, value := range pathCerts {
 		splits := strings.Split(pathName, "/")
@@ -82,19 +80,19 @@ func ApplyCertsConfigmap(cli client.Client, obj *common.Cluster, pathCerts map[s
 	}
 
 	cm := &corev1.ConfigMap{
-		ObjectMeta: k8sutil.ObjectMeta(constants.KubeApiServerCerts, constants.CtrlLabels, obj.Cluster),
+		ObjectMeta: k8sutil.ObjectMeta(constants.KubeApiServerCerts, constants.CtrlLabels, ctx.Cluster),
 		Data:       noPathCerts,
 	}
 
-	logger := ctrl.Log.WithValues("cluster", obj.Cluster.Name)
-	err := k8sutil.Reconcile(logger, cli, cm, k8sutil.DesiredStatePresent)
+	logger := ctx.WithValues("cluster", ctx.Cluster.Name)
+	err := k8sutil.Reconcile(logger, ctx.Client, cm, k8sutil.DesiredStatePresent)
 	if err != nil {
 		return errors.Wrapf(err, "apply certs configmap err: %v", err)
 	}
 	return nil
 }
 
-func ApplyKubeMiscConfigmap(cli client.Client, obj *common.Cluster, pathKubeMisc map[string]string) error {
+func ApplyKubeMiscConfigmap(ctx *common.ClusterContext, pathKubeMisc map[string]string) error {
 	noPathKubeMisc := make(map[string]string, len(pathKubeMisc))
 	for pathName, value := range pathKubeMisc {
 		splits := strings.Split(pathName, "/")
@@ -104,19 +102,19 @@ func ApplyKubeMiscConfigmap(cli client.Client, obj *common.Cluster, pathKubeMisc
 	}
 
 	cm := &corev1.ConfigMap{
-		ObjectMeta: k8sutil.ObjectMeta(constants.KubeApiServerConfig, constants.CtrlLabels, obj.Cluster),
+		ObjectMeta: k8sutil.ObjectMeta(constants.KubeApiServerConfig, constants.CtrlLabels, ctx.Cluster),
 		Data:       noPathKubeMisc,
 	}
 
-	logger := ctrl.Log.WithValues("cluster", obj.Cluster.Name)
-	err := k8sutil.Reconcile(logger, cli, cm, k8sutil.DesiredStatePresent)
+	logger := ctx.WithValues("cluster", ctx.Cluster.Name)
+	err := k8sutil.Reconcile(logger, ctx.Client, cm, k8sutil.DesiredStatePresent)
 	if err != nil {
 		return errors.Wrapf(err, "apply kube misc configmap err: %v", err)
 	}
 	return nil
 }
 
-func (r *Reconciler) apiServerDeployment() runtime.Object {
+func (r *Reconciler) apiServerDeployment() client.Object {
 	containers := []corev1.Container{}
 	vms := []corev1.VolumeMount{
 		{
@@ -161,7 +159,7 @@ func (r *Reconciler) apiServerDeployment() runtime.Object {
 			Name: constants.KubeApiServerAudit,
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
-					Path: fmt.Sprintf("/web/%s/kube-apiserver/audit", r.Obj.Cluster.Name),
+					Path: fmt.Sprintf("/web/%s/kube-apiserver/audit", r.Ctx.Cluster.Name),
 					Type: &hostPathType,
 				},
 			},
@@ -191,12 +189,12 @@ func (r *Reconciler) apiServerDeployment() runtime.Object {
 		"--token-auth-file=/etc/kubernetes/known_tokens.csv",
 	}
 
-	advertiseAddress := GetAdvertiseAddress(r.Obj)
-	cmds = append(cmds, fmt.Sprintf("--secure-port=%d", GetPodBindPort(r.Obj)))
+	advertiseAddress := GetAdvertiseAddress(r.Ctx)
+	cmds = append(cmds, fmt.Sprintf("--secure-port=%d", GetPodBindPort(r.Ctx)))
 	cmds = append(cmds, fmt.Sprintf("--advertise-address=%s", advertiseAddress))
-	if r.Obj.Cluster.Spec.APIServerExtraArgs != nil {
+	if r.Ctx.Cluster.Spec.APIServerExtraArgs != nil {
 		extraArgs := []string{}
-		for k, v := range r.Obj.Cluster.Spec.APIServerExtraArgs {
+		for k, v := range r.Ctx.Cluster.Spec.APIServerExtraArgs {
 			extraArgs = append(extraArgs, fmt.Sprintf("--%s=%s", k, v))
 		}
 		sort.Strings(extraArgs)
@@ -204,18 +202,18 @@ func (r *Reconciler) apiServerDeployment() runtime.Object {
 	}
 
 	svcCidr := "10.96.0.0/16"
-	if r.Obj.Cluster.Spec.ServiceCIDR != nil {
-		svcCidr = *r.Obj.Cluster.Spec.ServiceCIDR
+	if r.Ctx.Cluster.Spec.ServiceCIDR != nil {
+		svcCidr = *r.Ctx.Cluster.Spec.ServiceCIDR
 	}
 
 	cmds = append(cmds, fmt.Sprintf("--service-cluster-ip-range=%s", svcCidr))
-	if r.Obj.Cluster.Spec.Etcd != nil && r.Obj.Cluster.Spec.Etcd.External != nil {
-		cmds = append(cmds, fmt.Sprintf("--etcd-servers=%s", strings.Join(r.Obj.Cluster.Spec.Etcd.External.Endpoints, ",")))
+	if r.Ctx.Cluster.Spec.Etcd != nil && r.Ctx.Cluster.Spec.Etcd.External != nil {
+		cmds = append(cmds, fmt.Sprintf("--etcd-servers=%s", strings.Join(r.Ctx.Cluster.Spec.Etcd.External.Endpoints, ",")))
 		// tode check
-		if strings.Contains(r.Obj.Cluster.Spec.Etcd.External.Endpoints[0], "https") {
-			cmds = append(cmds, fmt.Sprintf("--etcd-cafile=%s", r.Obj.Cluster.Spec.Etcd.External.CAFile))
-			cmds = append(cmds, fmt.Sprintf("--etcd-certfile=%s", r.Obj.Cluster.Spec.Etcd.External.CertFile))
-			cmds = append(cmds, fmt.Sprintf("--etcd-keyfile=%s", r.Obj.Cluster.Spec.Etcd.External.KeyFile))
+		if strings.Contains(r.Ctx.Cluster.Spec.Etcd.External.Endpoints[0], "https") {
+			cmds = append(cmds, fmt.Sprintf("--etcd-cafile=%s", r.Ctx.Cluster.Spec.Etcd.External.CAFile))
+			cmds = append(cmds, fmt.Sprintf("--etcd-certfile=%s", r.Ctx.Cluster.Spec.Etcd.External.CertFile))
+			cmds = append(cmds, fmt.Sprintf("--etcd-keyfile=%s", r.Ctx.Cluster.Spec.Etcd.External.KeyFile))
 		}
 	} else {
 		cmds = append(cmds, fmt.Sprintf("--etcd-servers=%s", "http://etcd-0.etcd:2379,http://etcd-1.etcd:2379,http://etcd-2.etcd:2379"))
@@ -223,13 +221,13 @@ func (r *Reconciler) apiServerDeployment() runtime.Object {
 
 	c := corev1.Container{
 		Name:            constants.KubeApiServer,
-		Image:           r.Provider.Cfg.KubeAllImageFullName(constants.KubernetesAllImageName, r.Obj.Cluster.Spec.Version),
+		Image:           r.Provider.Cfg.KubeAllImageFullName(constants.KubernetesAllImageName, r.Ctx.Cluster.Spec.Version),
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Command:         cmds,
 		Ports: []corev1.ContainerPort{
 			{
 				Name:          "https",
-				ContainerPort: GetPodBindPort(r.Obj),
+				ContainerPort: GetPodBindPort(r.Ctx),
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
@@ -248,7 +246,7 @@ func (r *Reconciler) apiServerDeployment() runtime.Object {
 			FailureThreshold:    8,
 			SuccessThreshold:    1,
 		},
-		Env: common.ComponentEnv(r.Obj),
+		Env: common.ComponentEnv(r.Ctx),
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("0.1"),
@@ -264,7 +262,7 @@ func (r *Reconciler) apiServerDeployment() runtime.Object {
 	containers = append(containers, c)
 
 	deployment := &appsv1.Deployment{
-		ObjectMeta: k8sutil.ObjectMeta(constants.KubeApiServer, constants.KubeApiServerLabels, r.Obj.Cluster),
+		ObjectMeta: k8sutil.ObjectMeta(constants.KubeApiServer, constants.KubeApiServerLabels, r.Ctx.Cluster),
 		Spec: appsv1.DeploymentSpec{
 			Replicas: k8sutil.IntPointer(3),
 			Strategy: common.DefaultRollingUpdateStrategy(),
@@ -278,7 +276,7 @@ func (r *Reconciler) apiServerDeployment() runtime.Object {
 				Spec: corev1.PodSpec{
 					Containers:  containers,
 					Volumes:     volumes,
-					Affinity:    common.ComponentAffinity(r.Obj.Cluster.Namespace, constants.KubeApiServerLabels),
+					Affinity:    common.ComponentAffinity(r.Ctx.Cluster.Namespace, constants.KubeApiServerLabels),
 					Tolerations: common.ComponentTolerations(),
 				},
 			},
@@ -288,16 +286,16 @@ func (r *Reconciler) apiServerDeployment() runtime.Object {
 	return deployment
 }
 
-func (r *Reconciler) apiServerSvc() runtime.Object {
+func (r *Reconciler) apiServerSvc() client.Object {
 	svc := &corev1.Service{
-		ObjectMeta: k8sutil.ObjectMeta(constants.KubeApiServer, constants.KubeApiServerLabels, r.Obj.Cluster),
+		ObjectMeta: k8sutil.ObjectMeta(constants.KubeApiServer, constants.KubeApiServerLabels, r.Ctx.Cluster),
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
 					Name:       "https",
 					Protocol:   corev1.ProtocolTCP,
-					Port:       GetPodBindPort(r.Obj),
-					NodePort:   GetSvcNodePort(r.Obj),
+					Port:       GetPodBindPort(r.Ctx),
+					NodePort:   GetSvcNodePort(r.Ctx),
 					TargetPort: intstr.FromString("https"),
 				},
 			},
@@ -306,9 +304,9 @@ func (r *Reconciler) apiServerSvc() runtime.Object {
 		},
 	}
 	svcType := corev1.ServiceTypeNodePort
-	if constants.GetAnnotationKey(r.Obj.Annotations, constants.ClusterApiSvcType) == string(corev1.ServiceTypeLoadBalancer) {
+	if constants.GetAnnotationKey(r.Ctx.Cluster.Annotations, constants.ClusterApiSvcType) == string(corev1.ServiceTypeLoadBalancer) {
 		svcType = corev1.ServiceTypeLoadBalancer
-		svc.Spec.LoadBalancerIP = constants.GetAnnotationKey(r.Obj.Annotations, constants.ClusterApiSvcVip)
+		svc.Spec.LoadBalancerIP = constants.GetAnnotationKey(r.Ctx.Cluster.Annotations, constants.ClusterApiSvcVip)
 	}
 	svc.Spec.Type = svcType
 
@@ -316,12 +314,12 @@ func (r *Reconciler) apiServerSvc() runtime.Object {
 		svc.Annotations = make(map[string]string)
 	}
 
-	podPort := GetPodBindPort(r.Obj)
+	podPort := GetPodBindPort(r.Ctx)
 	svc.Annotations["contour.heptio.com/upstream-protocol.tls"] = fmt.Sprintf("%d,https", podPort)
 	return svc
 }
 
-func (r *Reconciler) controllerManagerDeployment() runtime.Object {
+func (r *Reconciler) controllerManagerDeployment() client.Object {
 	containers := []corev1.Container{}
 	vms := []corev1.VolumeMount{
 		{
@@ -376,26 +374,26 @@ func (r *Reconciler) controllerManagerDeployment() runtime.Object {
 		"--use-service-account-credentials=true",
 	}
 
-	if r.Obj.Cluster.Spec.ControllerManagerExtraArgs != nil {
+	if r.Ctx.Cluster.Spec.ControllerManagerExtraArgs != nil {
 		extraArgs := []string{}
-		for k, v := range r.Obj.Cluster.Spec.ControllerManagerExtraArgs {
+		for k, v := range r.Ctx.Cluster.Spec.ControllerManagerExtraArgs {
 			extraArgs = append(extraArgs, fmt.Sprintf("--%s=%s", k, v))
 		}
 		sort.Strings(extraArgs)
 		cmds = append(cmds, extraArgs...)
 	}
 
-	if r.Obj.Cluster.Status.NodeCIDRMaskSize > 0 {
+	if r.Ctx.Cluster.Status.NodeCIDRMaskSize > 0 {
 		cmds = append(cmds, "--allocate-node-cidrs=true")
-		cmds = append(cmds, fmt.Sprintf("--cluster-cidr=%s", r.Obj.Cluster.Spec.ClusterCIDR))
-		cmds = append(cmds, fmt.Sprintf("--cluster-name=%s", r.Obj.Cluster.Name))
-		cmds = append(cmds, fmt.Sprintf("--node-cidr-mask-size=%d", r.Obj.Cluster.Status.NodeCIDRMaskSize))
+		cmds = append(cmds, fmt.Sprintf("--cluster-cidr=%s", r.Ctx.Cluster.Spec.ClusterCIDR))
+		cmds = append(cmds, fmt.Sprintf("--cluster-name=%s", r.Ctx.Cluster.Name))
+		cmds = append(cmds, fmt.Sprintf("--node-cidr-mask-size=%d", r.Ctx.Cluster.Status.NodeCIDRMaskSize))
 	}
 
 	healthPortName := "https-healthz"
 	c := corev1.Container{
 		Name:            constants.KubeControllerManager,
-		Image:           r.Provider.Cfg.KubeAllImageFullName(constants.KubernetesAllImageName, r.Obj.Cluster.Spec.Version),
+		Image:           r.Provider.Cfg.KubeAllImageFullName(constants.KubernetesAllImageName, r.Ctx.Cluster.Spec.Version),
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Command:         cmds,
 		Ports: []corev1.ContainerPort{
@@ -425,7 +423,7 @@ func (r *Reconciler) controllerManagerDeployment() runtime.Object {
 			FailureThreshold:    8,
 			SuccessThreshold:    1,
 		},
-		Env: common.ComponentEnv(r.Obj),
+		Env: common.ComponentEnv(r.Ctx),
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("0.1"),
@@ -441,7 +439,7 @@ func (r *Reconciler) controllerManagerDeployment() runtime.Object {
 	containers = append(containers, c)
 
 	deployment := &appsv1.Deployment{
-		ObjectMeta: k8sutil.ObjectMeta(constants.KubeControllerManager, constants.KubeControllerManagerLabels, r.Obj.Cluster),
+		ObjectMeta: k8sutil.ObjectMeta(constants.KubeControllerManager, constants.KubeControllerManagerLabels, r.Ctx.Cluster),
 		Spec: appsv1.DeploymentSpec{
 			Replicas: k8sutil.IntPointer(3),
 			Strategy: common.DefaultRollingUpdateStrategy(),
@@ -455,7 +453,7 @@ func (r *Reconciler) controllerManagerDeployment() runtime.Object {
 				Spec: corev1.PodSpec{
 					Containers:  containers,
 					Volumes:     volumes,
-					Affinity:    common.ComponentAffinity(r.Obj.Cluster.Namespace, constants.KubeApiServerLabels),
+					Affinity:    common.ComponentAffinity(r.Ctx.Cluster.Namespace, constants.KubeApiServerLabels),
 					Tolerations: common.ComponentTolerations(),
 				},
 			},
@@ -465,7 +463,7 @@ func (r *Reconciler) controllerManagerDeployment() runtime.Object {
 	return deployment
 }
 
-func (r *Reconciler) schedulerDeployment() runtime.Object {
+func (r *Reconciler) schedulerDeployment() client.Object {
 	containers := []corev1.Container{}
 	vms := []corev1.VolumeMount{
 		{
@@ -501,7 +499,7 @@ func (r *Reconciler) schedulerDeployment() runtime.Object {
 	healthPortName := "https-healthz"
 	c := corev1.Container{
 		Name:            constants.KubeKubeScheduler,
-		Image:           r.Provider.Cfg.KubeAllImageFullName(constants.KubernetesAllImageName, r.Obj.Cluster.Spec.Version),
+		Image:           r.Provider.Cfg.KubeAllImageFullName(constants.KubernetesAllImageName, r.Ctx.Cluster.Spec.Version),
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Command:         cmds,
 		Ports: []corev1.ContainerPort{
@@ -531,7 +529,7 @@ func (r *Reconciler) schedulerDeployment() runtime.Object {
 			FailureThreshold:    8,
 			SuccessThreshold:    1,
 		},
-		Env: common.ComponentEnv(r.Obj),
+		Env: common.ComponentEnv(r.Ctx),
 		Resources: corev1.ResourceRequirements{
 			Requests: corev1.ResourceList{
 				corev1.ResourceCPU:    resource.MustParse("0.1"),
@@ -547,7 +545,7 @@ func (r *Reconciler) schedulerDeployment() runtime.Object {
 	containers = append(containers, c)
 
 	deployment := &appsv1.Deployment{
-		ObjectMeta: k8sutil.ObjectMeta(constants.KubeKubeScheduler, constants.KubeKubeSchedulerLabels, r.Obj.Cluster),
+		ObjectMeta: k8sutil.ObjectMeta(constants.KubeKubeScheduler, constants.KubeKubeSchedulerLabels, r.Ctx.Cluster),
 		Spec: appsv1.DeploymentSpec{
 			Replicas: k8sutil.IntPointer(3),
 			Strategy: common.DefaultRollingUpdateStrategy(),
@@ -561,7 +559,7 @@ func (r *Reconciler) schedulerDeployment() runtime.Object {
 				Spec: corev1.PodSpec{
 					Containers:  containers,
 					Volumes:     volumes,
-					Affinity:    common.ComponentAffinity(r.Obj.Cluster.Namespace, constants.KubeApiServerLabels),
+					Affinity:    common.ComponentAffinity(r.Ctx.Cluster.Namespace, constants.KubeApiServerLabels),
 					Tolerations: common.ComponentTolerations(),
 				},
 			},

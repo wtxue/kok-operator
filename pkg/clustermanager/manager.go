@@ -26,8 +26,8 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 var (
@@ -200,7 +200,7 @@ func (m *ClusterManager) AddNewClusters(name string, kubeconfig string) (*Cluste
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 
-	nc.StartCache(ctx.Done())
+	nc.StartCache(ctx)
 	err = m.Add(nc)
 	if err != nil {
 		klog.Errorf("cluster: %s add err: %+v", name, err)
@@ -210,9 +210,9 @@ func (m *ClusterManager) AddNewClusters(name string, kubeconfig string) (*Cluste
 }
 
 // Start timer check cluster health
-func (m *ClusterManager) Start(stopCh <-chan struct{}) error {
+func (m *ClusterManager) Start(ctx context.Context) error {
 	klog.V(4).Info("multi cluster manager start check loop ... ")
-	wait.Until(m.cluterCheck, time.Minute, stopCh)
+	wait.Until(m.cluterCheck, time.Minute, ctx.Done())
 
 	klog.V(4).Info("multi cluster manager stoped ... ")
 	m.Stop()

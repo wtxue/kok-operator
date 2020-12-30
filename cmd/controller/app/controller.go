@@ -25,8 +25,8 @@ import (
 	"github.com/wtxue/kok-operator/pkg/k8sclient"
 	"github.com/wtxue/kok-operator/pkg/k8sutil"
 	"github.com/wtxue/kok-operator/pkg/static"
-	ctrlmanager "sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
 func NewControllerCmd(opt *app_option.Options) *cobra.Command {
@@ -57,14 +57,13 @@ func NewControllerCmd(opt *app_option.Options) *cobra.Command {
 			cfg.QPS = float32(2) * cfg.QPS
 			cfg.Burst = 2 * cfg.Burst
 
-			mgr, err := ctrlmanager.New(cfg, ctrlmanager.Options{
+			mgr, err := manager.New(cfg, manager.Options{
 				Scheme:                  k8sclient.GetScheme(),
 				LeaderElection:          opt.Global.EnableLeaderElection,
 				LeaderElectionNamespace: opt.Global.LeaderElectionNamespace,
 				SyncPeriod:              &opt.Global.ResyncPeriod,
-				MetricsBindAddress:      "0",
-				HealthProbeBindAddress:  ":8090",
-				// Port:               9443,
+				MetricsBindAddress:      "0", // disable metrics with manager, use our observe
+				HealthProbeBindAddress:  "0", // disable health probe with manager, use our observe
 			})
 			if err != nil {
 				klog.Fatalf("unable to new manager err: %v", err)

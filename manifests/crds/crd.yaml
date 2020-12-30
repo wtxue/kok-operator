@@ -155,10 +155,15 @@ spec:
                 type: object
               clusterCIDR:
                 type: string
+              clusterType:
+                type: string
               controllerManagerExtraArgs:
                 additionalProperties:
                   type: string
                 type: object
+              criType:
+                description: RuntimeType defines the runtime of Container.
+                type: string
               displayName:
                 type: string
               dnsDomain:
@@ -346,7 +351,7 @@ spec:
               networkType:
                 description: NetworkType defines the network type of cluster.
                 type: string
-              operatingSystem:
+              osType:
                 description: OperatingSystem defines the operating of system.
                 type: string
               pause:
@@ -370,9 +375,6 @@ spec:
                 items:
                   type: string
                 type: array
-              runtimeType:
-                description: RuntimeType defines the runtime of Container.
-                type: string
               schedulerExtraArgs:
                 additionalProperties:
                   type: string
@@ -381,8 +383,6 @@ spec:
                 description: ServiceCIDR is used to set a separated CIDR for k8s service, it's exclusive with MaxClusterServiceNum.
                 type: string
               tenantID:
-                type: string
-              type:
                 type: string
               upgrade:
                 description: Upgrade control upgrade process.
@@ -405,8 +405,6 @@ spec:
                 type: string
             required:
             - tenantID
-            - type
-            - version
             type: object
           status:
             description: ClusterStatus represents information about the status of a cluster.

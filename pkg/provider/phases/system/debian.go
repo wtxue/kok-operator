@@ -182,8 +182,7 @@ EOF
 echo -e "\033[32;32m 开始初始化结点 @{{ .HostIP }}@ \033[0m \n"
 Firewalld_process && \
 Install_depend_software && \
-Install_ipvs && \
 Install_depend_environment && \
-Install_docker 
+Install_ipvs 
 `
 )

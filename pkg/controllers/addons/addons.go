@@ -46,8 +46,7 @@ func Add(mgr manager.Manager, pMgr *gmanager.GManager) error {
 		Complete(r)
 }
 
-func (r *addonsReconciler) Reconcile(req reconcile.Request) (reconcile.Result, error) {
-	ctx := context.Background()
+func (r *addonsReconciler) Reconcile(ctx context.Context, req reconcile.Request) (reconcile.Result, error) {
 	logger := r.Log.WithValues(controllerName, req.NamespacedName.String())
 
 	addons := &workloadv1.Addons{}

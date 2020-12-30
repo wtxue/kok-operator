@@ -18,20 +18,19 @@ package machine
 
 import (
 	"context"
-
-	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
+	"fmt"
 	"time"
 
+	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kok-operator/pkg/gmanager"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -43,7 +42,6 @@ const (
 // machineReconciler reconciles a machine object
 type machineReconciler struct {
 	client.Client
-	Log    logr.Logger
 	Mgr    manager.Manager
 	Scheme *runtime.Scheme
 	*gmanager.GManager
@@ -62,7 +60,6 @@ func Add(mgr manager.Manager, pMgr *gmanager.GManager) error {
 	reconciler := &machineReconciler{
 		Client:   mgr.GetClient(),
 		Mgr:      mgr,
-		Log:      ctrl.Log.WithName("controller").WithName(controllerName),
 		Scheme:   mgr.GetScheme(),
 		GManager: pMgr,
 	}
@@ -84,22 +81,20 @@ func (r *machineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups=devops.k8s.io,resources=virtulclusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=devops.k8s.io,resources=virtulclusters/status,verbs=get;update;patch
 
-func (r *machineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
-	logger := r.Log.WithValues(controllerName, req.NamespacedName.String())
-
+func (r *machineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
 	startTime := time.Now()
 	defer func() {
 		diffTime := time.Since(startTime)
-		var logLevel klog.Level
+		var logLevel int
 		if diffTime > 1*time.Second {
-			logLevel = 1
-		} else if diffTime > 100*time.Millisecond {
 			logLevel = 2
-		} else {
+		} else if diffTime > 100*time.Millisecond {
 			logLevel = 4
+		} else {
+			logLevel = 5
 		}
-		klog.V(logLevel).Infof("##### [%s] reconciling is finished. time taken: %v. ", req.NamespacedName, diffTime)
+		logger.V(logLevel).Info("reconcile finished", "time taken", fmt.Sprintf("%v", diffTime))
 	}()
 
 	m := &devopsv1.Machine{}
@@ -151,19 +146,18 @@ func (r *machineReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	err = r.Client.Get(ctx, types.NamespacedName{Name: m.Spec.ClusterName, Namespace: m.Namespace}, credential)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			klog.V(3).Infof("not find ClusterCredential with name [%q]", req.NamespacedName)
+			logger.Info("not find ClusterCredential", "cluster", m.Spec.ClusterName)
 			return reconcile.Result{}, nil
 		}
 
-		logger.Error(err, "failed to get ClusterCredential")
+		logger.Error(err, "failed to get ClusterCredential", "cluster", m.Spec.ClusterName)
 		return reconcile.Result{}, err
 	}
 
-	klog.Infof("name: %s", cluster.Name)
-
-	r.reconcile(ctx, &manchineContext{
+	r.reconcile(&manchineContext{
+		Ctx:               ctx,
 		Key:               req.NamespacedName,
-		Logger:            logger,
+		Logger:            logger.WithValues("cluster", cluster.Name),
 		Machine:           m,
 		Cluster:           cluster,
 		ClusterCredential: credential,

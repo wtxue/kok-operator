@@ -16,16 +16,7 @@ limitations under the License.
 
 package constants
 
-import (
-	"github.com/thoas/go-funk"
-)
-
 var (
-	OSs              = []string{"linux"}
-	K8sVersions      = []string{"v1.18.12", "v1.19.4"}
-	K8sVersionsWithV = funk.Map(K8sVersions, func(s string) string {
-		return "v" + s
-	}).([]string)
-	K8sVersionConstraint = ">= 1.10"
-	DockerVersions       = []string{"19.03.13"}
+	OSs         = []string{"linux"}
+	K8sVersions = []string{"v1.18.14", "v1.19.6"}
 )

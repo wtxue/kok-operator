@@ -7,8 +7,8 @@ import (
 	"github.com/wtxue/kok-operator/pkg/k8sutil"
 	"github.com/wtxue/kok-operator/pkg/provider/config"
 	"github.com/wtxue/kok-operator/pkg/util/template"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/klog"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -247,9 +247,9 @@ type Option struct {
 	ImageName      string
 }
 
-func BuildFlannelAddon(cfg *config.Config, c *common.Cluster) ([]runtime.Object, error) {
+func BuildFlannelAddon(cfg *config.Config, ctx *common.ClusterContext) ([]client.Object, error) {
 	opt := &Option{
-		ClusterPodCidr: c.Cluster.Spec.ClusterCIDR,
+		ClusterPodCidr: ctx.Cluster.Spec.ClusterCIDR,
 		BackendType:    "vxlan",
 		ImageName:      "",
 	}

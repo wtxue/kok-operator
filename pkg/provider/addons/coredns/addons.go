@@ -13,6 +13,7 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -220,8 +221,8 @@ const (
 	coreDNSReplicas       = 2
 )
 
-func BuildCoreDNSAddon(cfg *config.Config, c *common.Cluster) ([]runtime.Object, error) {
-	objs := make([]runtime.Object, 0)
+func BuildCoreDNSAddon(cfg *config.Config, ctx *common.ClusterContext) ([]client.Object, error) {
+	objs := make([]client.Object, 0)
 
 	coreDNSDeploymentBytes, err := template.ParseString(CoreDNSDeployment, struct {
 		DeploymentName, Image, ControlPlaneTaintKey string
@@ -245,7 +246,7 @@ func BuildCoreDNSAddon(cfg *config.Config, c *common.Cluster) ([]runtime.Object,
 
 	// Get the config file for CoreDNS
 	coreDNSConfigMapBytes, err := template.ParseString(CoreDNSConfigMap, struct{ DNSDomain, UpstreamNameserver, Federation, StubDomain string }{
-		DNSDomain:          c.Cluster.Spec.DNSDomain,
+		DNSDomain:          ctx.Cluster.Spec.DNSDomain,
 		UpstreamNameserver: "/etc/resolv.conf",
 		Federation:         "",
 		StubDomain:         "",
@@ -261,7 +262,7 @@ func BuildCoreDNSAddon(cfg *config.Config, c *common.Cluster) ([]runtime.Object,
 
 	objs = append(objs, coreDNSConfigMap)
 	coreDNSServiceBytes, err := template.ParseString(KubeDNSService, struct{ DNSIP string }{
-		DNSIP: c.Cluster.Status.DNSIP,
+		DNSIP: ctx.Cluster.Status.DNSIP,
 	})
 
 	if err != nil {

@@ -21,11 +21,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-
 	"github.com/pkg/errors"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kok-operator/pkg/constants"
@@ -35,8 +30,11 @@ import (
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -49,24 +47,15 @@ const (
 type clusterReconciler struct {
 	client.Client
 	*gmanager.GManager
-	Log            logr.Logger
 	Mgr            manager.Manager
 	Scheme         *runtime.Scheme
 	ClusterStarted map[string]bool
-}
-
-type clusterContext struct {
-	Ctx     context.Context
-	Key     types.NamespacedName
-	Cluster *devopsv1.Cluster
-	logr.Logger
 }
 
 func Add(mgr manager.Manager, pMgr *gmanager.GManager) error {
 	reconciler := &clusterReconciler{
 		Client:         mgr.GetClient(),
 		Mgr:            mgr,
-		Log:            ctrl.Log.WithName("controller").WithName(controllerName),
 		Scheme:         mgr.GetScheme(),
 		GManager:       pMgr,
 		ClusterStarted: make(map[string]bool),
@@ -89,14 +78,12 @@ func (r *clusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups=devops.k8s.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=devops.k8s.io,resources=clusters/status,verbs=get;update;patch
 
-func (r *clusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	ctx := context.Background()
-	logger := r.Log.WithValues(controllerName, req.NamespacedName.String())
-
+func (r *clusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	logger := log.FromContext(ctx)
 	startTime := time.Now()
 	defer func() {
 		diffTime := time.Since(startTime)
-		var logLevel klog.Level
+		var logLevel int
 		if diffTime > 1*time.Second {
 			logLevel = 2
 		} else if diffTime > 100*time.Millisecond {
@@ -104,7 +91,7 @@ func (r *clusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		} else {
 			logLevel = 5
 		}
-		klog.V(logLevel).Infof("##### [%s] reconciling is finished. time taken: %v. ", req.NamespacedName.String(), diffTime)
+		logger.V(logLevel).Info("reconcile finished", "time taken", fmt.Sprintf("%v", diffTime))
 	}()
 
 	c := &devopsv1.Cluster{}
@@ -119,15 +106,17 @@ func (r *clusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 		return reconcile.Result{}, err
 	}
 
-	clusterCtx := &clusterContext{
+	//
+	clusterCtx := &common.ClusterContext{
 		Ctx:     ctx,
 		Key:     req.NamespacedName,
+		Client:  r.Client,
 		Logger:  logger,
 		Cluster: c,
 	}
 
 	if !c.ObjectMeta.DeletionTimestamp.IsZero() {
-		err := r.cleanClusterResources(ctx, clusterCtx)
+		err := r.cleanClusterResources(clusterCtx)
 		if err != nil {
 			logger.Error(err, "failed to clean cluster resources")
 			return reconcile.Result{}, err
@@ -182,31 +171,31 @@ func (r *clusterReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
 	return ctrl.Result{}, nil
 }
 
-func (r *clusterReconciler) addClusterCheck(ctx context.Context, c *common.Cluster) error {
-	if _, ok := r.ClusterStarted[c.Cluster.Name]; ok {
+func (r *clusterReconciler) addClusterCheck(ctx *common.ClusterContext) error {
+	if _, ok := r.ClusterStarted[ctx.Cluster.Name]; ok {
 		return nil
 	}
 
-	if extKubeconfig, ok := c.ClusterCredential.ExtData[pkiutil.ExternalAdminKubeConfigFileName]; ok {
-		klog.V(4).Infof("cluster: %s, add manager extKubeconfig: \n%s", c.Cluster.Name, extKubeconfig)
-		_, err := r.GManager.AddNewClusters(c.Cluster.Name, extKubeconfig)
+	if extKubeconfig, ok := ctx.Credential.ExtData[pkiutil.ExternalAdminKubeConfigFileName]; ok {
+		ctx.Info("add manager extKubeconfig", "file", extKubeconfig)
+		_, err := r.GManager.AddNewClusters(ctx.Cluster.Name, extKubeconfig)
 		if err != nil {
-			klog.Errorf("failed add cluster: %s manager cache", c.Cluster.Name)
+			ctx.Error(err, "add new clusters manager cache")
 			return nil
 		}
-		klog.Infof("#######  add cluster: %s to manager cache success", c.Cluster.Name)
-		r.ClusterStarted[c.Cluster.Name] = true
+		ctx.Info("add cluster manager successfully")
+		r.ClusterStarted[ctx.Cluster.Name] = true
 		return nil
 	}
 
-	klog.Warningf("can't find %s", pkiutil.ExternalAdminKubeConfigFileName)
+	ctx.Info("can't find  extKubeconfig", "file", pkiutil.ExternalAdminKubeConfigFileName)
 	return nil
 }
 
-func (r *clusterReconciler) reconcile(ctx *clusterContext) error {
+func (r *clusterReconciler) reconcile(ctx *common.ClusterContext) error {
 	phaseRestore := constants.GetAnnotationKey(ctx.Cluster.Annotations, constants.ClusterPhaseRestore)
 	if len(phaseRestore) > 0 {
-		klog.Infof("cluster: %s phaseRestore: %s", ctx.Cluster.Name, phaseRestore)
+		ctx.Info("phase restore", "cluster", ctx.Cluster.Name, "step", phaseRestore)
 		conditions := make([]devopsv1.ClusterCondition, 0)
 		for i := range ctx.Cluster.Status.Conditions {
 			if ctx.Cluster.Status.Conditions[i].Type == phaseRestore {
@@ -232,12 +221,12 @@ func (r *clusterReconciler) reconcile(ctx *clusterContext) error {
 		return nil
 	}
 
-	p, err := r.CpManager.GetProvider(ctx.Cluster.Spec.Type)
+	p, err := r.CpManager.GetProvider(ctx.Cluster.Spec.ClusterType)
 	if err != nil {
 		return err
 	}
 
-	clusterWrapper, err := common.GetCluster(ctx.Ctx, r.Client, ctx.Cluster, r.ClusterManager)
+	err = common.FillClusterContext(ctx, r.ClusterManager)
 	if err != nil {
 		return err
 	}
@@ -245,83 +234,83 @@ func (r *clusterReconciler) reconcile(ctx *clusterContext) error {
 	switch ctx.Cluster.Status.Phase {
 	case devopsv1.ClusterInitializing:
 		ctx.Info("onCreate")
-		r.onCreate(ctx, p, clusterWrapper)
+		r.onCreate(ctx, p)
 	case devopsv1.ClusterRunning:
 		ctx.Info("onUpdate")
-		r.addClusterCheck(ctx.Ctx, clusterWrapper)
-		r.onUpdate(ctx, p, clusterWrapper)
+		r.addClusterCheck(ctx)
+		r.onUpdate(ctx, p)
 	default:
 		ctx.Info("cluster status %q unknown", ctx.Cluster.Status.Phase)
 		return fmt.Errorf("no handler for status %q", ctx.Cluster.Status.Phase)
 	}
 
-	return r.applyStatus(ctx, clusterWrapper)
+	return r.applyStatus(ctx)
 }
 
-func (r *clusterReconciler) cleanClusterResources(ctx context.Context, rc *clusterContext) error {
+func (r *clusterReconciler) cleanClusterResources(ctx *common.ClusterContext) error {
 	ms := &devopsv1.MachineList{}
-	listOptions := &client.ListOptions{Namespace: rc.Key.Namespace}
-	err := r.Client.List(ctx, ms, listOptions)
+	listOptions := &client.ListOptions{Namespace: ctx.Key.Namespace}
+	err := r.Client.List(ctx.Ctx, ms, listOptions)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			rc.Logger.Info("not find machineList")
+			ctx.Info("not find machineList")
 		} else {
-			rc.Logger.Error(err, "failed to list machine")
+			ctx.Error(err, "failed to list machine")
 			return err
 		}
 	}
 
-	if started, ok := r.ClusterStarted[rc.Cluster.Name]; ok && started {
-		rc.Logger.Info("start clean with cluster manager")
-		r.ClusterManager.Delete(rc.Cluster.Name)
-		delete(r.ClusterStarted, rc.Cluster.Name)
+	if started, ok := r.ClusterStarted[ctx.Cluster.Name]; ok && started {
+		ctx.Info("start clean with cluster manager")
+		r.ClusterManager.Delete(ctx.Cluster.Name)
+		delete(r.ClusterStarted, ctx.Cluster.Name)
 	}
 
 	credential := &devopsv1.ClusterCredential{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: rc.Cluster.Name, Namespace: rc.Cluster.Namespace}, credential)
+	err = r.Client.Get(ctx.Ctx, types.NamespacedName{Name: ctx.Cluster.Name, Namespace: ctx.Cluster.Namespace}, credential)
 	if err == nil {
-		rc.Logger.Info("start clean clusterCredential")
-		r.Client.Delete(ctx, credential)
+		ctx.Info("start clean clusterCredential")
+		r.Client.Delete(ctx.Ctx, credential)
 	}
 
 	cms := &corev1.ConfigMapList{}
-	err = r.Client.List(ctx, cms, listOptions)
+	err = r.Client.List(ctx.Ctx, cms, listOptions)
 	if err == nil {
 		for i := range cms.Items {
 			cm := &cms.Items[i]
-			rc.Logger.Info("start clean", "configmap", cm.Name)
-			r.Client.Delete(ctx, cm)
+			ctx.Info("start clean", "configmap", cm.Name)
+			r.Client.Delete(ctx.Ctx, cm)
 		}
-		r.Client.Delete(ctx, credential)
+		r.Client.Delete(ctx.Ctx, credential)
 	}
 
 	// clean worker node
-	rc.Logger.Info("start clean worker node")
+	ctx.Info("start clean worker node")
 	for i := range ms.Items {
 		m := &ms.Items[i]
-		rc.Logger.Info("start clean", "machine", m.Name)
-		r.Client.Delete(ctx, m)
+		ctx.Info("start clean", "machine", m.Name)
+		r.Client.Delete(ctx.Ctx, m)
 	}
 
 	// clean master node
-	rc.Logger.Info("start clean master node")
-	for i := range rc.Cluster.Spec.Machines {
-		m := rc.Cluster.Spec.Machines[i]
+	ctx.Info("start clean master node")
+	for i := range ctx.Cluster.Spec.Machines {
+		m := ctx.Cluster.Spec.Machines[i]
 		ssh, err := m.SSH()
 		if err != nil {
-			rc.Logger.Error(err, "failed new ssh", "node", m.IP)
+			ctx.Error(err, "failed new ssh", "node", m.IP)
 			return err
 		}
 
-		rc.Logger.Info("start clean", "machine", m.IP)
+		ctx.Info("start clean", "machine", m.IP)
 		err = clean.CleanNode(ssh)
 		if err != nil {
-			rc.Logger.Error(err, "failed clean machine node", "node", m.IP)
+			ctx.Error(err, "failed clean machine node", "node", m.IP)
 			return err
 		}
 	}
 
-	rc.Logger.Info("clean all manchine success, start clean cluster finalizers")
-	rc.Cluster.ObjectMeta.Finalizers = constants.RemoveString(rc.Cluster.ObjectMeta.Finalizers, constants.FinalizersCluster)
-	return r.Client.Update(ctx, rc.Cluster)
+	ctx.Info("clean all manchine success, start clean cluster finalizers")
+	ctx.Cluster.ObjectMeta.Finalizers = constants.RemoveString(ctx.Cluster.ObjectMeta.Finalizers, constants.FinalizersCluster)
+	return r.Client.Update(ctx.Ctx, ctx.Cluster)
 }

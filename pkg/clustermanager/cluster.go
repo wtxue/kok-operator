@@ -17,10 +17,9 @@ limitations under the License.
 package clustermanager
 
 import (
+	"context"
 	"strings"
 	"time"
-
-	"context"
 
 	"github.com/go-logr/logr"
 	"github.com/pkg/errors"
@@ -58,11 +57,12 @@ type Cluster struct {
 	Client        client.Client
 	KubeCli       kubernetes.Interface
 
-	Log             logr.Logger
-	Mgr             manager.Manager
-	Cache           cache.Cache
-	SyncPeriod      time.Duration
-	internalStopper chan struct{}
+	Log        logr.Logger
+	Mgr        manager.Manager
+	Cache      cache.Cache
+	SyncPeriod time.Duration
+
+	StopperCancel context.CancelFunc
 
 	Status ClusterStatusType
 	// Started is true if the Informers has been Started
@@ -71,12 +71,11 @@ type Cluster struct {
 
 func NewCluster(name string, kubeconfig []byte, log logr.Logger) (*Cluster, error) {
 	cluster := &Cluster{
-		Name:            name,
-		RawKubeconfig:   kubeconfig,
-		Log:             log.WithValues("cluster", name),
-		SyncPeriod:      SyncPeriodTime,
-		internalStopper: make(chan struct{}),
-		Started:         false,
+		Name:          name,
+		RawKubeconfig: kubeconfig,
+		Log:           log.WithValues("cluster", name),
+		SyncPeriod:    SyncPeriodTime,
+		Started:       false,
 	}
 
 	err := cluster.initK8SClients()
@@ -144,25 +143,27 @@ func (c *Cluster) healthCheck() bool {
 	return true
 }
 
-func (c *Cluster) StartCache(stopCh <-chan struct{}) {
+func (c *Cluster) StartCache(stopCtx context.Context) {
 	if c.Started {
 		klog.Infof("cluster name: %s cache Informers is already startd", c.Name)
 		return
 	}
 
 	klog.Infof("cluster name: %s start cache Informers ", c.Name)
+	ctx, cancelFunc := context.WithCancel(context.Background())
 	go func() {
-		err := c.Cache.Start(c.internalStopper)
+		err := c.Cache.Start(ctx)
 		if err != nil {
 			klog.Warningf("cluster name: %s cache Informers quit end err: %+v", c.Name, err)
 		}
 	}()
 
-	c.Cache.WaitForCacheSync(stopCh)
+	c.Cache.WaitForCacheSync(stopCtx)
 	c.Started = true
+	c.StopperCancel = cancelFunc
 }
 
 func (c *Cluster) Stop() {
 	klog.Infof("cluster: %s start stop cache Informers", c.Name)
-	close(c.internalStopper)
+	c.StopperCancel()
 }
