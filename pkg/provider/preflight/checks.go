@@ -28,7 +28,7 @@ func newCommonChecks(s ssh.Interface) []Checker {
 		// KernelModuleCheck{Interface: s, Module: "iptable_nat"},
 		FileContentCheck{Interface: s, Path: ipv4Forward, Content: []byte{'1'}},
 		// FileAvailableCheck{Interface: s, Path: constants.KubectlConfigFile},
-		DirAvailableCheck{Interface: s, Path: constants.CNIConfDIr},
+		// DirAvailableCheck{Interface: s, Path: constants.CNIConfDIr},
 		DirAvailableCheck{Interface: s, Path: constants.CNIDataDir},
 		// PortOpenCheck{Interface: s, port: constants.ProxyHealthzPort},
 		// PortOpenCheck{Interface: s, port: constants.ProxyStatusPort},

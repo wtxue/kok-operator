@@ -91,7 +91,7 @@ func (r *clusterReconciler) applyStatus(ctx *common.ClusterContext) error {
 			return err
 		}
 
-		ctx.V(4).Info("update cluster status success")
+		ctx.Info("update cluster status success")
 	}
 
 	return nil

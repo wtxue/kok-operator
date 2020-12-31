@@ -233,10 +233,10 @@ func (p *Provider) EnsureCerts(ctx *common.ClusterContext) error {
 		}
 
 		for pathFile, va := range ctx.Credential.CertsBinaryData {
-			klog.Infof("node: %s start write BinaryData [%s] ...", sh.HostIP(), pathFile)
+			ctx.Info("write certs binaryData", "node", sh.HostIP(), "file", pathFile)
 			err = sh.WriteFile(bytes.NewReader(va), pathFile)
 			if err != nil {
-				klog.Errorf("write [%s] err: %v", pathFile, err)
+				ctx.Error(err, "write certs binaryData", "node", sh.HostIP(), "file", pathFile)
 				return err
 			}
 		}
@@ -268,10 +268,10 @@ func (p *Provider) EnsureKubeMiscPhase(ctx *common.ClusterContext) error {
 	}
 
 	for pathName, va := range kubeMaps {
-		klog.V(4).Infof("node: %s start write misc config [%s] ...", sh.HostIP(), pathName)
+		ctx.Info("write misc config", "node", sh.HostIP(), "file", pathName)
 		err = sh.WriteFile(strings.NewReader(va), pathName)
 		if err != nil {
-			klog.Errorf("node: %s start write misc config: %s, err: %+v", pathName, va, err)
+			ctx.Error(err, "write misc config", "node", sh.HostIP(), "file", pathName)
 			return err
 		}
 	}
@@ -304,7 +304,7 @@ func (p *Provider) EnsureKubeadmInitEtcdPhase(ctx *common.ClusterContext) error 
 
 	err = kubeadm.RebuildMasterManifestFile(sh, ctx, p.Cfg)
 	if err != nil {
-		klog.Errorf("modify same master config err: %v", err)
+		ctx.Error(err, "modify some master config", "node", sh.HostIP())
 		return err
 	}
 
@@ -356,7 +356,7 @@ func (p *Provider) EnsureJoinControlePlane(ctx *common.ClusterContext) error {
 
 		clientset, err := ctx.ClientsetForBootstrap()
 		if err != nil {
-			klog.Errorf("ClientsetForBootstrap err: %v", clientset)
+			ctx.Error(err, "ClientsetForBootstrap", "node", sh.HostIP())
 			return err
 		}
 
@@ -440,7 +440,7 @@ func (p *Provider) EnsureSystem(ctx *common.ClusterContext) error {
 		return err
 	}
 
-	klog.Infof("clster: %s ensureSystem all host executed successfully", ctx.Cluster.Name)
+	ctx.Info("ensure system all master node executed successfully")
 	return nil
 }
 
@@ -722,14 +722,12 @@ func (p *Provider) EnsureExtKubeconfig(ctx *common.ClusterContext) error {
 	}
 
 	apiserver := certs.BuildExternalApiserverEndpoint(ctx)
-	klog.Infof("external apiserver url: %s", apiserver)
-	cfgMaps, err := certs.CreateApiserverKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert,
-		apiserver, ctx.Cluster.Name)
+	cfgMaps, err := certs.CreateApiserverKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert, apiserver, ctx.Cluster.Name)
 	if err != nil {
 		klog.Errorf("build apiserver kubeconfg err: %+v", err)
 		return err
 	}
-	klog.Infof("[%s/%s] start convert apiserver kubeconfig ...", ctx.Cluster.Namespace, ctx.Cluster.Name)
+	ctx.Info("start convert apiserver kubeconfig ...", "apiserver", apiserver)
 	for _, v := range cfgMaps {
 		by, err := certs.BuildKubeConfigByte(v)
 		if err != nil {
@@ -737,7 +735,7 @@ func (p *Provider) EnsureExtKubeconfig(ctx *common.ClusterContext) error {
 		}
 
 		externalKubeconfig := string(by)
-		klog.Infof("cluster: %s externalKubeconfig: \n%s", ctx.Cluster.Name, externalKubeconfig)
+		ctx.Info("make externalKubeconfig", "file", externalKubeconfig)
 		ctx.Credential.ExtData[pkiutil.ExternalAdminKubeConfigFileName] = externalKubeconfig
 	}
 

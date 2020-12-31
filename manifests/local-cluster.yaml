@@ -11,8 +11,9 @@ metadata:
   name: local-cluster
   namespace: local-cluster
   annotations:
-    "k8s.io/step.restore": "EnsureCRI"
+ #   "k8s.io/step.restore": "EnsureCRI"
     "k8s.io/local.dir": "bin/linux/"
+    "k8s.io/apply.step": EnsureDeployCni, EnsureMetricsServer
 spec:
   pause: false
   tenantID: k8s

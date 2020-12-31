@@ -31,7 +31,7 @@ const (
 )
 
 const (
-	ClusterAnnotationAction  = "k8s.io/action"
+	ClusterAnnoApplySep      = "k8s.io/apply.step"
 	ClusterPhaseRestore      = "k8s.io/step.restore"
 	ClusterApiSvcType        = "k8s.io/apiserver.type"
 	ClusterApiSvcVip         = "k8s.io/apiserver.vip"

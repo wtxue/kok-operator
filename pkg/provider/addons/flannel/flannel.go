@@ -7,7 +7,6 @@ import (
 	"github.com/wtxue/kok-operator/pkg/k8sutil"
 	"github.com/wtxue/kok-operator/pkg/provider/config"
 	"github.com/wtxue/kok-operator/pkg/util/template"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -61,7 +60,7 @@ spec:
     rule: 'RunAsAny'
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: flannel
 rules:
@@ -90,7 +89,7 @@ rules:
       - patch
 ---
 kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1beta1
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: flannel
 roleRef:
@@ -260,7 +259,6 @@ func BuildFlannelAddon(cfg *config.Config, ctx *common.ClusterContext) ([]client
 
 	objs, err := k8sutil.LoadObjs(bytes.NewReader(data))
 	if err != nil {
-		klog.Errorf("flannel load objs err: %v", err)
 		return nil, err
 	}
 

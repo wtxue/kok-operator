@@ -39,10 +39,10 @@ type Feature struct {
 func NewDefaultConfig() *Config {
 	return &Config{
 		Registry: Registry{
-			Prefix: "docker.io/wtxue",
+			// Prefix: "docker.io/wtxue",
 			// Prefix: "registry.aliyuncs.com/google_containers",
 		},
-		CustomRegistry:     "docker.io/wtxue",
+		CustomRegistry:     "registry.aliyuncs.com/google_containers",
 		EnableCustomCert:   false,
 		EnableCustomImages: false,
 		SupportK8sVersion:  constants.K8sVersions,

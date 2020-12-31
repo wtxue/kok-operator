@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/go-logr/logr"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
@@ -30,11 +30,9 @@ import (
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -47,29 +45,30 @@ const (
 type clusterReconciler struct {
 	client.Client
 	*gmanager.GManager
+	Log            logr.Logger
 	Mgr            manager.Manager
-	Scheme         *runtime.Scheme
 	ClusterStarted map[string]bool
 }
 
 func Add(mgr manager.Manager, pMgr *gmanager.GManager) error {
-	reconciler := &clusterReconciler{
+	r := &clusterReconciler{
 		Client:         mgr.GetClient(),
 		Mgr:            mgr,
-		Scheme:         mgr.GetScheme(),
 		GManager:       pMgr,
+		Log:            mgr.GetLogger().WithValues("controller", controllerName),
 		ClusterStarted: make(map[string]bool),
 	}
 
-	err := reconciler.SetupWithManager(mgr)
-	if err != nil {
-		return errors.Wrapf(err, "unable to create cluster controller")
-	}
+	// c, err := controller.New(controllerName, mgr, controller.Options{Reconciler: r})
+	// if err != nil {
+	// 	return errors.Wrapf(err, "unable to create cluster controller")
+	// }
+	//
+	// err = c.Watch(&source.Kind{Type: &devopsv1.Cluster{}}, &handler.EnqueueRequestForObject{})
+	// if err != nil {
+	// 	return err
+	// }
 
-	return nil
-}
-
-func (r *clusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&devopsv1.Cluster{}).
 		Complete(r)
@@ -79,19 +78,10 @@ func (r *clusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups=devops.k8s.io,resources=clusters/status,verbs=get;update;patch
 
 func (r *clusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	logger := r.Log.WithValues("req", req.String())
 	startTime := time.Now()
 	defer func() {
-		diffTime := time.Since(startTime)
-		var logLevel int
-		if diffTime > 1*time.Second {
-			logLevel = 2
-		} else if diffTime > 100*time.Millisecond {
-			logLevel = 4
-		} else {
-			logLevel = 5
-		}
-		logger.V(logLevel).Info("reconcile finished", "time taken", fmt.Sprintf("%v", diffTime))
+		logger.Info("reconcile finished", "time taken", fmt.Sprintf("%v", time.Since(startTime)))
 	}()
 
 	c := &devopsv1.Cluster{}
@@ -125,7 +115,7 @@ func (r *clusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if !constants.ContainsString(c.ObjectMeta.Finalizers, constants.FinalizersCluster) {
-		logger.V(4).Info("start set", "finalizers", constants.FinalizersCluster)
+		logger.Info("start set", "finalizers", constants.FinalizersCluster)
 		if c.ObjectMeta.Finalizers == nil {
 			c.ObjectMeta.Finalizers = []string{}
 		}
@@ -140,13 +130,13 @@ func (r *clusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if c.Spec.Pause == true {
-		logger.V(4).Info("cluster is Pause")
+		logger.Info("cluster is Pause")
 		return reconcile.Result{}, nil
 	}
 
 	if !r.GManager.IsK8sSupport(c.Spec.Version) {
 		if c.Status.Phase != devopsv1.ClusterNotSupport {
-			logger.V(4).Info("not support", "version", c.Spec.Version)
+			logger.Info("not support", "version", c.Spec.Version)
 			c.Status.Phase = devopsv1.ClusterNotSupport
 			err = r.Client.Status().Update(ctx, c)
 			if err != nil {
@@ -158,7 +148,7 @@ func (r *clusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if (len(string(c.Status.Phase)) == 0 || len(c.Status.Conditions) == 0) && c.Status.Phase != devopsv1.ClusterInitializing {
-		logger.V(4).Info("change", "status", devopsv1.ClusterInitializing)
+		logger.Info("change", "status", devopsv1.ClusterInitializing)
 		c.Status.Phase = devopsv1.ClusterInitializing
 		err = r.Client.Status().Update(ctx, c)
 		if err != nil {
@@ -240,7 +230,7 @@ func (r *clusterReconciler) reconcile(ctx *common.ClusterContext) error {
 		r.addClusterCheck(ctx)
 		r.onUpdate(ctx, p)
 	default:
-		ctx.Info("cluster status %q unknown", ctx.Cluster.Status.Phase)
+		ctx.Info("unknown cluster status", "phase", ctx.Cluster.Status.Phase)
 		return fmt.Errorf("no handler for status %q", ctx.Cluster.Status.Phase)
 	}
 

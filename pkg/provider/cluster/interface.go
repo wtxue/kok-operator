@@ -6,7 +6,6 @@ import (
 	"reflect"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/thoas/go-funk"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
@@ -15,7 +14,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/server/mux"
-	"k8s.io/klog"
 )
 
 const (
@@ -117,9 +115,8 @@ func (p *DelegateProvider) OnCreate(ctx *common.ClusterContext) error {
 		}
 
 		handlerName := f.Name()
-		klog.Infof("clusterName: %s OnCreate handler: %s", ctx.Cluster.Name, handlerName)
-		err = f(ctx)
-		if err != nil {
+		ctx.Info("onCreate handler start ... ", "handlerName", handlerName)
+		if err = f(ctx); err != nil {
 			ctx.Error(err, "OnCreate handler", "handlerName", handlerName)
 			ctx.Cluster.SetCondition(devopsv1.ClusterCondition{
 				Type:          condition.Type,
@@ -159,26 +156,10 @@ func (p *DelegateProvider) OnCreate(ctx *common.ClusterContext) error {
 	return nil
 }
 
-func tryFindHandler(handlerName string, handlers []string, ctx *common.ClusterContext) bool {
-	var obj *devopsv1.ClusterCondition
-	for idx := range ctx.Cluster.Status.Conditions {
-		c := &ctx.Cluster.Status.Conditions[idx]
-		if c.Type == handlerName {
-			ltime := c.LastProbeTime
-			if c.Status == devopsv1.ConditionTrue && ltime.Add(1*time.Minute).After(time.Now()) {
-				obj = c
-			}
-			break
-		}
-	}
-
-	for _, name := range handlers {
-		if name == handlerName {
-			if obj == nil {
-				return true
-			} else {
-				return false
-			}
+func tryFindHandler(handlerName string, handlers []string) bool {
+	for i := range handlers {
+		if strings.Contains(handlers[i], handlerName) {
+			return true
 		}
 	}
 
@@ -192,22 +173,21 @@ func (p *DelegateProvider) OnUpdate(ctx *common.ClusterContext) error {
 
 	var key string
 	var ok bool
-	if key, ok = ctx.Cluster.Annotations[constants.ClusterAnnotationAction]; !ok {
+	if key, ok = ctx.Cluster.Annotations[constants.ClusterAnnoApplySep]; !ok {
 		return nil
 	}
 
 	Handlers := strings.Split(key, ",")
 	for _, f := range p.UpdateHandlers {
 		handlerName := f.Name()
-		if !tryFindHandler(handlerName, Handlers, ctx) {
+		if !tryFindHandler(handlerName, Handlers) {
 			continue
 		}
 
-		ctx.Info("OnUpdate handler start ... ", "handlerName", handlerName)
+		ctx.Info("onUpdate handler start ... ", "handlerName", handlerName)
 		now := metav1.Now()
-		err := f(ctx)
-		if err != nil {
-			ctx.Error(err, "OnUpdate handler", "handlerName", handlerName)
+		if err := f(ctx); err != nil {
+			ctx.Error(err, "onUpdate handler", "handlerName", handlerName)
 			ctx.Cluster.SetCondition(devopsv1.ClusterCondition{
 				Type:          handlerName,
 				Status:        devopsv1.ConditionFalse,

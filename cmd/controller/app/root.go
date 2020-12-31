@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"github.com/wtxue/kok-operator/cmd/controller/app/app_option"
+	"go.uber.org/zap/zapcore"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -59,7 +60,7 @@ func GetRootCmd(args []string) *cobra.Command {
 	// Make sure that klog logging variables are initialized so that we can
 	// update them from this file.
 	klog.InitFlags(nil)
-	ctrl.SetLogger(zap.New(zap.UseDevMode(opt.Global.LoggerDevMode)))
+	ctrl.SetLogger(zap.New(zap.UseDevMode(opt.Global.LoggerDevMode), zap.Level(zapcore.DebugLevel)))
 
 	// Make sure klog (used by the client-go dependency) logs to stderr, as it
 	// will try to log to directories that may not exist in the cilium-operator
