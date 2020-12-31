@@ -1,0 +1,664 @@
+---
+# Source: contour/templates/rbac.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: contour-contour
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: contour
+---
+# Source: contour/templates/rbac.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: contour-contour-certgen
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: contour
+---
+# Source: contour/templates/rbac.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: contour-envoy
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: envoy
+---
+# Source: contour/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: contour
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: contour
+data:
+  contour.yaml: |
+    accesslog-format: envoy
+    disablePermitInsecure: false
+    leaderelection:
+      configmap-namespace: 'default'
+    tls: null
+---
+# Source: contour/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRole
+metadata:
+  name: contour:contour
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - endpoints
+      - nodes
+      - pods
+      - secrets
+      - services
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apiextensions.k8s.io
+    resources:
+      - customresourcedefinitions
+    verbs:
+      - list
+  - apiGroups:
+      - "networking.k8s.io"
+    resources:
+      - ingresses
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - "networking.k8s.io"
+    resources:
+      - "ingresses/status"
+    verbs:
+      - get
+      - list
+      - watch
+      - patch
+      - post
+      - update
+  - apiGroups:
+      - projectcontour.io
+    resources:
+      - extensionservices
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - projectcontour.io
+    resources:
+      - extensionservices/status
+    verbs:
+      - create
+      - get
+      - update
+  - apiGroups:
+      - projectcontour.io
+    resources:
+      - httpproxies
+      - tlscertificatedelegations
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - projectcontour.io
+    resources:
+      - httpproxies/status
+    verbs:
+      - create
+      - get
+      - update
+  - apiGroups: [ "networking.x.k8s.io" ]
+    resources: [ "gatewayclasses", "gateways", "httproutes", "tcproutes" ]
+    verbs:
+      - get
+      - list
+      - watch
+      - put
+      - post
+      - patch
+---
+# Source: contour/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: contour:contour
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: contour:contour
+subjects:
+  - kind: ServiceAccount
+    name: contour-contour
+    namespace: default
+---
+# Source: contour/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: contour:contour-leaderelection
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+    verbs:
+      - create
+      - get
+      - list
+      - watch
+      - update
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - create
+      - update
+      - patch
+---
+# Source: contour/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: Role
+metadata:
+  name: contour:contour-certgen
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - create
+      - update
+---
+# Source: contour/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: contour:contour-leaderelection
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: contour:contour-leaderelection
+subjects:
+  - kind: ServiceAccount
+    name: contour-contour
+---
+# Source: contour/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: RoleBinding
+metadata:
+  name: contour:contour-certgen
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: contour:contour-certgen
+subjects:
+  - kind: ServiceAccount
+    name: contour-contour-certgen
+---
+# Source: contour/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: contour
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: contour
+spec:
+  ports:
+    - port: 8001
+      name: xds
+      protocol: TCP
+      targetPort: 8001
+    - name: metrics
+      port: 8000
+      protocol: TCP
+      targetPort: 8000
+  selector:
+    app.kubernetes.io/name: contour
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/component: contour
+  type: ClusterIP
+---
+# Source: contour/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: contour-envoy
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: envoy
+  annotations:
+spec:
+  externalTrafficPolicy: "Local"
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: http
+      nodePort: 30080
+    - name: https
+      port: 443
+      protocol: TCP
+      targetPort: https
+      nodePort: 30443
+    - name: metrics
+      port: 8002
+      protocol: TCP
+      targetPort: 8002
+  selector:
+    app.kubernetes.io/name: contour
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/component: envoy
+  type: NodePort
+---
+# Source: contour/templates/contour-deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contour-contour
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: contour
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # This value of maxSurge means that during a rolling update
+      # the new ReplicaSet will be created first.
+      maxSurge: 50%
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: contour
+      app.kubernetes.io/instance: contour
+      app.kubernetes.io/component: contour
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: contour
+        helm.sh/chart: contour-1.1.5
+        app.kubernetes.io/instance: contour
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/component: contour
+    spec:
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: contour
+                    app.kubernetes.io/instance: contour
+                    app.kubernetes.io/component: contour
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+      containers:
+        - command:
+            - contour
+          args:
+            - serve
+            - --incluster
+            - --xds-address=0.0.0.0
+            - --xds-port=8001
+            - --envoy-service-http-port=80
+            - --envoy-service-https-port=443
+            - --contour-cafile=/certs/ca.crt
+            - --contour-cert-file=/certs/tls.crt
+            - --contour-key-file=/certs/tls.key
+            - --config-path=/config/contour.yaml
+          image: docker.io/projectcontour/contour:v1.9.0
+          imagePullPolicy: IfNotPresent
+          name: contour
+          ports:
+            - containerPort: 8001
+              name: xds
+              protocol: TCP
+            - containerPort: 8000
+              name: metrics
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8000
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 6
+          readinessProbe:
+            tcpSocket:
+              port: 8001
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          resources:
+            limits: { }
+            requests: { }
+          volumeMounts:
+            - name: contourcert
+              mountPath: /certs
+              readOnly: true
+            - name: contour-config
+              mountPath: /config
+              readOnly: true
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+      dnsPolicy: ClusterFirst
+      serviceAccountName: contour-contour
+      securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup:
+        runAsNonRoot: true
+      volumes:
+        - name: contourcert
+          secret:
+            secretName: contourcert
+        - name: contour-config
+          configMap:
+            name: contour
+            defaultMode: 0644
+            items:
+              - key: contour.yaml
+                path: contour.yaml
+---
+# Source: contour/templates/envoy-deploy.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contour-envoy
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: envoy
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 50%
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: contour
+      app.kubernetes.io/instance: contour
+      app.kubernetes.io/component: envoy
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: contour
+        helm.sh/chart: contour-1.1.5
+        app.kubernetes.io/instance: contour
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/component: envoy
+    spec:
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: contour
+                    app.kubernetes.io/component: envoy
+                topologyKey: kubernetes.io/hostname
+              weight: 100
+      terminationGracePeriodSeconds: 300
+      hostNetwork: false
+      dnsPolicy: ClusterFirst
+      containers:
+        - command:
+            - contour
+          args:
+            - envoy
+            - shutdown-manager
+          image: docker.io/projectcontour/contour:v1.9.0
+          imagePullPolicy: IfNotPresent
+          lifecycle:
+            preStop:
+              httpGet:
+                path: /shutdown
+                port: 8090
+                scheme: HTTP
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8090
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 6
+          name: shutdown-manager
+        - command:
+            - envoy
+          args:
+            - -c
+            - /config/envoy.json
+            - --service-cluster $(CONTOUR_NAMESPACE)
+            - --service-node $(ENVOY_POD_NAME)
+            - --log-level debug
+          image: docker.io/envoyproxy/envoy:v1.15.1
+          imagePullPolicy: IfNotPresent
+          name: envoy
+          securityContext:
+            runAsUser: 0
+          env:
+            - name: CONTOUR_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.namespace
+            - name: ENVOY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  apiVersion: v1
+                  fieldPath: metadata.name
+          ports:
+            - containerPort: 80
+              name: http
+              protocol: TCP
+            - containerPort: 443
+              name: https
+              protocol: TCP
+            - containerPort: 8002
+              name: http-metrics
+              protocol: TCP
+            - containerPort: 9001
+              name: http-admin
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8002
+            initialDelaySeconds: 10
+            periodSeconds: 3
+            timeoutSeconds: 1
+            successThreshold: 1
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /ready
+              port: 8002
+            initialDelaySeconds: 120
+            periodSeconds: 20
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 6
+          resources:
+            limits: { }
+            requests: { }
+          volumeMounts:
+            - name: envoy-config
+              mountPath: /config
+            - name: envoycert
+              mountPath: /certs
+          lifecycle:
+            preStop:
+              httpGet:
+                path: /shutdown
+                port: 8090
+                scheme: HTTP
+      initContainers:
+        - command:
+            - contour
+          args:
+            - bootstrap
+            - /config/envoy.json
+            - --xds-address=contour
+            - --xds-port=8001
+            - --envoy-cafile=/certs/ca.crt
+            - --envoy-cert-file=/certs/tls.crt
+            - --envoy-key-file=/certs/tls.key
+          image: docker.io/projectcontour/contour:v1.9.0
+          imagePullPolicy: IfNotPresent
+          name: envoy-initconfig
+          resources:
+            limits: { }
+            requests: { }
+          volumeMounts:
+            - name: envoy-config
+              mountPath: /config
+            - name: envoycert
+              mountPath: /certs
+              readOnly: true
+          env:
+            - name: CONTOUR_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+      serviceAccountName: contour-envoy
+      volumes:
+        - name: envoy-config
+          emptyDir: { }
+        - name: envoycert
+          secret:
+            secretName: envoycert
+      restartPolicy: Always
+---
+# Source: contour/templates/job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: contour-contour-certgen
+  labels:
+    app.kubernetes.io/name: contour
+    helm.sh/chart: contour-1.1.5
+    app.kubernetes.io/instance: contour
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: contour-certgen
+spec:
+  ttlSecondsAfterFinished: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: contour
+        helm.sh/chart: contour-1.1.5
+        app.kubernetes.io/instance: contour
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/component: contour-certgen
+    spec:
+
+      containers:
+        - name: contour
+          image: docker.io/projectcontour/contour:v1.9.0
+          imagePullPolicy: IfNotPresent
+          command:
+            - contour
+          args:
+            - certgen
+            - --kube
+            - --incluster
+            - --overwrite
+            - --secrets-format=compact
+            - --namespace=$(CONTOUR_NAMESPACE)
+          env:
+            - name: CONTOUR_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            limits: { }
+            requests: { }
+      restartPolicy: Never
+      serviceAccountName: contour-contour-certgen
+      securityContext:
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup:
+        runAsNonRoot: true
+  parallelism: 1
+  completions: 1
+  backoffLimit: 1
