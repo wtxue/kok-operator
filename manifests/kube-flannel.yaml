@@ -1,17 +1,3 @@
-package flannel
-
-import (
-	"bytes"
-
-	"github.com/wtxue/kok-operator/pkg/controllers/common"
-	"github.com/wtxue/kok-operator/pkg/k8sutil"
-	"github.com/wtxue/kok-operator/pkg/provider/config"
-	"github.com/wtxue/kok-operator/pkg/util/template"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-)
-
-const (
-	flannelTemplate = `
 ---
 apiVersion: policy/v1beta1
 kind: PodSecurityPolicy
@@ -45,9 +31,9 @@ spec:
   allowPrivilegeEscalation: false
   defaultAllowPrivilegeEscalation: false
   # Capabilities
-  allowedCapabilities: ['NET_ADMIN', 'NET_RAW']
-  defaultAddCapabilities: []
-  requiredDropCapabilities: []
+  allowedCapabilities: [ 'NET_ADMIN', 'NET_RAW' ]
+  defaultAddCapabilities: [ ]
+  requiredDropCapabilities: [ ]
   # Host namespaces
   hostPID: false
   hostIPC: false
@@ -61,14 +47,14 @@ spec:
     rule: 'RunAsAny'
 ---
 kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: flannel
 rules:
-  - apiGroups: ['extensions']
-    resources: ['podsecuritypolicies']
-    verbs: ['use']
-    resourceNames: ['psp.flannel.unprivileged']
+  - apiGroups: [ 'extensions' ]
+    resources: [ 'podsecuritypolicies' ]
+    verbs: [ 'use' ]
+    resourceNames: [ 'psp.flannel.unprivileged' ]
   - apiGroups:
       - ""
     resources:
@@ -90,7 +76,7 @@ rules:
       - patch
 ---
 kind: ClusterRoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
+apiVersion: rbac.authorization.k8s.io/v1beta1
 metadata:
   name: flannel
 roleRef:
@@ -139,9 +125,9 @@ data:
     }
   net-conf.json: |
     {
-      "Network": "{{ default "10.244.0.0/16" .ClusterPodCidr }}",
+      "Network": "10.244.0.0/16",
       "Backend": {
-        "Type": "{{ default "vxlan" .BackendType }}"
+        "Type": "vxlan"
       }
     }
 ---
@@ -180,7 +166,7 @@ spec:
       serviceAccountName: flannel
       initContainers:
         - name: install-cni
-          image: "{{ default "quay.io/coreos/flannel:v0.13.0" .ImageName }}"
+          image: quay.io/coreos/flannel:v0.13.0
           command:
             - cp
           args:
@@ -194,7 +180,7 @@ spec:
               mountPath: /etc/kube-flannel/
       containers:
         - name: kube-flannel
-          image: "{{ default "quay.io/coreos/flannel:v0.13.0" .ImageName }}"
+          image: quay.io/coreos/flannel:v0.13.0
           command:
             - /opt/bin/flanneld
           args:
@@ -210,7 +196,7 @@ spec:
           securityContext:
             privileged: false
             capabilities:
-              add: ["NET_ADMIN", "NET_RAW"]
+              add: [ "NET_ADMIN", "NET_RAW" ]
           env:
             - name: POD_NAME
               valueFrom:
@@ -235,31 +221,3 @@ spec:
         - name: flannel-cfg
           configMap:
             name: kube-flannel-cfg
-`
-)
-
-type Option struct {
-	ClusterPodCidr string
-	BackendType    string
-	ImageName      string
-}
-
-func BuildFlannelAddon(cfg *config.Config, ctx *common.ClusterContext) ([]client.Object, error) {
-	opt := &Option{
-		ClusterPodCidr: ctx.Cluster.Spec.ClusterCIDR,
-		BackendType:    "vxlan",
-		ImageName:      "",
-	}
-
-	data, err := template.ParseString(flannelTemplate, opt)
-	if err != nil {
-		return nil, err
-	}
-
-	objs, err := k8sutil.LoadObjs(bytes.NewReader(data))
-	if err != nil {
-		return nil, err
-	}
-
-	return objs, nil
-}
