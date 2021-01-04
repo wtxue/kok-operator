@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/imdario/mergo"
 	"github.com/wtxue/kok-operator/pkg/apis"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
@@ -19,6 +20,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	utilsnet "k8s.io/utils/net"
 )
 
 type Config struct {
@@ -63,14 +65,14 @@ func GetKubeadmConfigByMaster0(ctx *common.ClusterContext, cfg *config.Config) *
 
 func GetKubeadmConfig(ctx *common.ClusterContext, cfg *config.Config, controlPlaneEndpoint string) *Config {
 	return &Config{
-		InitConfiguration:      GetInitConfiguration(ctx),
+		InitConfiguration:      GetInitConfiguration(ctx, cfg),
 		ClusterConfiguration:   GetClusterConfiguration(ctx, cfg, controlPlaneEndpoint),
 		KubeletConfiguration:   GetKubeletConfiguration(ctx),
 		KubeProxyConfiguration: GetKubeProxyConfiguration(ctx),
 	}
 }
 
-func GetInitConfiguration(ctx *common.ClusterContext) *kubeadmv1beta2.InitConfiguration {
+func GetInitConfiguration(ctx *common.ClusterContext, cfg *config.Config) *kubeadmv1beta2.InitConfiguration {
 	token, _ := kubeadmv1beta2.NewBootstrapTokenString(*ctx.Credential.BootstrapToken)
 
 	initCfg := &kubeadmv1beta2.InitConfiguration{
@@ -83,6 +85,10 @@ func GetInitConfiguration(ctx *common.ClusterContext) *kubeadmv1beta2.InitConfig
 		},
 		CertificateKey: *ctx.Credential.CertificateKey,
 	}
+
+	kubeletExtraArgs := map[string]string{}
+	utilruntime.Must(mergo.Merge(&kubeletExtraArgs, ctx.Cluster.Spec.KubeletExtraArgs))
+	utilruntime.Must(mergo.Merge(&kubeletExtraArgs, cfg.Kubelet.ExtraArgs))
 
 	if len(ctx.Cluster.Spec.Machines) > 0 {
 		initCfg.NodeRegistration = kubeadmv1beta2.NodeRegistrationOptions{
@@ -144,6 +150,8 @@ func GetClusterConfiguration(ctx *common.ClusterContext, cfg *config.Config, con
 		},
 		ImageRepository: cfg.Registry.Prefix,
 		ClusterName:     ctx.Cluster.Name,
+		FeatureGates: map[string]bool{
+			"IPv6DualStack": ctx.Cluster.Spec.Features.IPv6DualStack},
 	}
 
 	utilruntime.Must(json.Merge(&kubeadmCfg.Etcd, &ctx.Cluster.Spec.Etcd))
@@ -152,14 +160,25 @@ func GetClusterConfiguration(ctx *common.ClusterContext, cfg *config.Config, con
 }
 
 func GetKubeProxyConfiguration(ctx *common.ClusterContext) *kubeproxyv1alpha1.KubeProxyConfiguration {
-	kubeProxyMode := "iptables"
+	c := &kubeproxyv1alpha1.KubeProxyConfiguration{}
+	c.Mode = "iptables"
 	if ctx.Cluster.Spec.Features.IPVS != nil && *ctx.Cluster.Spec.Features.IPVS {
-		kubeProxyMode = "ipvs"
+		c.Mode = "ipvs"
+		c.ClusterCIDR = ctx.Cluster.Spec.ClusterCIDR
+		if ctx.Cluster.Spec.Features.HA != nil {
+			if ctx.Cluster.Spec.Features.HA.KubeHA != nil {
+				c.IPVS.ExcludeCIDRs = []string{fmt.Sprintf("%s/32", ctx.Cluster.Spec.Features.HA.KubeHA.VIP)}
+			}
+			if ctx.Cluster.Spec.Features.HA.ThirdPartyHA != nil {
+				c.IPVS.ExcludeCIDRs = []string{fmt.Sprintf("%s/32", ctx.Cluster.Spec.Features.HA.ThirdPartyHA.VIP)}
+			}
+		}
 	}
 
-	return &kubeproxyv1alpha1.KubeProxyConfiguration{
-		Mode: kubeproxyv1alpha1.ProxyMode(kubeProxyMode),
+	if utilsnet.IsIPv6CIDRString(ctx.Cluster.Spec.ClusterCIDR) {
+		c.BindAddress = "::"
 	}
+	return c
 }
 
 func GetKubeletConfiguration(ctx *common.ClusterContext) *kubeletv1beta1.KubeletConfiguration {

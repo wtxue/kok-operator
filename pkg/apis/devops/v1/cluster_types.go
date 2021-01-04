@@ -1,25 +1,8 @@
-/*
-Copyright 2020 wtxue.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package v1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"k8s.io/apimachinery/pkg/api/resource"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -181,7 +164,13 @@ type UpgradeStrategy struct {
 	// 100% means ignore any pods unready which may be used in one worker node, use this carefully!
 	// default value is 0%.
 	// +optional
-	MaxUnready *intstr.IntOrString `json:"maxUnready,omitempty" protobuf:"bytes,1,opt,name=maxUnready"`
+	MaxUnready *intstr.IntOrString `json:"maxUnready,omitempty"`
+	// Whether drain node before upgrade.
+	// Draining node before upgrade is recommended.
+	// But not all pod running as cows, a few running as pets.
+	// If your pod can not accept be expelled from current node, this value should be false.
+	// +optional
+	DrainNodeBeforeUpgrade *bool `json:"drainNodeBeforeUpgrade,omitempty"`
 }
 
 // ClusterAddress contains information for the cluster's address.
@@ -210,11 +199,11 @@ type LocalEtcd struct {
 }
 
 type HA struct {
-	DKEHA        *DKEHA        `json:"dke,omitempty"`
+	KubeHA       *KubeHA       `json:"kube,omitempty"`
 	ThirdPartyHA *ThirdPartyHA `json:"thirdParty,omitempty"`
 }
 
-type DKEHA struct {
+type KubeHA struct {
 	VIP string `json:"vip"`
 }
 
@@ -237,7 +226,7 @@ type ClusterFeature struct {
 	// +optional
 	InternalLB *bool `json:"internalLB,omitempty" `
 	// +optional
-	GPUType *GPUType `json:"gpuType,omitempty" protobuf:"bytes,4,opt,name=gpuType"`
+	GPUType *GPUType `json:"gpuType,omitempty"`
 	// +optional
 	EnableMasterSchedule bool `json:"enableMasterSchedule,omitempty"`
 	// +optional
@@ -248,6 +237,11 @@ type ClusterFeature struct {
 	Files []File `json:"files,omitempty"`
 	// +optional
 	Hooks map[HookType]string `json:"hooks,omitempty"`
+	// +optional
+	IPv6DualStack bool `json:"ipv6DualStack,omitempty"`
+	// Upgrade control upgrade process.
+	// +optional
+	Upgrade Upgrade `json:"upgrade,omitempty"`
 }
 
 // ClusterProperty records the attribute information of the cluster.
@@ -294,10 +288,10 @@ type Etcd struct {
 type Upgrade struct {
 	// Upgrade mode, default value is Auto.
 	// +optional
-	Mode UpgradeMode `json:"mode,omitempty" protobuf:"bytes,1,opt,name=mode"`
+	Mode UpgradeMode `json:"mode,omitempty"`
 	// Upgrade strategy config.
 	// +optional
-	Strategy UpgradeStrategy `json:"strategy,omitempty" protobuf:"bytes,2,opt,name=strategy"`
+	Strategy UpgradeStrategy `json:"strategy,omitempty"`
 }
 
 // ClusterSpec defines the desired state of Cluster

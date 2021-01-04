@@ -9,6 +9,7 @@ require (
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.3.0
 	github.com/goph/emperror v0.17.2
+	github.com/imdario/mergo v0.3.10
 	github.com/onsi/gomega v1.10.2
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/sftp v1.12.0
@@ -38,4 +39,6 @@ require (
 	k8s.io/utils v0.0.0-20201104234853-8146046b121e
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/controller-runtime v0.7.0
+	yunion.io/x/log v0.0.0-20201210064738-43181789dc74 // indirect
+	yunion.io/x/pkg v0.0.0-20201123083159-ca3aea986ff2 // indirect
 )

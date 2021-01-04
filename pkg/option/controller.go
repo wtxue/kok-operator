@@ -16,7 +16,7 @@ func DefaultControllersManagerOption() *ControllersManagerOption {
 		EnableCluster:     true,
 		EnableMachine:     true,
 		EnableAddons:      true,
-		EnableManagerCrds: false,
+		EnableManagerCrds: true,
 	}
 }
 

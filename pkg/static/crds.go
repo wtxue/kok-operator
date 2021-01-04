@@ -27,16 +27,16 @@ import (
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/k8sclient"
 	crdgenerated "github.com/wtxue/kok-operator/pkg/static/crds/generated"
-	extensionsobj "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-func load(f io.Reader) ([]*extensionsobj.CustomResourceDefinition, error) {
+func load(f io.Reader) ([]*apiextensionsv1.CustomResourceDefinition, error) {
 	var b bytes.Buffer
 
 	var yamls []string
 
-	crds := make([]*extensionsobj.CustomResourceDefinition, 0)
+	crds := make([]*apiextensionsv1.CustomResourceDefinition, 0)
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -65,13 +65,13 @@ func load(f io.Reader) ([]*extensionsobj.CustomResourceDefinition, error) {
 			continue
 		}
 
-		var crd *extensionsobj.CustomResourceDefinition
+		var crd *apiextensionsv1.CustomResourceDefinition
 		var ok bool
-		if crd, ok = obj.(*extensionsobj.CustomResourceDefinition); !ok {
+		if crd, ok = obj.(*apiextensionsv1.CustomResourceDefinition); !ok {
 			continue
 		}
 
-		crd.Status = extensionsobj.CustomResourceDefinitionStatus{}
+		crd.Status = apiextensionsv1.CustomResourceDefinitionStatus{}
 		crd.SetGroupVersionKind(schema.GroupVersionKind{})
 		if crd.Labels == nil {
 			crd.Labels = make(map[string]string)
@@ -83,8 +83,8 @@ func load(f io.Reader) ([]*extensionsobj.CustomResourceDefinition, error) {
 	return crds, nil
 }
 
-func LoadCRDs() ([]*extensionsobj.CustomResourceDefinition, error) {
-	crds := make([]*extensionsobj.CustomResourceDefinition, 0)
+func LoadCRDs() ([]*apiextensionsv1.CustomResourceDefinition, error) {
+	crds := make([]*apiextensionsv1.CustomResourceDefinition, 0)
 	dir, err := crdgenerated.CRDs.Open("/")
 	if err != nil {
 		return crds, err

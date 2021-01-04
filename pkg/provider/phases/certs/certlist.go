@@ -5,11 +5,10 @@ import (
 	"crypto/x509"
 
 	"github.com/pkg/errors"
-
 	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
-	certutil "k8s.io/client-go/util/cert"
+	utilcert "k8s.io/client-go/util/cert"
 )
 
 type configMutatorsFunc func(*kubeadmv1beta2.WarpperConfiguration, *pkiutil.CertConfig) error
@@ -165,7 +164,7 @@ var (
 		LongName: "self-signed Kubernetes CA to provision identities for other Kubernetes components",
 		BaseName: constants.CACertAndKeyBaseName,
 		config: pkiutil.CertConfig{
-			Config: certutil.Config{
+			Config: utilcert.Config{
 				CommonName: "kubernetes",
 			},
 		},
@@ -177,7 +176,7 @@ var (
 		BaseName: pkiutil.APIServerCertAndKeyBaseName,
 		CAName:   "ca",
 		config: pkiutil.CertConfig{
-			Config: certutil.Config{
+			Config: utilcert.Config{
 				CommonName: pkiutil.APIServerCertCommonName,
 				Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 			},
@@ -193,7 +192,7 @@ var (
 		BaseName: pkiutil.APIServerKubeletClientCertAndKeyBaseName,
 		CAName:   "ca",
 		config: pkiutil.CertConfig{
-			Config: certutil.Config{
+			Config: utilcert.Config{
 				CommonName:   pkiutil.APIServerKubeletClientCertCommonName,
 				Organization: []string{pkiutil.SystemPrivilegedGroup},
 				Usages:       []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
@@ -207,7 +206,7 @@ var (
 		LongName: "self-signed CA to provision identities for front proxy",
 		BaseName: pkiutil.FrontProxyCACertAndKeyBaseName,
 		config: pkiutil.CertConfig{
-			Config: certutil.Config{
+			Config: utilcert.Config{
 				CommonName: "front-proxy-ca",
 			},
 		},
@@ -220,7 +219,7 @@ var (
 		LongName: "certificate for the front proxy client",
 		CAName:   "front-proxy-ca",
 		config: pkiutil.CertConfig{
-			Config: certutil.Config{
+			Config: utilcert.Config{
 				CommonName: pkiutil.FrontProxyClientCertCommonName,
 				Usages:     []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
 			},
@@ -233,7 +232,7 @@ var (
 		LongName: "self-signed CA to provision identities for etcd",
 		BaseName: pkiutil.EtcdCACertAndKeyBaseName,
 		config: pkiutil.CertConfig{
-			Config: certutil.Config{
+			Config: utilcert.Config{
 				CommonName: "etcd-ca",
 			},
 		},
@@ -245,7 +244,7 @@ var (
 		BaseName: pkiutil.EtcdServerCertAndKeyBaseName,
 		CAName:   "etcd-ca",
 		config: pkiutil.CertConfig{
-			Config: certutil.Config{
+			Config: utilcert.Config{
 				// TODO: etcd 3.2 introduced an undocumented requirement for ClientAuth usage on the
 				// server cert: https://github.com/coreos/etcd/issues/9785#issuecomment-396715692
 				// Once the upstream issue is resolved, this should be returned to only allowing
@@ -265,7 +264,7 @@ var (
 		BaseName: pkiutil.EtcdPeerCertAndKeyBaseName,
 		CAName:   "etcd-ca",
 		config: pkiutil.CertConfig{
-			Config: certutil.Config{
+			Config: utilcert.Config{
 				Usages: []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 			},
 		},
@@ -281,7 +280,7 @@ var (
 		BaseName: pkiutil.EtcdHealthcheckClientCertAndKeyBaseName,
 		CAName:   "etcd-ca",
 		config: pkiutil.CertConfig{
-			Config: certutil.Config{
+			Config: utilcert.Config{
 				CommonName:   pkiutil.EtcdHealthcheckClientCertCommonName,
 				Organization: []string{pkiutil.SystemPrivilegedGroup},
 				Usages:       []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
@@ -295,7 +294,7 @@ var (
 		BaseName: pkiutil.APIServerEtcdClientCertAndKeyBaseName,
 		CAName:   "etcd-ca",
 		config: pkiutil.CertConfig{
-			Config: certutil.Config{
+			Config: utilcert.Config{
 				CommonName:   pkiutil.APIServerEtcdClientCertCommonName,
 				Organization: []string{pkiutil.SystemPrivilegedGroup},
 				Usages:       []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth},
@@ -304,7 +303,7 @@ var (
 	}
 )
 
-func makeAltNamesMutator(f func(*kubeadmv1beta2.WarpperConfiguration) (*certutil.AltNames, error)) configMutatorsFunc {
+func makeAltNamesMutator(f func(*kubeadmv1beta2.WarpperConfiguration) (*utilcert.AltNames, error)) configMutatorsFunc {
 	return func(mc *kubeadmv1beta2.WarpperConfiguration, cc *pkiutil.CertConfig) error {
 		altNames, err := f(mc)
 		if err != nil {

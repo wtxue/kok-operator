@@ -208,8 +208,8 @@ func GetAPIServerCertSANs(c *devopsv1.Cluster) []string {
 	certSANs := sets.NewString("127.0.0.1", "localhost")
 	certSANs = certSANs.Insert(c.Spec.PublicAlternativeNames...)
 	if c.Spec.Features.HA != nil {
-		if c.Spec.Features.HA.DKEHA != nil {
-			certSANs.Insert(c.Spec.Features.HA.DKEHA.VIP)
+		if c.Spec.Features.HA.KubeHA != nil {
+			certSANs.Insert(c.Spec.Features.HA.KubeHA.VIP)
 		}
 		if c.Spec.Features.HA.ThirdPartyHA != nil {
 			certSANs.Insert(c.Spec.Features.HA.ThirdPartyHA.VIP)

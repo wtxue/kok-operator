@@ -17,49 +17,42 @@ limitations under the License.
 package cluster
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
 	"math/rand"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/prometheus/common/log"
 	"github.com/segmentio/ksuid"
 	"github.com/thoas/go-funk"
-
-	bootstraputil "k8s.io/cluster-bootstrap/token/util"
-
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-
+	"github.com/wtxue/kok-operator/pkg/addons/flannel"
+	"github.com/wtxue/kok-operator/pkg/addons/metricsserver"
+	"github.com/wtxue/kok-operator/pkg/addons/rawcni"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kok-operator/pkg/constants"
+	"github.com/wtxue/kok-operator/pkg/controllers/common"
+	"github.com/wtxue/kok-operator/pkg/k8sutil"
+	"github.com/wtxue/kok-operator/pkg/provider/phases/certs"
+	"github.com/wtxue/kok-operator/pkg/provider/phases/component"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/kubeadm"
+	"github.com/wtxue/kok-operator/pkg/provider/phases/kubemisc"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/system"
 	"github.com/wtxue/kok-operator/pkg/provider/preflight"
 	"github.com/wtxue/kok-operator/pkg/util/apiclient"
 	"github.com/wtxue/kok-operator/pkg/util/hosts"
-
-	"bytes"
-
-	"github.com/wtxue/kok-operator/pkg/controllers/common"
-	"github.com/wtxue/kok-operator/pkg/provider/addons/cni"
-	"github.com/wtxue/kok-operator/pkg/provider/addons/flannel"
-	"github.com/wtxue/kok-operator/pkg/provider/addons/metricsserver"
-
-	"sync"
-
-	"github.com/wtxue/kok-operator/pkg/k8sutil"
-	"github.com/wtxue/kok-operator/pkg/provider/phases/certs"
-	"github.com/wtxue/kok-operator/pkg/provider/phases/component"
-	"github.com/wtxue/kok-operator/pkg/provider/phases/kubemisc"
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
 	"github.com/wtxue/kok-operator/pkg/util/ssh"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
+	bootstraputil "k8s.io/cluster-bootstrap/token/util"
 	"k8s.io/klog"
 )
 
@@ -163,8 +156,8 @@ func completeAddresses(ctx *common.ClusterContext) error {
 	}
 
 	if ctx.Cluster.Spec.Features.HA != nil {
-		if ctx.Cluster.Spec.Features.HA.DKEHA != nil {
-			ctx.Cluster.AddAddress(devopsv1.AddressAdvertise, ctx.Cluster.Spec.Features.HA.DKEHA.VIP, 6443)
+		if ctx.Cluster.Spec.Features.HA.KubeHA != nil {
+			ctx.Cluster.AddAddress(devopsv1.AddressAdvertise, ctx.Cluster.Spec.Features.HA.KubeHA.VIP, 6443)
 		}
 		if ctx.Cluster.Spec.Features.HA.ThirdPartyHA != nil {
 			ctx.Cluster.AddAddress(devopsv1.AddressAdvertise, ctx.Cluster.Spec.Features.HA.ThirdPartyHA.VIP, ctx.Cluster.Spec.Features.HA.ThirdPartyHA.VPort)
@@ -782,7 +775,7 @@ func (p *Provider) EnsureEth(ctx *common.ClusterContext) error {
 			return err
 		}
 
-		err = cni.ApplyEth(sh, ctx)
+		err = rawcni.ApplyEth(sh, ctx)
 		if err != nil {
 			klog.Errorf("node: %s apply eth err: %v", sh.HostIP(), err)
 			return err
@@ -808,7 +801,7 @@ func (p *Provider) EnsureDeployCni(ctx *common.ClusterContext) error {
 				return err
 			}
 
-			err = cni.ApplyCniCfg(sh, ctx)
+			err = rawcni.ApplyCniCfg(sh, ctx)
 			if err != nil {
 				klog.Errorf("node: %s apply cni cfg err: %v", sh.HostIP(), err)
 				return err

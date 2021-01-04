@@ -2,17 +2,14 @@ package certs
 
 import (
 	"crypto"
-	"crypto/x509"
-	"fmt"
-
-	"time"
-
 	"crypto/ecdsa"
 	"crypto/rsa"
-
+	"crypto/x509"
+	"fmt"
 	"net"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/wtxue/kok-operator/pkg/constants"

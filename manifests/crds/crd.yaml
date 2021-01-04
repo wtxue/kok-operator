@@ -246,12 +246,12 @@ spec:
                     type: string
                   ha:
                     properties:
-                      dke:
+                      kube:
                         properties:
                           vip:
                             type: string
                         required:
-                        - vip
+                          - vip
                         type: object
                       thirdParty:
                         properties:
@@ -261,8 +261,8 @@ spec:
                             format: int32
                             type: integer
                         required:
-                        - vip
-                        - vport
+                          - vip
+                          - vport
                         type: object
                     type: object
                   hooks:
@@ -270,6 +270,8 @@ spec:
                       type: string
                     type: object
                   internalLB:
+                    type: boolean
+                  ipv6DualStack:
                     type: boolean
                   ipvs:
                     type: boolean
@@ -279,6 +281,26 @@ spec:
                     items:
                       type: string
                     type: array
+                  upgrade:
+                    description: Upgrade control upgrade process.
+                    properties:
+                      mode:
+                        description: Upgrade mode, default value is Auto.
+                        type: string
+                      strategy:
+                        description: Upgrade strategy config.
+                        properties:
+                          drainNodeBeforeUpgrade:
+                            description: Whether drain node before upgrade. Draining node before upgrade is recommended. But not all pod running as cows, a few running as pets. If your pod can not accept be expelled from current node, this value should be false.
+                            type: boolean
+                          maxUnready:
+                            anyOf:
+                              - type: integer
+                              - type: string
+                            description: The maximum number of pods that can be unready during the upgrade. 0% means all pods need to be ready after evition. 100% means ignore any pods unready which may be used in one worker node, use this carefully! default value is 0%.
+                            x-kubernetes-int-or-string: true
+                        type: object
+                    type: object
                 type: object
               finalizers:
                 description: Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
@@ -393,10 +415,13 @@ spec:
                   strategy:
                     description: Upgrade strategy config.
                     properties:
+                      drainNodeBeforeUpgrade:
+                        description: Whether drain node before upgrade. Draining node before upgrade is recommended. But not all pod running as cows, a few running as pets. If your pod can not accept be expelled from current node, this value should be false.
+                        type: boolean
                       maxUnready:
                         anyOf:
-                        - type: integer
-                        - type: string
+                          - type: integer
+                          - type: string
                         description: The maximum number of pods that can be unready during the upgrade. 0% means all pods need to be ready after evition. 100% means ignore any pods unready which may be used in one worker node, use this carefully! default value is 0%.
                         x-kubernetes-int-or-string: true
                     type: object

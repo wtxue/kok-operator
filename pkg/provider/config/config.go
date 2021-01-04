@@ -15,6 +15,10 @@ type Config struct {
 	Registry           Registry
 	Audit              Audit
 	Feature            Feature
+	Kubelet            Kubelet           `yaml:"kubelet"`
+	APIServer          APIServer         `yaml:"apiServer"`
+	ControllerManager  ControllerManager `yaml:"controllerManager"`
+	Scheduler          Scheduler         `yaml:"scheduler"`
 	SupportK8sVersion  []string
 	CustomRegistry     string
 	EnableCustomCert   bool
@@ -36,6 +40,22 @@ type Feature struct {
 	SkipConditions []string
 }
 
+type Kubelet struct {
+	ExtraArgs map[string]string `yaml:"extraArgs"`
+}
+
+type APIServer struct {
+	ExtraArgs map[string]string `yaml:"extraArgs"`
+}
+
+type ControllerManager struct {
+	ExtraArgs map[string]string `yaml:"extraArgs"`
+}
+
+type Scheduler struct {
+	ExtraArgs map[string]string `yaml:"extraArgs"`
+}
+
 func NewDefaultConfig() *Config {
 	return &Config{
 		Registry: Registry{
@@ -43,9 +63,9 @@ func NewDefaultConfig() *Config {
 			// Prefix: "registry.aliyuncs.com/google_containers",
 		},
 		CustomRegistry:     "registry.aliyuncs.com/google_containers",
+		SupportK8sVersion:  constants.K8sVersions,
 		EnableCustomCert:   false,
 		EnableCustomImages: false,
-		SupportK8sVersion:  constants.K8sVersions,
 	}
 }
 

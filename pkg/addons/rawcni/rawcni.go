@@ -1,4 +1,4 @@
-package cni
+package rawcni
 
 import (
 	"bytes"

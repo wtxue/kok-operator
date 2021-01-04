@@ -47,7 +47,7 @@ func NewControllerCmd(opt *app_option.Options) *cobra.Command {
 					klog.Fatalf("unable to get cfg err: %v", err)
 				}
 
-				err = k8sutil.ReconcileCrds(cfg, crds)
+				err = k8sutil.ReconcileCRDs(cfg, crds)
 				if err != nil {
 					klog.Fatalf("failed to reconcile crd err: %v", err)
 				}

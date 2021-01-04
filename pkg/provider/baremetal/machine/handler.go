@@ -14,10 +14,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/pkg/errors"
+	"github.com/wtxue/kok-operator/pkg/addons/rawcni"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
-	"github.com/wtxue/kok-operator/pkg/provider/addons/cni"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/certs"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/component"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/join"
@@ -264,7 +264,7 @@ func (p *Provider) EnsureEth(ctx *common.ClusterContext, machine *devopsv1.Machi
 		return err
 	}
 
-	err = cni.ApplyEth(sh, ctx)
+	err = rawcni.ApplyEth(sh, ctx)
 	if err != nil {
 		klog.Errorf("node: %s apply eth err: %v", sh.HostIP(), err)
 		return err
@@ -290,7 +290,7 @@ func (p *Provider) EnsureCni(ctx *common.ClusterContext, machine *devopsv1.Machi
 		return err
 	}
 
-	err = cni.ApplyCniCfg(sh, ctx)
+	err = rawcni.ApplyCniCfg(sh, ctx)
 	if err != nil {
 		return err
 	}

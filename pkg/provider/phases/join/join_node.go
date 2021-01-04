@@ -3,7 +3,6 @@ package join
 import (
 	"fmt"
 	"os"
-
 	"strings"
 
 	"github.com/pkg/errors"
