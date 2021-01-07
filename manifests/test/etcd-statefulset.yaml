@@ -1,3 +1,5 @@
+# k8s.gcr.io/etcd:3.4.13-0
+# docker.io/wtxue/etcd:3.4.13-0
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -22,7 +24,7 @@ spec:
     spec:
       containers:
         - name: etcd
-          image: k8s.gcr.io/etcd:3.4.13-0
+          image: docker.io/wtxue/etcd:3.4.13-0
           ports:
             - containerPort: 2379
               name: client
@@ -55,7 +57,8 @@ spec:
                 --initial-cluster-token etcd-cluster-1 \
                 --initial-cluster ${PEERS} \
                 --initial-cluster-state new \
-                --data-dir /var/run/etcd/default.etcd
+                --data-dir /var/run/etcd/default.etcd \
+                --logger=zap
   volumeClaimTemplates:
     - metadata:
         name: datadir

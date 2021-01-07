@@ -7,10 +7,6 @@ import (
 	"strings"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/util/wait"
-
 	"github.com/pkg/errors"
 	"github.com/wtxue/kok-operator/pkg/addons/rawcni"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
@@ -24,7 +20,9 @@ import (
 	"github.com/wtxue/kok-operator/pkg/provider/preflight"
 	"github.com/wtxue/kok-operator/pkg/util/apiclient"
 	"github.com/wtxue/kok-operator/pkg/util/hosts"
-	"k8s.io/klog"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 )
 
 func (p *Provider) EnsureCopyFiles(ctx *common.ClusterContext, machine *devopsv1.Machine) error {
@@ -166,7 +164,7 @@ func (p *Provider) EnsureSystem(ctx *common.ClusterContext, machine *devopsv1.Ma
 		return err
 	}
 
-	err = system.Install(sh, ctx)
+	err = system.Install(ctx, sh)
 	if err != nil {
 		return errors.Wrap(err, sh.HostIP())
 	}
@@ -180,7 +178,7 @@ func (p *Provider) EnsureK8sComponent(ctx *common.ClusterContext, machine *devop
 		return err
 	}
 
-	err = component.Install(sh, ctx)
+	err = component.Install(ctx, sh)
 	if err != nil {
 		return errors.Wrap(err, sh.HostIP())
 	}
@@ -195,8 +193,6 @@ func (p *Provider) EnsureKubeconfig(ctx *common.ClusterContext, machine *devopsv
 	}
 
 	apiserver := certs.BuildApiserverEndpoint(ctx.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(ctx.Cluster))
-	klog.Infof("join apiserver: %s", apiserver)
-
 	option := &kubemisc.Option{
 		MasterEndpoint: apiserver,
 		ClusterName:    ctx.Cluster.Name,
@@ -218,7 +214,6 @@ func (p *Provider) EnsureJoinNode(ctx *common.ClusterContext, machine *devopsv1.
 	}
 
 	apiserver := certs.BuildApiserverEndpoint(ctx.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(ctx.Cluster))
-	klog.Infof("join apiserver: %s", apiserver)
 	err = join.JoinNodePhase(sh, p.Cfg, ctx, apiserver, false)
 	if err != nil {
 		return err
@@ -307,7 +302,6 @@ func (p *Provider) EnsureEth(ctx *common.ClusterContext, machine *devopsv1.Machi
 
 	err = rawcni.ApplyEth(sh, ctx)
 	if err != nil {
-		klog.Errorf("node: %s apply eth err: %v", sh.HostIP(), err)
 		return err
 	}
 

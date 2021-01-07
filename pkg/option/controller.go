@@ -24,5 +24,5 @@ func (o *ControllersManagerOption) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.EnableManagerCrds, "enable-manager-crds", o.EnableManagerCrds, "Enables to manager the associated crds")
 	fs.BoolVar(&o.EnableCluster, "enable-cluster", o.EnableCluster, "Enables the Cluster controller manager")
 	fs.BoolVar(&o.EnableMachine, "enable-machine", o.EnableMachine, "Enables the Machine controller manager")
-	fs.BoolVar(&o.EnableMachine, "enable-addons", o.EnableAddons, "Enables the cluster addons controller manager")
+	fs.BoolVar(&o.EnableAddons, "enable-addons", o.EnableAddons, "Enables the cluster addons controller manager")
 }

@@ -10,7 +10,7 @@ import (
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/util/ssh"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -36,7 +36,7 @@ func newCommonChecks(s ssh.Interface) []Checker {
 }
 
 // RunMasterChecks checks for master
-func RunMasterChecks(s ssh.Interface, ctx *common.ClusterContext) error {
+func RunMasterChecks(ctx *common.ClusterContext, s ssh.Interface) error {
 	checks := newCommonChecks(s)
 	checks = append(checks, []Checker{
 		NumCPUCheck{Interface: s, NumCPU: 1},

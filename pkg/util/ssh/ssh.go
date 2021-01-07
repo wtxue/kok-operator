@@ -18,7 +18,7 @@ import (
 	"github.com/wtxue/kok-operator/pkg/util/hash"
 	"golang.org/x/crypto/ssh"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 type SSH struct {

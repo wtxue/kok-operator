@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"net"
 
-	"k8s.io/apimachinery/pkg/util/validation/field"
-
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/util/ipallocator"
 	"github.com/wtxue/kok-operator/pkg/util/validation"
 	utilvalidation "github.com/wtxue/kok-operator/pkg/util/validation"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 var (

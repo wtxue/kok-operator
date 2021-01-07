@@ -18,7 +18,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -76,7 +75,7 @@ func ApplyCertsConfigmap(ctx *common.ClusterContext, pathCerts map[string][]byte
 		splits := strings.Split(pathName, "/")
 		noPathName := splits[len(splits)-1]
 		noPathCerts[noPathName] = string(value)
-		klog.Infof("add noPathName: %s", noPathName)
+		ctx.Info("add", "noPathName", noPathName)
 	}
 
 	cm := &corev1.ConfigMap{
@@ -98,7 +97,7 @@ func ApplyKubeMiscConfigmap(ctx *common.ClusterContext, pathKubeMisc map[string]
 		splits := strings.Split(pathName, "/")
 		noPathName := splits[len(splits)-1]
 		noPathKubeMisc[noPathName] = value
-		klog.Infof("add noPathName: %s", noPathName)
+		ctx.Info("add", "noPathName", noPathName)
 	}
 
 	cm := &corev1.ConfigMap{

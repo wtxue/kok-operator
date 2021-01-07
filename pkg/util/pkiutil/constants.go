@@ -11,9 +11,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
 	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/version"
 	"k8s.io/apimachinery/pkg/util/wait"
 	bootstrapapi "k8s.io/cluster-bootstrap/token/api"
@@ -385,15 +384,15 @@ const (
 
 var (
 	// ControlPlaneTaint is the taint to apply on the PodSpec for being able to run that Pod on the control-plane
-	ControlPlaneTaint = v1.Taint{
+	ControlPlaneTaint = corev1.Taint{
 		Key:    LabelNodeRoleMaster,
-		Effect: v1.TaintEffectNoSchedule,
+		Effect: corev1.TaintEffectNoSchedule,
 	}
 
 	// ControlPlaneToleration is the toleration to apply on the PodSpec for being able to run that Pod on the control-plane
-	ControlPlaneToleration = v1.Toleration{
+	ControlPlaneToleration = corev1.Toleration{
 		Key:    LabelNodeRoleMaster,
-		Effect: v1.TaintEffectNoSchedule,
+		Effect: corev1.TaintEffectNoSchedule,
 	}
 
 	// DefaultTokenUsages specifies the default functions a token will get

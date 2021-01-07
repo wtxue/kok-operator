@@ -4,24 +4,20 @@ import (
 	"path"
 	"strings"
 
-	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/apiserver/pkg/server/mux"
-
-	clusterprovider "github.com/wtxue/kok-operator/pkg/provider/cluster"
-
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/provider/baremetal/validation"
+	clusterprovider "github.com/wtxue/kok-operator/pkg/provider/cluster"
 	"github.com/wtxue/kok-operator/pkg/provider/config"
 	"github.com/wtxue/kok-operator/pkg/util/pointer"
-	"k8s.io/klog"
+	"k8s.io/apimachinery/pkg/util/validation/field"
+	"k8s.io/apiserver/pkg/server/mux"
 )
 
 func Add(mgr *clusterprovider.CpManager, cfg *config.Config) error {
 	p, err := NewProvider(mgr, cfg)
 	if err != nil {
-		klog.Errorf("init cluster provider error: %s", err)
 		return err
 	}
 	mgr.Register(p.Name(), p)

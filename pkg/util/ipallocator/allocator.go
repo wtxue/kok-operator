@@ -7,7 +7,7 @@ import (
 	"net"
 
 	"github.com/wtxue/kok-operator/pkg/util/allocator"
-	api "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // Interface manages the allocation of IP addresses out of a range. Interface
@@ -85,7 +85,7 @@ func NewCIDRRange(cidr *net.IPNet) *Range {
 }
 
 // NewFromSnapshot allocates a Range and initializes it from a snapshot.
-func NewFromSnapshot(snap *api.RangeAllocation) (*Range, error) {
+func NewFromSnapshot(snap *corev1.RangeAllocation) (*Range, error) {
 	_, ipnet, err := net.ParseCIDR(snap.Range)
 	if err != nil {
 		return nil, err
@@ -184,7 +184,7 @@ func (r *Range) Has(ip net.IP) bool {
 }
 
 // Snapshot saves the current state of the pool.
-func (r *Range) Snapshot(dst *api.RangeAllocation) error {
+func (r *Range) Snapshot(dst *corev1.RangeAllocation) error {
 	snapshottable, ok := r.alloc.(allocator.Snapshottable)
 	if !ok {
 		return fmt.Errorf("not a snapshottable allocator")

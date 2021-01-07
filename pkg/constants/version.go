@@ -17,6 +17,8 @@ limitations under the License.
 package constants
 
 var (
-	OSs         = []string{"linux"}
-	K8sVersions = []string{"v1.18.14", "v1.19.6"}
+	OSs                = []string{"linux"}
+	K8sVersions        = []string{"v1.18.14", "v1.19.6"}
+	CNIPluginsVersions = []string{"v0.8.6"}
+	ContainerdVersions = []string{"1.4.3"}
 )

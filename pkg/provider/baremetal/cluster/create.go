@@ -1,19 +1,3 @@
-/*
-Copyright 2020 wtxue.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package cluster
 
 import (
@@ -28,7 +12,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/log"
 	"github.com/segmentio/ksuid"
 	"github.com/thoas/go-funk"
 	"github.com/wtxue/kok-operator/pkg/addons/flannel"
@@ -53,7 +36,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/wait"
 	bootstraputil "k8s.io/cluster-bootstrap/token/util"
-	"k8s.io/klog"
 )
 
 func (p *Provider) EnsureCopyFiles(ctx *common.ClusterContext) error {
@@ -76,13 +58,13 @@ func (p *Provider) EnsureCopyFiles(ctx *common.ClusterContext) error {
 
 func (p *Provider) EnsurePreflight(ctx *common.ClusterContext) error {
 	for _, m := range ctx.Cluster.Spec.Machines {
-		machineSSH, err := m.SSH()
+		sh, err := m.SSH()
 		if err != nil {
 			return err
 		}
 
 		ctx.Info("node preflight start ...", "node", m.IP)
-		err = preflight.RunMasterChecks(machineSSH, ctx)
+		err = preflight.RunMasterChecks(ctx, sh)
 		if err != nil {
 			ctx.Error(err, "node preflight", "node", m.IP)
 			return errors.Wrap(err, m.IP)
@@ -189,12 +171,12 @@ func completeCredential(ctx *common.ClusterContext) error {
 
 func (p *Provider) EnsureBuildLocalKubeconfig(ctx *common.ClusterContext) error {
 	for _, machine := range ctx.Cluster.Spec.Machines {
-		machineSSH, err := machine.SSH()
+		sh, err := machine.SSH()
 		if err != nil {
 			return err
 		}
 
-		err = kubemisc.Install(machineSSH, ctx)
+		err = kubemisc.Install(ctx, sh)
 		if err != nil {
 			return errors.Wrap(err, machine.IP)
 		}
@@ -208,13 +190,13 @@ func (p *Provider) EnsureKubeadmInitKubeletStartPhase(ctx *common.ClusterContext
 	if err != nil {
 		return err
 	}
-	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg),
+	return kubeadm.Init(ctx, sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg),
 		fmt.Sprintf("kubelet-start --node-name=%s", ctx.Cluster.Spec.Machines[0].IP))
 }
 
 func (p *Provider) EnsureCerts(ctx *common.ClusterContext) error {
 	cfg := kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg)
-	err := kubeadm.InitCerts(cfg, ctx, false)
+	err := kubeadm.InitCerts(ctx, cfg, false)
 	if err != nil {
 		return err
 	}
@@ -273,12 +255,12 @@ func (p *Provider) EnsureKubeMiscPhase(ctx *common.ClusterContext) error {
 }
 
 func (p *Provider) EnsureKubeadmInitControlPlanePhase(ctx *common.ClusterContext) error {
-	machineSSH, err := ctx.Cluster.Spec.Machines[0].SSH()
+	sh, err := ctx.Cluster.Spec.Machines[0].SSH()
 	if err != nil {
 		return err
 	}
 
-	return kubeadm.Init(machineSSH, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "control-plane all")
+	return kubeadm.Init(ctx, sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "control-plane all")
 }
 
 func (p *Provider) EnsureKubeadmInitEtcdPhase(ctx *common.ClusterContext) error {
@@ -286,7 +268,7 @@ func (p *Provider) EnsureKubeadmInitEtcdPhase(ctx *common.ClusterContext) error 
 	if err != nil {
 		return err
 	}
-	err = kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "etcd local")
+	err = kubeadm.Init(ctx, sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "etcd local")
 	if err != nil {
 		return err
 	}
@@ -295,7 +277,7 @@ func (p *Provider) EnsureKubeadmInitEtcdPhase(ctx *common.ClusterContext) error 
 		return nil
 	}
 
-	err = kubeadm.RebuildMasterManifestFile(sh, ctx, p.Cfg)
+	err = kubeadm.RebuildMasterManifestFile(ctx, sh, p.Cfg)
 	if err != nil {
 		ctx.Error(err, "modify some master config", "node", sh.HostIP())
 		return err
@@ -309,7 +291,7 @@ func (p *Provider) EnsureKubeadmInitUploadConfigPhase(ctx *common.ClusterContext
 	if err != nil {
 		return err
 	}
-	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "upload-config all ")
+	return kubeadm.Init(ctx, sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "upload-config all ")
 }
 
 func (p *Provider) EnsureKubeadmInitUploadCertsPhase(ctx *common.ClusterContext) error {
@@ -317,7 +299,7 @@ func (p *Provider) EnsureKubeadmInitUploadCertsPhase(ctx *common.ClusterContext)
 	if err != nil {
 		return err
 	}
-	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "upload-certs --upload-certs")
+	return kubeadm.Init(ctx, sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "upload-certs --upload-certs")
 }
 
 func (p *Provider) EnsureKubeadmInitBootstrapTokenPhase(ctx *common.ClusterContext) error {
@@ -325,7 +307,7 @@ func (p *Provider) EnsureKubeadmInitBootstrapTokenPhase(ctx *common.ClusterConte
 	if err != nil {
 		return err
 	}
-	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "bootstrap-token")
+	return kubeadm.Init(ctx, sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "bootstrap-token")
 }
 
 func (p *Provider) EnsureKubeadmInitAddonPhase(ctx *common.ClusterContext) error {
@@ -333,7 +315,7 @@ func (p *Provider) EnsureKubeadmInitAddonPhase(ctx *common.ClusterContext) error
 	if err != nil {
 		return err
 	}
-	return kubeadm.Init(sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "addon all")
+	return kubeadm.Init(ctx, sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "addon all")
 }
 
 func (p *Provider) EnsureJoinControlePlane(ctx *common.ClusterContext) error {
@@ -364,7 +346,7 @@ func (p *Provider) EnsureJoinControlePlane(ctx *common.ClusterContext) error {
 		// 	return errors.Wrapf(err, "node: %s JoinNodePhase", sh.HostIP())
 		// }
 
-		err = kubeadm.JoinControlPlane(sh, ctx)
+		err = kubeadm.JoinControlPlane(ctx, sh)
 		if err != nil {
 			return errors.Wrap(err, machine.IP)
 		}
@@ -373,7 +355,7 @@ func (p *Provider) EnsureJoinControlePlane(ctx *common.ClusterContext) error {
 			continue
 		}
 
-		err = kubeadm.RebuildMasterManifestFile(sh, ctx, p.Cfg)
+		err = kubeadm.RebuildMasterManifestFile(ctx, sh, p.Cfg)
 		if err != nil {
 			return errors.Wrap(err, machine.IP)
 		}
@@ -382,14 +364,14 @@ func (p *Provider) EnsureJoinControlePlane(ctx *common.ClusterContext) error {
 	return nil
 }
 
-func (p *Provider) EnsureComponent(ctx *common.ClusterContext) error {
+func (p *Provider) EnsureK8sComponent(ctx *common.ClusterContext) error {
 	for _, machine := range ctx.Cluster.Spec.Machines {
-		machineSSH, err := machine.SSH()
+		sh, err := machine.SSH()
 		if err != nil {
 			return err
 		}
 
-		err = component.Install(machineSSH, ctx)
+		err = component.Install(ctx, sh)
 		if err != nil {
 			return errors.Wrap(err, machine.IP)
 		}
@@ -409,9 +391,9 @@ func (p *Provider) EnsureSystem(ctx *common.ClusterContext) error {
 		}
 
 		wg.Add(1)
-		go func(s ssh.Interface) {
+		go func(sh ssh.Interface) {
 			defer wg.Done()
-			err = system.Install(s, ctx)
+			err = system.Install(ctx, sh)
 			if err != nil {
 				quitErrors <- errors.Wrap(err, sh.HostIP())
 			}
@@ -429,7 +411,7 @@ func (p *Provider) EnsureSystem(ctx *common.ClusterContext) error {
 		break
 	case err := <-quitErrors:
 		close(quitErrors)
-		klog.Errorf("err: %+v", err)
+		ctx.Error(err, "ensure system")
 		return err
 	}
 
@@ -439,12 +421,12 @@ func (p *Provider) EnsureSystem(ctx *common.ClusterContext) error {
 
 func (p *Provider) EnsureCRI(ctx *common.ClusterContext) error {
 	for _, machine := range ctx.Cluster.Spec.Machines {
-		machineSSH, err := machine.SSH()
+		sh, err := machine.SSH()
 		if err != nil {
 			return err
 		}
 
-		err = component.InstallCRI(machineSSH, ctx)
+		err = component.InstallCRI(ctx, sh)
 		if err != nil {
 			return errors.Wrap(err, machine.IP)
 		}
@@ -459,18 +441,18 @@ func (p *Provider) EnsureKubeadmInitWaitControlPlanePhase(ctx *common.ClusterCon
 		healthStatus := 0
 		clientset, err := ctx.ClientsetForBootstrap()
 		if err != nil {
-			log.Warn(err.Error())
+			ctx.Error(err, "ClientsetForBootstrap")
 			return false, nil
 		}
 
 		res := clientset.Discovery().RESTClient().Get().AbsPath("/healthz").Do(ctx.Ctx)
 		res.StatusCode(&healthStatus)
 		if healthStatus != http.StatusOK {
-			klog.Errorf("Discovery healthz err: %+v", res.Error())
+			ctx.Error(res.Error(), "Discovery healthz")
 			return false, nil
 		}
 
-		log.Infof("All control plane components are healthy after %f seconds\n", time.Since(start).Seconds())
+		ctx.Info("All control plane components are healthy", "after seconds", fmt.Sprintf("%f", time.Since(start).Seconds()))
 		return true, nil
 	})
 }
@@ -544,13 +526,13 @@ func (p *Provider) EnsurePreInstallHook(ctx *common.ClusterContext) error {
 	cmd := strings.Split(hook, " ")[0]
 
 	for _, machine := range ctx.Cluster.Spec.Machines {
-		machineSSH, err := machine.SSH()
+		s, err := machine.SSH()
 		if err != nil {
 			return err
 		}
 
-		machineSSH.Execf("chmod +x %s", cmd)
-		_, stderr, exit, err := machineSSH.Exec(hook)
+		s.Execf("chmod +x %s", cmd)
+		_, stderr, exit, err := s.Exec(hook)
 		if err != nil || exit != 0 {
 			return fmt.Errorf("exec %q failed:exit %d:stderr %s:error %s", hook, exit, stderr, err)
 		}
@@ -570,13 +552,13 @@ func (p *Provider) EnsurePostInstallHook(ctx *common.ClusterContext) error {
 	cmd := strings.Split(hook, " ")[0]
 
 	for _, machine := range ctx.Cluster.Spec.Machines {
-		machineSSH, err := machine.SSH()
+		s, err := machine.SSH()
 		if err != nil {
 			return err
 		}
 
-		machineSSH.Execf("chmod +x %s", cmd)
-		_, stderr, exit, err := machineSSH.Exec(hook)
+		s.Execf("chmod +x %s", cmd)
+		_, stderr, exit, err := s.Exec(hook)
 		if err != nil || exit != 0 {
 			return fmt.Errorf("exec %q failed:exit %d:stderr %s:error %s", hook, exit, stderr, err)
 		}
@@ -611,7 +593,7 @@ func (p *Provider) EnsureRebuildEtcd(ctx *common.ClusterContext) error {
 		if etcdPod, ok := etcdObj.(*corev1.Pod); ok {
 			isFindState := false
 			isFindLogger := false
-			klog.Infof("etcd pod name: %s, cmd: %s", etcdPod.Name, etcdPod.Spec.Containers[0].Command)
+			ctx.Info("rebuild etcd", "pod-name", etcdPod.Name, "cmd", etcdPod.Spec.Containers[0].Command)
 			for i, arg := range etcdPod.Spec.Containers[0].Command {
 				if strings.HasPrefix(arg, "--initial-cluster=") {
 					etcdPod.Spec.Containers[0].Command[i] = fmt.Sprintf("--initial-cluster=%s", strings.Join(etcdPeerEndpoints, ","))
@@ -656,7 +638,7 @@ func (p *Provider) EnsureRebuildEtcd(ctx *common.ClusterContext) error {
 			continue
 		}
 
-		klog.Infof("apiServer pod name: %s, cmd: %s", apiServerPod.Name, apiServerPod.Spec.Containers[0].Command)
+		ctx.Info("rebuild apiserver", "pod-name", apiServerPod.Name, "cmd", apiServerPod.Spec.Containers[0].Command)
 		for i, arg := range apiServerPod.Spec.Containers[0].Command {
 			if !strings.HasPrefix(arg, "--etcd-servers=") {
 				continue
@@ -717,7 +699,7 @@ func (p *Provider) EnsureExtKubeconfig(ctx *common.ClusterContext) error {
 	apiserver := certs.BuildExternalApiserverEndpoint(ctx)
 	cfgMaps, err := certs.CreateApiserverKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert, apiserver, ctx.Cluster.Name)
 	if err != nil {
-		klog.Errorf("build apiserver kubeconfg err: %+v", err)
+		ctx.Error(err, "build apiserver kubeconfg")
 		return err
 	}
 	ctx.Info("start convert apiserver kubeconfig ...", "apiserver", apiserver)
@@ -777,7 +759,6 @@ func (p *Provider) EnsureEth(ctx *common.ClusterContext) error {
 
 		err = rawcni.ApplyEth(sh, ctx)
 		if err != nil {
-			klog.Errorf("node: %s apply eth err: %v", sh.HostIP(), err)
 			return err
 		}
 	}
@@ -803,7 +784,6 @@ func (p *Provider) EnsureDeployCni(ctx *common.ClusterContext) error {
 
 			err = rawcni.ApplyCniCfg(sh, ctx)
 			if err != nil {
-				klog.Errorf("node: %s apply cni cfg err: %v", sh.HostIP(), err)
 				return err
 			}
 		}
@@ -843,7 +823,6 @@ func (p *Provider) EnsureMasterNode(ctx *common.ClusterContext) error {
 	for _, machine := range ctx.Cluster.Spec.Machines {
 		err := clusterCtx.Client.Get(ctx.Ctx, types.NamespacedName{Name: machine.IP}, node)
 		if err != nil {
-			klog.Warningf("failed get cluster: %s node: %s", ctx.Cluster.Name, machine.IP)
 			return errors.Wrapf(err, "failed get cluster: %s node: %s", ctx.Cluster.Name, machine.IP)
 		}
 
@@ -869,7 +848,7 @@ func (p *Provider) EnsureMasterNode(ctx *common.ClusterContext) error {
 		return nil
 	}
 
-	klog.Infof("start reconcile node: %s", noReadNode.IP)
+	ctx.Info("start reconcile master", "node", noReadNode.IP)
 	sh, err := noReadNode.SSH()
 	if err != nil {
 		return err
@@ -882,7 +861,7 @@ func (p *Provider) EnsureMasterNode(ctx *common.ClusterContext) error {
 		}
 	}
 
-	phases := []func(s ssh.Interface, ctx *common.ClusterContext) error{
+	phases := []func(ctx *common.ClusterContext, s ssh.Interface) error{
 		system.Install,
 		component.Install,
 		preflight.RunMasterChecks,
@@ -891,11 +870,20 @@ func (p *Provider) EnsureMasterNode(ctx *common.ClusterContext) error {
 	}
 
 	for _, phase := range phases {
-		err = phase(sh, ctx)
+		err = phase(ctx, sh)
 		if err != nil {
 			return err
 		}
 	}
 
+	return nil
+}
+
+func (p *Provider) EnsureNvidiaDriver(ctx *common.ClusterContext) error {
+
+	return nil
+}
+
+func (p *Provider) EnsureNvidiaContainerRuntime(ctx *common.ClusterContext) error {
 	return nil
 }

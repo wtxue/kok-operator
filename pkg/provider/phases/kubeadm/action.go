@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/pkg/errors"
 	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
@@ -19,7 +18,6 @@ import (
 	"github.com/wtxue/kok-operator/pkg/util/template"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
 	"k8s.io/klog"
@@ -27,7 +25,9 @@ import (
 
 const (
 	joinControlPlaneCmd = `kubeadm join {{.ControlPlaneEndpoint}} \
---node-name={{.NodeName}} --token={{.BootstrapToken}} \
+--apiserver-advertise-address={{.AdvertiseAddress }} \
+--node-name={{.NodeName}} \
+--token={{.BootstrapToken}} \
 --control-plane --certificate-key={{.CertificateKey}} \
 --skip-phases=control-plane-join/mark-control-plane \
 --discovery-token-unsafe-skip-ca-verification \
@@ -79,7 +79,7 @@ type InitOption struct {
 	KubeProxyMode string
 }
 
-func Init(s ssh.Interface, kubeadmConfig *Config, extraCmd string) error {
+func Init(ctx *common.ClusterContext, s ssh.Interface, kubeadmConfig *Config, extraCmd string) error {
 	configData, err := kubeadmConfig.Marshal()
 	if err != nil {
 		return err
@@ -91,17 +91,17 @@ func Init(s ssh.Interface, kubeadmConfig *Config, extraCmd string) error {
 	}
 
 	cmd := fmt.Sprintf("kubeadm init phase %s --config=%s -v 9", extraCmd, constants.KubeadmConfigFileName)
-	klog.Infof("init cmd: %s", cmd)
-	out, err := s.CombinedOutput(cmd)
+	ctx.Info("kubeadm init", "cmd", cmd)
+	exit, err := s.ExecStream(cmd, os.Stdout, os.Stderr)
 	if err != nil {
-		return fmt.Errorf("exec %q error: %w", cmd, err)
+		ctx.Error(err, "exit", exit, "node", s.HostIP())
+		return errors.Wrapf(err, "node: %s exec: %q", s.HostIP(), cmd)
 	}
-	klog.Info(string(out))
 
 	return nil
 }
 
-func InitCerts(cfg *Config, ctx *common.ClusterContext, isHosted bool) error {
+func InitCerts(ctx *common.ClusterContext, cfg *Config, isHosted bool) error {
 	var lastCACert *certs.CaAll
 	cfgMaps := make(map[string][]byte)
 
@@ -182,17 +182,19 @@ func InitCerts(cfg *Config, ctx *common.ClusterContext, isHosted bool) error {
 
 type JoinControlPlaneOption struct {
 	NodeName             string
+	AdvertiseAddress     string
 	BootstrapToken       string
 	CertificateKey       string
 	ControlPlaneEndpoint string
 }
 
-func JoinControlPlane(s ssh.Interface, ctx *common.ClusterContext) error {
+func JoinControlPlane(ctx *common.ClusterContext, s ssh.Interface) error {
 	option := &JoinControlPlaneOption{
 		BootstrapToken:       *ctx.Credential.BootstrapToken,
 		CertificateKey:       *ctx.Credential.CertificateKey,
 		ControlPlaneEndpoint: fmt.Sprintf("%s:6443", ctx.Cluster.Spec.Machines[0].IP),
 		NodeName:             s.HostIP(),
+		AdvertiseAddress:     s.HostIP(),
 	}
 
 	cmd, err := template.ParseString(joinControlPlaneCmd, option)
@@ -304,28 +306,28 @@ func DockerFilterForControlPlane(name string) string {
 }
 
 func RestartContainerByFilter(s ssh.Interface, filter string) error {
-	cmd := fmt.Sprintf("docker rm -f $(docker ps -q -f '%s')", filter)
-	klog.V(4).Infof("node: %s, cmd: %s", s.HostIP(), cmd)
-	_, err := s.CombinedOutput(cmd)
-	if err != nil {
-		return err
-	}
-
-	err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
-		cmd = fmt.Sprintf("docker ps -q -f '%s'", filter)
-		klog.V(4).Infof("wait node: %s, cmd: %s", s.HostIP(), cmd)
-		output, err := s.CombinedOutput(cmd)
-		if err != nil {
-			return false, nil
-		}
-		if len(output) == 0 {
-			return false, nil
-		}
-		return true, nil
-	})
-	if err != nil {
-		return fmt.Errorf("restart container(%s) error: %w", filter, err)
-	}
+	// cmd := fmt.Sprintf("docker rm -f $(docker ps -q -f '%s')", filter)
+	// klog.V(4).Infof("node: %s, cmd: %s", s.HostIP(), cmd)
+	// _, err := s.CombinedOutput(cmd)
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
+	// 	cmd = fmt.Sprintf("docker ps -q -f '%s'", filter)
+	// 	klog.V(4).Infof("wait node: %s, cmd: %s", s.HostIP(), cmd)
+	// 	output, err := s.CombinedOutput(cmd)
+	// 	if err != nil {
+	// 		return false, nil
+	// 	}
+	// 	if len(output) == 0 {
+	// 		return false, nil
+	// 	}
+	// 	return true, nil
+	// })
+	// if err != nil {
+	// 	return fmt.Errorf("restart container(%s) error: %w", filter, err)
+	// }
 
 	return nil
 }
@@ -347,7 +349,7 @@ func BuildMasterEtcdPeerCluster(ctx *common.ClusterContext) string {
 	return strings.Join(etcdPeerEndpoints, ",")
 }
 
-func ApplyCustomComponent(s ssh.Interface, ctx *common.ClusterContext, image string, podManifest string) error {
+func ApplyCustomComponent(ctx *common.ClusterContext, s ssh.Interface, image string, podManifest string) error {
 	// var err error
 	// var podBytes []byte
 	// if podManifest == constants.EtcdPodManifestFile {
@@ -376,12 +378,12 @@ func ApplyCustomComponent(s ssh.Interface, ctx *common.ClusterContext, image str
 
 	podBytes, err := s.ReadFile(podManifest)
 	if err != nil {
-		return fmt.Errorf("node: %s ReadFile: %s failed error: %v", s.HostIP(), podManifest, err)
+		return errors.Wrapf(err, "node: %s ReadFile: %s failed", s.HostIP(), podManifest)
 	}
 
 	obj, err := k8sutil.UnmarshalFromYaml(podBytes, corev1.SchemeGroupVersion)
 	if err != nil {
-		return fmt.Errorf("node: %s marshalling %s failed error: %v", s.HostIP(), podManifest, err)
+		return errors.Wrapf(err, "node: %s marshalling %s failed", s.HostIP(), podManifest)
 	}
 
 	switch obj.(type) {
@@ -407,7 +409,7 @@ func ApplyCustomComponent(s ssh.Interface, ctx *common.ClusterContext, image str
 	return nil
 }
 
-func RebuildMasterManifestFile(s ssh.Interface, ctx *common.ClusterContext, cfg *config.Config) error {
+func RebuildMasterManifestFile(ctx *common.ClusterContext, s ssh.Interface, cfg *config.Config) error {
 	if ctx.Credential.ManifestsData == nil {
 		ctx.Credential.ManifestsData = make(map[string]string)
 	}
@@ -421,10 +423,9 @@ func RebuildMasterManifestFile(s ssh.Interface, ctx *common.ClusterContext, cfg 
 
 	images := cfg.KubeAllImageFullName(constants.KubernetesAllImageName, ctx.Cluster.Spec.Version)
 	for _, name := range manifestFileList {
-		err := ApplyCustomComponent(s, ctx, images, name)
+		err := ApplyCustomComponent(ctx, s, images, name)
 		if err != nil {
-			klog.Errorf("applyCustomComponent %s err: %v", name, err)
-			return err
+			return errors.Wrap(err, "ApplyCustomComponent")
 		}
 	}
 

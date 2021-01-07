@@ -1,20 +1,16 @@
 package machine
 
 import (
-	"k8s.io/apimachinery/pkg/util/validation/field"
-
-	"github.com/wtxue/kok-operator/pkg/provider/baremetal/validation"
-	machineprovider "github.com/wtxue/kok-operator/pkg/provider/machine"
-
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
+	"github.com/wtxue/kok-operator/pkg/provider/baremetal/validation"
 	"github.com/wtxue/kok-operator/pkg/provider/config"
-	"k8s.io/klog"
+	machineprovider "github.com/wtxue/kok-operator/pkg/provider/machine"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
 func Add(mgr *machineprovider.MpManager, cfg *config.Config) error {
 	p, err := NewProvider(mgr, cfg)
 	if err != nil {
-		klog.Errorf("init cluster provider error: %s", err)
 		return err
 	}
 	mgr.Register(p.Name(), p)

@@ -60,7 +60,7 @@ func NewDefaultConfig() *Config {
 	return &Config{
 		Registry: Registry{
 			// Prefix: "docker.io/wtxue",
-			// Prefix: "registry.aliyuncs.com/google_containers",
+			Prefix: "registry.aliyuncs.com/google_containers",
 		},
 		CustomRegistry:     "registry.aliyuncs.com/google_containers",
 		SupportK8sVersion:  constants.K8sVersions,

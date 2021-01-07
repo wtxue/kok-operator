@@ -64,7 +64,7 @@ func install(s ssh.Interface, option *Option) error {
 }
 
 // Install creates all the requested kubeconfig files.
-func Install(s ssh.Interface, ctx *common.ClusterContext) error {
+func Install(ctx *common.ClusterContext, s ssh.Interface) error {
 	option := &Option{
 		MasterEndpoint: "https://127.0.0.1:6443",
 		ClusterName:    ctx.Cluster.Name,

@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 type CaAll struct {

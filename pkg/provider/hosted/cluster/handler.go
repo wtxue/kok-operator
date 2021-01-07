@@ -1,11 +1,10 @@
 package cluster
 
 import (
-	"fmt"
-	"net/http"
-
 	"crypto/rand"
 	"encoding/hex"
+	"fmt"
+	"net/http"
 
 	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"
@@ -23,7 +22,6 @@ import (
 	"github.com/wtxue/kok-operator/pkg/provider/phases/kubemisc"
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
 	bootstraputil "k8s.io/cluster-bootstrap/token/util"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -149,7 +147,7 @@ func (p *Provider) EnsureClusterComplete(ctx *common.ClusterContext) error {
 
 func (p *Provider) EnsureCerts(ctx *common.ClusterContext) error {
 	apiserver := certs.BuildApiserverEndpoint(constants.KubeApiServer, 6443)
-	err := kubeadm.InitCerts(kubeadm.GetKubeadmConfig(ctx, p.Cfg, apiserver), ctx, true)
+	err := kubeadm.InitCerts(ctx, kubeadm.GetKubeadmConfig(ctx, p.Cfg, apiserver), true)
 	if err != nil {
 		return err
 	}
@@ -201,14 +199,13 @@ func (p *Provider) EnsureExtKubeconfig(ctx *common.ClusterContext) error {
 	}
 
 	apiserver := certs.BuildApiserverEndpoint(ctx.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(ctx.Cluster))
-	klog.Infof("external apiserver url: %s", apiserver)
-	cfgMaps, err := certs.CreateApiserverKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert,
-		apiserver, ctx.Cluster.Name)
+	ctx.Info("external apiserver url: %s", apiserver)
+	cfgMaps, err := certs.CreateApiserverKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert, apiserver, ctx.Cluster.Name)
 	if err != nil {
-		klog.Errorf("create kubeconfg err: %+v", err)
 		return err
 	}
-	klog.Infof("[%s/%s] start build kubeconfig ...", ctx.Cluster.Namespace, ctx.Cluster.Name)
+
+	ctx.Info("start build kubeconfig ...", "apiserver", apiserver)
 	for _, v := range cfgMaps {
 		by, err := certs.BuildKubeConfigByte(v)
 		if err != nil {
@@ -271,7 +268,6 @@ func (p *Provider) EnsureCni(ctx *common.ClusterContext) error {
 
 			err = rawcni.ApplyCniCfg(sh, ctx)
 			if err != nil {
-				klog.Errorf("node: %s apply cni cfg err: %v", sh.HostIP(), err)
 				return err
 			}
 		}

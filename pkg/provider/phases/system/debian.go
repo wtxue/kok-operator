@@ -5,9 +5,15 @@ const (
 
 set -xue pipefail
 
+function Install_depend_software(){
+    echo -e "\033[32;32m 开始安装依赖环境包 \033[0m \n"
+    apt-get install sudo
+    sudo apt-get install -y curl wget vim telnet ipvsadm tree telnet wget net-tools  \
+           bash-completion sysstat chrony jq sysstat socat conntrack lsof libseccomp2 util-linux apt-transport-https 
+}
+
 function Firewalld_process(){
     sudo apt install ufw
-
     echo -e "\033[32;32m 防火墙当前状态 \033[0m \n"
     ufw status
     echo -e "\033[32;32m 开始关闭防火墙 \033[0m \n"
@@ -16,15 +22,7 @@ function Firewalld_process(){
     ufw status
 
     echo -e "\033[32;32m 关闭swap \033[0m \n"
-    swapoff -a && sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
-}
-
-function Install_depend_software(){
-    echo -e "\033[32;32m 开始安装依赖环境包 \033[0m \n"
-    sudo apt-get install -y curl wget vim  telnet  \
-           ipvsadm ipset tree telnet wget net-tools  \
-           tcpdump bash-completion sysstat chrony jq psmisc socat \
-           sysstat conntrack iproute2 lsof perl 
+    swapoff -a && sed -i "s/^[^#]*swap/#&/" /etc/fstab
 }
 
 function Install_ipvs(){
@@ -120,68 +118,11 @@ EOF
     sysctl -p /etc/sysctl.d/k8s.conf
 }
 
-function Install_docker(){
-    if [ -f /etc/docker/daemon.json ]; then
-      echo -e "\033[32;32m 已完成docker安装 \033[0m \n" 
-      return
-    fi
-    
-    echo -e "\033[32;32m 开始安装docker \033[0m \n" 
-
-    sudo apt-get update
-	sudo apt-get -y install apt-transport-https ca-certificates curl gnupg-agent software-properties-common
-
-    curl -fsSL http://mirrors.aliyun.com/docker-ce/linux/debian/gpg | sudo apt-key add -
-    sudo add-apt-repository "deb [arch=amd64] http://mirrors.aliyun.com/docker-ce/linux/debian $(lsb_release -cs) stable"
-
-    # docker-ce=5:19.03.13~3-0~debian-buster docker-ce-cli=5:19.03.13~3-0~debian-buster containerd.io
-    sudo apt-get -y update
-    pkg_version=$(apt-cache madison docker-ce | grep {{ .DockerVersion }} | head -n 1 | cut -d ' ' -f 4)
-    sudo apt-get -y -q install docker-ce=${pkg_version} docker-ce-cli=${pkg_version} containerd.io
-
-    echo -e "\033[32;32m 开始写 docker daemon.json\033[0m \n"
-    mkdir -p /etc/docker
-    cat > /etc/docker/daemon.json <<EOF 
-{
-  "exec-opts": [
-    "native.cgroupdriver={{ default "systemd" .Cgroupdriver }}"
-  ],
-  "data-root": "/var/lib/docker",
-  "ip-forward": true,
-  "ip-masq": false,
-  "iptables": false,
-  "ipv6": false,
-  "live-restore": true,
-  "log-driver": "json-file",
-  "log-level": "warn",
-  "log-opts": {
-    "max-file": "10",
-    "max-size": "100m"
-  },
-  "registry-mirrors": [
-    "https://mirror.ccs.tencentyun.com",
-    "https://4xr1qpsp.mirror.aliyuncs.com"
-  ],
-{{- if .InsecureRegistries }}
-  "insecure-registries": [
-    {{ .InsecureRegistries }}
-  ],
-{{- end}}
-  "runtimes": {},
-  "selinux-enabled": false,
-  "storage-driver": "overlay2",
-  "storage-opts": [
-    "overlay2.override_kernel_check=true"
-  ]
-}
-EOF
-    systemctl enable docker && systemctl daemon-reload && systemctl restart docker
-}
 
 # 初始化顺序
 echo -e "\033[32;32m 开始初始化结点 @{{ .HostIP }}@ \033[0m \n"
-Firewalld_process && \
 Install_depend_software && \
+Firewalld_process && \
 Install_depend_environment && \
 Install_ipvs 
 `

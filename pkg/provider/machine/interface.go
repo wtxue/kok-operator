@@ -8,12 +8,10 @@ import (
 	"strings"
 
 	"github.com/thoas/go-funk"
-
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/validation/field"
-	"k8s.io/klog"
 )
 
 const (
@@ -120,10 +118,10 @@ func (p *DelegateProvider) OnCreate(ctx *common.ClusterContext, machine *devopsv
 			return fmt.Errorf("can't get handler by %s", condition.Type)
 		}
 		handlerName := f.Name()
-		klog.Infof("machineName: %s OnCreate handler: %s", machine.Name, handlerName)
+		ctx.Info("OnCreate", "machineName", machine.Name, "handlerName", handlerName)
 		err = f(ctx, machine)
 		if err != nil {
-			klog.Errorf("cluster: %s OnCreate handler: %s err: %+v", ctx.Cluster.Name, handlerName, err)
+			ctx.Error(err, " OnCreate ", "handlerName", handlerName)
 			machine.SetCondition(devopsv1.MachineCondition{
 				Type:          condition.Type,
 				Status:        devopsv1.ConditionFalse,
@@ -161,7 +159,7 @@ func (p *DelegateProvider) OnCreate(ctx *common.ClusterContext, machine *devopsv
 
 func (p *DelegateProvider) OnUpdate(ctx *common.ClusterContext, machine *devopsv1.Machine) error {
 	for _, f := range p.UpdateHandlers {
-		klog.Infof("machineName: %s OnUpdate handler: %s", machine.Name, f.Name())
+		ctx.Info("OnUpdate", "machineName", machine.Name, "handlerName", f.Name())
 		err := f(ctx, machine)
 		if err != nil {
 			return err
@@ -175,7 +173,7 @@ func (p *DelegateProvider) OnUpdate(ctx *common.ClusterContext, machine *devopsv
 
 func (p *DelegateProvider) OnDelete(ctx *common.ClusterContext, machine *devopsv1.Machine) error {
 	for _, f := range p.DeleteHandlers {
-		klog.Infof("machineName: %s OnDelete handler: %s", machine.Name, f.Name())
+		ctx.Info("OnDelete", "machineName", machine.Name, "handlerName", f.Name())
 		err := f(ctx, machine)
 		if err != nil {
 			return err

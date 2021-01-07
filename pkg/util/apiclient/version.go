@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/Masterminds/semver"
-
 	"k8s.io/client-go/kubernetes"
 )
 

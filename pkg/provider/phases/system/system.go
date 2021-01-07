@@ -12,22 +12,21 @@ import (
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/util/ssh"
 	"github.com/wtxue/kok-operator/pkg/util/template"
-	"k8s.io/klog"
 )
 
 type Option struct {
-	InsecureRegistries string
-	RegistryMirrors    string // "https://yqdzw3p0.mirror.aliyuncs.com"
-	RegistryDomain     string // "download.docker.com" or "mirrors.aliyun.com"
-	Options            string
-	K8sVersion         string
-	DockerVersion      string
-	Cgroupdriver       string // cgroupfs or systemd
-	HostIP             string
-	KernelRepo         string
-	ResolvConf         string
-	CentosVersion      string
-	ExtraArgs          map[string]string
+	// InsecureRegistries string
+	// RegistryMirrors    string // "https://yqdzw3p0.mirror.aliyuncs.com"
+	// RegistryDomain     string // "download.docker.com" or "mirrors.aliyun.com"
+	Options    string
+	K8sVersion string
+	// ContainerdVersion  string
+	// Cgroupdriver       string // cgroupfs or systemd
+	HostIP        string
+	KernelRepo    string
+	ResolvConf    string
+	CentosVersion string
+	ExtraArgs     map[string]string
 }
 
 func shellTemplate(ctx *common.ClusterContext) string {
@@ -41,22 +40,15 @@ func shellTemplate(ctx *common.ClusterContext) string {
 	}
 }
 
-func Install(s ssh.Interface, ctx *common.ClusterContext) error {
-	dockerVersion := "19.03.13"
-	if v, ok := ctx.Cluster.Spec.DockerExtraArgs["version"]; ok {
-		dockerVersion = v
+func Install(ctx *common.ClusterContext, s ssh.Interface) error {
+	option := &Option{
+		K8sVersion: ctx.Cluster.Spec.Version,
+		HostIP:     s.HostIP(),
 	}
 
-	cgroupDriver := "cgroupfs"
-	if v, ok := ctx.Cluster.Spec.DockerExtraArgs["cgroupDriver"]; ok {
-		dockerVersion = v
-	}
-	option := &Option{
-		K8sVersion:    ctx.Cluster.Spec.Version,
-		DockerVersion: dockerVersion,
-		Cgroupdriver:  cgroupDriver,
-		ExtraArgs:     ctx.Cluster.Spec.KubeletExtraArgs,
-		HostIP:        s.HostIP(),
+	_, _, _, err := s.Execf("hostnamectl set-hostname %s", s.HostIP())
+	if err != nil {
+		return err
 	}
 
 	initData, err := template.ParseString(shellTemplate(ctx), option)
@@ -69,36 +61,15 @@ func Install(s ssh.Interface, ctx *common.ClusterContext) error {
 		return err
 	}
 
-	klog.Infof("node: %s start exec init system ... ", option.HostIP)
+	ctx.Info("start exec init system ... ", "node", option.HostIP)
 	cmd := fmt.Sprintf("chmod a+x %s && %s", constants.SystemInitFile, constants.SystemInitFile)
 	exit, err := s.ExecStream(cmd, os.Stdout, os.Stderr)
 	if err != nil {
-		klog.Errorf("%q %+v", exit, err)
+		ctx.Error(err, "exit", exit, "node", option.HostIP)
 		return errors.Wrapf(err, "node: %s exec init", option.HostIP)
 	}
 
-	klog.Infof("node: %s exec init system success", option.HostIP)
-	// result, err := s.CombinedOutput("uname -r")
-	// if err != nil {
-	// 	klog.Errorf("err: %+v", err)
-	// 	return err
-	// }
-	// versionStr := strings.TrimSpace(string(result))
-	// versions := strings.Split(strings.TrimSpace(string(result)), ".")
-	// if len(versions) < 2 {
-	// 	return errors.Errorf("parse version error:%s", versionStr)
-	// }
-	// kernelVersion, err := strconv.Atoi(versions[0])
-	// if err != nil {
-	// 	return errors.Wrapf(err, "parse kernelVersion")
-	// }
-	//
-	// if kernelVersion >= 4 {
-	// 	return nil
-	// }
-	//
-	// klog.Infof("node: %s now kernel: %s,  start reboot ... ", option.HostIP, string(result))
-	// _, _ = s.CombinedOutput("reboot")
+	ctx.Info("system init successfully", "node", option.HostIP)
 	return nil
 }
 

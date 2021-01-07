@@ -19,12 +19,11 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-
 	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
 	"k8s.io/apimachinery/pkg/util/validation"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/keyutil"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (

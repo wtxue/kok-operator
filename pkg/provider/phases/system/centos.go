@@ -13,22 +13,6 @@ function Update_yumrepo() {
     curl https://mirrors.aliyun.com/repo/Centos-{{ default "7" .CentosVersion }}.repo -o /etc/yum.repos.d/Centos-Base.repo
 }
 
-function Update_kernel() {
-    uname -r | grep 5.7 &> /dev/null && echo -e "\033[32;32m 已完成内核升级 \033[0m \n" && return 
-
-    echo -e "\033[32;32m 升级Centos7系统内核到5版本，解决Docker-ce版本兼容问题\033[0m \n"
-    rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org && \
-    rpm -Uvh http://www.elrepo.org/elrepo-release-7.0-3.el7.elrepo.noarch.rpm 
-    yum --disablerepo=\* --enablerepo=elrepo-kernel repolist && \
-    yum --disablerepo=\* --enablerepo=elrepo-kernel install -y kernel-ml.x86_64 && \
-    yum remove -y kernel-tools-libs.x86_64 kernel-tools.x86_64 && \
-    yum --disablerepo=\* --enablerepo=elrepo-kernel install -y kernel-ml-tools.x86_64 && \
-    grub2-set-default 0
-
-    echo -e "\033[32;32m 卸载旧内核 \033[0m \n"
-    yum remove -y $(rpm -qa|grep kernel|grep 3.10)
-}
-
 function Firewalld_process() {
     grep SELINUX=disabled /etc/selinux/config && echo -e "\033[32;32m 已关闭防火墙，退出防火墙设置 \033[0m \n" && return
 
@@ -143,55 +127,6 @@ EOF
     sysctl --system
     sysctl -p /etc/sysctl.d/k8s.conf
     systemctl enable chronyd && systemctl start chronyd && chronyc sources
-}
-
-function Install_docker(){
-    if [ -f /etc/docker/daemon.json ]; then
-      echo -e "\033[32;32m 已完成docker安装 \033[0m \n" 
-      return
-    fi
-    
-    echo -e "\033[32;32m 开始安装docker \033[0m \n" 
-    yum-config-manager --add-repo http://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-    yum install -y docker-ce-{{ .DockerVersion }} docker-ce-cli-{{ .DockerVersion }}
-
-    echo -e "\033[32;32m 开始写 docker daemon.json\033[0m \n"
-    mkdir -p /etc/docker
-    cat > /etc/docker/daemon.json <<EOF 
-{
-  "exec-opts": [
-    "native.cgroupdriver={{ default "systemd" .Cgroupdriver }}"
-  ],
-  "data-root": "/var/lib/docker",
-  "ip-forward": true,
-  "ip-masq": false,
-  "iptables": false,
-  "ipv6": false,
-  "live-restore": true,
-  "log-driver": "json-file",
-  "log-level": "warn",
-  "log-opts": {
-    "max-file": "10",
-    "max-size": "100m"
-  },
-  "registry-mirrors": [
-    "https://mirror.ccs.tencentyun.com",
-    "https://4xr1qpsp.mirror.aliyuncs.com"
-  ],
-{{- if .InsecureRegistries }}
-  "insecure-registries": [
-    {{ .InsecureRegistries }}
-  ],
-{{- end}}
-  "runtimes": {},
-  "selinux-enabled": false,
-  "storage-driver": "overlay2",
-  "storage-opts": [
-    "overlay2.override_kernel_check=true"
-  ]
-}
-EOF
-    systemctl enable docker && systemctl daemon-reload && systemctl restart docker
 }
 
 # 初始化顺序

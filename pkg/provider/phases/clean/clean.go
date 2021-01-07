@@ -5,7 +5,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/wtxue/kok-operator/pkg/util/ssh"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 func CleanNode(s ssh.Interface) error {

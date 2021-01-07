@@ -115,6 +115,7 @@ function Download_k3s_depend() {
 function Install_k3s_service() {
     echo -e "\033[32;32m 开始写 /lib/systemd/system/etcd.service \033[0m \n"
 
+    # ExecStart=/usr/local/bin/etcd --listen-client-urls http://0.0.0.0:2379 --listen-peer-urls http://0.0.0.0:2380 --advertise-client-urls http://xxxxx:2379 --data-dir=/var/lib/etcd/ --logger=zap
     cat > /lib/systemd/system/etcd.service <<EOF
 [Unit]
 Description=Etcd Server
@@ -127,6 +128,7 @@ Documentation=https://github.com/coreos/etcd
 Type=notify
 User=root
 ExecStart=/usr/local/bin/etcd --data-dir=/var/lib/etcd/
+ExecStart=/usr/local/bin/etcd --listen-client-urls http://0.0.0.0:2379 --listen-peer-urls http://0.0.0.0:2380 --advertise-client-urls http://xxxxx:2379 --data-dir=/var/lib/etcd/ --logger=zap
 Restart=always
 LimitNOFILE=65536
 RestartSec=5s

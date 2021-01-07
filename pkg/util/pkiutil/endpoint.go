@@ -1,20 +1,17 @@
 package pkiutil
 
 import (
+	"crypto"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"net/url"
 	"strconv"
 
 	"github.com/pkg/errors"
-
-	"k8s.io/apimachinery/pkg/util/validation"
-
-	"crypto"
-	"crypto/x509"
-
 	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
-	"k8s.io/klog"
+	"k8s.io/apimachinery/pkg/util/validation"
+	"k8s.io/klog/v2"
 )
 
 // GetControlPlaneEndpoint returns a properly formatted endpoint for the control plane built according following rules:
@@ -133,7 +130,6 @@ func validateCertificateWithConfig(cert *x509.Certificate, baseName string, cfg 
 // existing and the expected certificate equals. If they do; kubeadm will just skip writing the file as it's up-to-date,
 // otherwise this function returns an error.
 func WriteCertificateFilesIfNotExist(pkiDir string, baseName string, signingCert *x509.Certificate, cert *x509.Certificate, key crypto.Signer, cfg *CertConfig) error {
-
 	// Checks if the signed certificate exists in the PKI directory
 	if CertOrKeyExist(pkiDir, baseName) {
 		// Try to load signed certificate .crt and .key from the PKI directory
@@ -173,7 +169,6 @@ func WriteCertificateFilesIfNotExist(pkiDir string, baseName string, signingCert
 // existing and the expected certificate equals. If they do; kubeadm will just skip writing the file as it's up-to-date,
 // otherwise this function returns an error.
 func WriteCertificateAuthorityFilesIfNotExist(pkiDir string, baseName string, caCert *x509.Certificate, caKey crypto.Signer) error {
-
 	// If cert or key exists, we should try to load them
 	if CertOrKeyExist(pkiDir, baseName) {
 

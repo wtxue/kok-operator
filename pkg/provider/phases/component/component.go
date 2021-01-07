@@ -42,7 +42,7 @@ ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELE
 
 var logger = log.Log.WithName("component")
 
-func Install(s ssh.Interface, ctx *common.ClusterContext) error {
+func Install(ctx *common.ClusterContext, s ssh.Interface) error {
 	// dir := "bin/linux/" // local debug config dir
 	k8sDir := fmt.Sprintf("/k8s-%s/bin/", ctx.Cluster.Spec.Version)
 	otherDir := "/k8s/bin/"
@@ -136,7 +136,7 @@ func Install(s ssh.Interface, ctx *common.ClusterContext) error {
 	return nil
 }
 
-func InstallCRI(s ssh.Interface, ctx *common.ClusterContext) error {
+func InstallCRI(ctx *common.ClusterContext, s ssh.Interface) error {
 	// dir := "bin/linux/" // local debug config dir
 	otherDir := "/k8s/bin/"
 	if dir := constants.GetAnnotationKey(ctx.Cluster.Annotations, constants.ClusterAnnoLocalDebugDir); len(dir) > 0 {
@@ -146,7 +146,7 @@ func InstallCRI(s ssh.Interface, ctx *common.ClusterContext) error {
 	var CopyList = []devopsv1.File{
 		{
 			Src: otherDir + "containerd.tar.gz",
-			Dst: "/opt/containerd.tar.gz",
+			Dst: "/opt/k8s/containerd.tar.gz",
 		},
 	}
 
@@ -156,14 +156,21 @@ func InstallCRI(s ssh.Interface, ctx *common.ClusterContext) error {
 			continue
 		}
 
+		err := s.CopyFile(ls.Src, ls.Dst)
+		if err != nil {
+			logger.Error(err, "CopyFile", "node", s.HostIP(), "src", ls.Src)
+			return err
+		}
+
 		if strings.Contains(ls.Dst, "containerd") {
-			cmd := "mkdir -p /usr/local/bin /usr/local/sbin /etc/systemd/system /opt/containerd &&" +
-				"tar -C /opt/containerd -xzf /opt/containerd.tar.gz &&" +
-				"cp -rf /opt/containerd/usr/local/sbin/* /usr/local/sbin/ &&" +
-				"cp -rf /opt/containerd/usr/local/bin/* /usr/local/bin/ &&" +
-				"cp -rf /opt/containerd/etc/crictl.yaml /etc/ &&" +
-				"cp -rf /opt/containerd/etc/systemd/system/containerd.service /etc/systemd/system/ &&" +
-				"rm -rf /opt/containerd/"
+			cmd := "mkdir -p /usr/local/bin /usr/local/sbin /etc/systemd/system /opt/k8s/containerd && " +
+				"tar -C /opt/k8s/containerd -xzf /opt/k8s/containerd.tar.gz && " +
+				"cp -rf /opt/k8s/containerd/usr/local/sbin/* /usr/local/sbin/ && " +
+				"cp -rf /opt/k8s/containerd/usr/local/bin/* /usr/local/bin/ && " +
+				"cp -rf /opt/k8s/containerd/etc/crictl.yaml /etc/ && " +
+				"cp -rf /opt/k8s/containerd/etc/systemd/system/containerd.service /etc/systemd/system/ && " +
+				"rm -f /usr/local/bin/critest &&" +
+				"rm -rf /opt/k8s/containerd"
 
 			_, err := s.CombinedOutput(cmd)
 			if err != nil {

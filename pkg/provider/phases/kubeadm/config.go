@@ -196,6 +196,7 @@ func GetKubeletConfiguration(ctx *common.ClusterContext) *kubeletv1beta1.Kubelet
 }
 
 func GetFullKubeletConfiguration(ctx *common.ClusterContext) *kubeletv1beta1.KubeletConfiguration {
+	containerLogMaxFiles := int32(5)
 	return &kubeletv1beta1.KubeletConfiguration{
 		StaticPodPath: constants.KubeletPodManifestDir,
 		Authentication: kubeletv1beta1.KubeletAuthentication{
@@ -209,17 +210,24 @@ func GetFullKubeletConfiguration(ctx *common.ClusterContext) *kubeletv1beta1.Kub
 				Enabled: k8sutil.BoolPointer(false),
 			},
 		},
+
 		Authorization: kubeletv1beta1.KubeletAuthorization{
 			Mode:    kubeletv1beta1.KubeletAuthorizationModeWebhook,
 			Webhook: kubeletv1beta1.KubeletWebhookAuthorization{},
 		},
+
 		ClusterDNS:    []string{ctx.Cluster.Status.DNSIP},
 		ClusterDomain: ctx.Cluster.Spec.DNSDomain,
+
+		CgroupDriver:         "systemd",
+		ContainerLogMaxSize:  "100Mi",
+		ContainerLogMaxFiles: &containerLogMaxFiles,
 
 		KubeReserved: map[string]string{
 			"cpu":    "100m",
 			"memory": "500Mi",
 		},
+
 		SystemReserved: map[string]string{
 			"cpu":    "100m",
 			"memory": "500Mi",
