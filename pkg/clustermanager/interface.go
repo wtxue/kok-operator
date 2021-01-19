@@ -6,12 +6,11 @@ import (
 	"sync"
 
 	helmv3 "github.com/wtxue/kok-operator/pkg/helm/v3"
-	appv1 "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -21,8 +20,8 @@ type Interface interface {
 	GetPod(opts types.NamespacedName, clusterNames ...string) (*corev1.Pod, error)
 	GetPods(opts *client.ListOptions, clusterNames ...string) ([]*corev1.Pod, error)
 	GetNodes(opts *client.ListOptions, clusterNames ...string) ([]*corev1.Node, error)
-	GetDeployment(opts *client.ListOptions, clusterNames ...string) ([]*appv1.Deployment, error)
-	GetStatefulsets(opts *client.ListOptions, clusternames ...string) ([]*appv1.StatefulSet, error)
+	GetDeployment(opts *client.ListOptions, clusterNames ...string) ([]*appsv1.Deployment, error)
+	GetStatefulsets(opts *client.ListOptions, clusternames ...string) ([]*appsv1.StatefulSet, error)
 	GetService(opts *client.ListOptions, clusterNames ...string) ([]*corev1.Service, error)
 	GetEndpoints(opts *client.ListOptions, clusterNames ...string) ([]*corev1.Endpoints, error)
 	GetEvent(opts *client.ListOptions, clusterNames ...string) ([]*corev1.Event, error)
@@ -115,13 +114,13 @@ func (m *ClusterManager) GetNodes(opts *client.ListOptions, clusterNames ...stri
 }
 
 // GetDeployment ...
-func (m *ClusterManager) GetDeployment(opts *client.ListOptions, clusterNames ...string) ([]*appv1.Deployment, error) {
+func (m *ClusterManager) GetDeployment(opts *client.ListOptions, clusterNames ...string) ([]*appsv1.Deployment, error) {
 	clusters := m.GetAll(clusterNames...)
 	ctx := context.Background()
-	result := make([]*appv1.Deployment, 0)
+	result := make([]*appsv1.Deployment, 0)
 
 	for _, cluster := range clusters {
-		deployList := &appv1.DeploymentList{}
+		deployList := &appsv1.DeploymentList{}
 		err := cluster.Client.List(ctx, deployList, opts)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
@@ -138,13 +137,13 @@ func (m *ClusterManager) GetDeployment(opts *client.ListOptions, clusterNames ..
 }
 
 // GetStatefulsets ...
-func (m *ClusterManager) GetStatefulsets(opts *client.ListOptions, clusterNames ...string) ([]*appv1.StatefulSet, error) {
+func (m *ClusterManager) GetStatefulsets(opts *client.ListOptions, clusterNames ...string) ([]*appsv1.StatefulSet, error) {
 	clusters := m.GetAll(clusterNames...)
 	ctx := context.Background()
-	result := make([]*appv1.StatefulSet, 0)
+	result := make([]*appsv1.StatefulSet, 0)
 
 	for _, cluster := range clusters {
-		staList := &appv1.StatefulSetList{}
+		staList := &appsv1.StatefulSetList{}
 		err := cluster.Client.List(ctx, staList, opts)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
@@ -246,7 +245,8 @@ func (m *ClusterManager) DeletePods(opts *client.ListOptions, clusterNames ...st
 		for i := range podList.Items {
 			err = cluster.Client.Delete(ctx, &podList.Items[i])
 			if err != nil {
-				klog.Errorf("delete pod error: %v", err)
+				logger.Error(err, "delete pod")
+				return err
 			}
 		}
 	}
@@ -266,7 +266,8 @@ func (m *ClusterManager) DeletePod(opts types.NamespacedName, clusterNames ...st
 		}
 		err = cluster.Client.Delete(ctx, pod)
 		if err != nil {
-			klog.Errorf("delete pod error: %v", err)
+			logger.Error(err, "delete pod")
+			return err
 		}
 	}
 	return nil
@@ -280,7 +281,6 @@ func (m *ClusterManager) GetHelmRelease(opts map[string]string, clusterNames ...
 	for _, cluster := range clusters {
 		wg.Add(1)
 		go func(wg *sync.WaitGroup, cluster *Cluster, result []*helmv3.Release) {
-
 			wg.Done()
 		}(&wg, cluster, result)
 	}

@@ -7,7 +7,7 @@ set -xue pipefail
 function Install_depend_software(){
     echo -e "\033[32;32m 开始安装依赖环境包 \033[0m \n"
     apt-get update
-    apt-get install sudo
+    apt-get install -y sudo
     sudo apt-get install -y curl wget vim telnet ipvsadm tree telnet wget net-tools  \
            bash-completion sysstat chrony jq sysstat socat conntrack lsof libseccomp2 util-linux apt-transport-https 
 }

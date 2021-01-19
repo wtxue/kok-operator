@@ -1,14 +1,12 @@
 package k8sutil
 
 import (
-	"io"
-
-	"github.com/pkg/errors"
-
 	"bufio"
 	"bytes"
+	"io"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/wtxue/kok-operator/pkg/k8sclient"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

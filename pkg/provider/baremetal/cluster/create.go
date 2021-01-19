@@ -22,8 +22,9 @@ import (
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/k8sutil"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/certs"
-	"github.com/wtxue/kok-operator/pkg/provider/phases/component"
+	"github.com/wtxue/kok-operator/pkg/provider/phases/cri"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/kubeadm"
+	"github.com/wtxue/kok-operator/pkg/provider/phases/kubebin"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/kubemisc"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/system"
 	"github.com/wtxue/kok-operator/pkg/provider/preflight"
@@ -194,6 +195,21 @@ func (p *Provider) EnsureKubeadmInitKubeletStartPhase(ctx *common.ClusterContext
 		fmt.Sprintf("kubelet-start --node-name=%s", ctx.Cluster.Spec.Machines[0].IP))
 }
 
+func (p *Provider) EnsureImagesPull(ctx *common.ClusterContext) error {
+	for _, machine := range ctx.Cluster.Spec.Machines {
+		sh, err := machine.SSH()
+		if err != nil {
+			return err
+		}
+
+		err = kubeadm.ImagesPull(ctx, sh, ctx.Cluster.Spec.Version, p.Cfg.Registry.Prefix)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (p *Provider) EnsureCerts(ctx *common.ClusterContext) error {
 	cfg := kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg)
 	err := kubeadm.InitCerts(ctx, cfg, false)
@@ -291,7 +307,7 @@ func (p *Provider) EnsureKubeadmInitUploadConfigPhase(ctx *common.ClusterContext
 	if err != nil {
 		return err
 	}
-	return kubeadm.Init(ctx, sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "upload-config all ")
+	return kubeadm.Init(ctx, sh, kubeadm.GetKubeadmConfigByMaster0(ctx, p.Cfg), "upload-config all")
 }
 
 func (p *Provider) EnsureKubeadmInitUploadCertsPhase(ctx *common.ClusterContext) error {
@@ -371,7 +387,7 @@ func (p *Provider) EnsureK8sComponent(ctx *common.ClusterContext) error {
 			return err
 		}
 
-		err = component.Install(ctx, sh)
+		err = kubebin.Install(ctx, sh)
 		if err != nil {
 			return errors.Wrap(err, machine.IP)
 		}
@@ -426,7 +442,7 @@ func (p *Provider) EnsureCRI(ctx *common.ClusterContext) error {
 			return err
 		}
 
-		err = component.InstallCRI(ctx, sh)
+		err = cri.InstallCRI(ctx, sh)
 		if err != nil {
 			return errors.Wrap(err, machine.IP)
 		}
@@ -497,13 +513,13 @@ func (p *Provider) EnsureRegistryHosts(ctx *common.ClusterContext) error {
 		ctx.Cluster.Spec.TenantID + "." + p.Cfg.Registry.Domain,
 	}
 	for _, machine := range ctx.Cluster.Spec.Machines {
-		machineSSH, err := machine.SSH()
+		sh, err := machine.SSH()
 		if err != nil {
 			return err
 		}
 
 		for _, one := range domains {
-			remoteHosts := &hosts.RemoteHosts{Host: one, SSH: machineSSH}
+			remoteHosts := &hosts.RemoteHosts{Host: one, SSH: sh}
 			err := remoteHosts.Set(p.Cfg.Registry.IP)
 			if err != nil {
 				return errors.Wrap(err, machine.IP)
@@ -863,7 +879,7 @@ func (p *Provider) EnsureMasterNode(ctx *common.ClusterContext) error {
 
 	phases := []func(ctx *common.ClusterContext, s ssh.Interface) error{
 		system.Install,
-		component.Install,
+		kubebin.Install,
 		preflight.RunMasterChecks,
 		kubemisc.Install,
 		kubeadm.JoinControlPlane,

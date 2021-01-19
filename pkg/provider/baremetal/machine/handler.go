@@ -13,8 +13,8 @@ import (
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/certs"
-	"github.com/wtxue/kok-operator/pkg/provider/phases/component"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/join"
+	"github.com/wtxue/kok-operator/pkg/provider/phases/kubebin"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/kubemisc"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/system"
 	"github.com/wtxue/kok-operator/pkg/provider/preflight"
@@ -184,7 +184,7 @@ func (p *Provider) EnsureK8sComponent(ctx *common.ClusterContext, machine *devop
 		return err
 	}
 
-	err = component.Install(ctx, sh)
+	err = kubebin.Install(ctx, sh)
 	if err != nil {
 		return errors.Wrap(err, sh.HostIP())
 	}

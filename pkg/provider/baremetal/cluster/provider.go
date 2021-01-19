@@ -53,6 +53,7 @@ func NewProvider(mgr *clusterprovider.CpManager, cfg *config.Config) (*Provider,
 			p.EnsurePreflight,
 			p.EnsureClusterComplete,
 
+			p.EnsureImagesPull,
 			p.EnsureCerts,
 			p.EnsureKubeadmInitKubeletStartPhase, // start kubelet
 			p.EnsureBuildLocalKubeconfig,
@@ -103,11 +104,17 @@ func (p *Provider) PreCreate(ctx *common.ClusterContext) error {
 	if ctx.Cluster.Spec.Version == "" {
 		ctx.Cluster.Spec.Version = constants.K8sVersions[0]
 	}
+
 	if ctx.Cluster.Spec.ClusterCIDR == "" {
 		ctx.Cluster.Spec.ClusterCIDR = "10.244.0.0/16"
 	}
+
 	if ctx.Cluster.Spec.NetworkDevice == "" {
 		ctx.Cluster.Spec.NetworkDevice = "eth0"
+	}
+
+	if ctx.Cluster.Spec.CRIType == "" {
+		ctx.Cluster.Spec.CRIType = devopsv1.ContainerdCRI
 	}
 
 	if ctx.Cluster.Spec.Features.IPVS == nil {
@@ -117,9 +124,11 @@ func (p *Provider) PreCreate(ctx *common.ClusterContext) error {
 	if ctx.Cluster.Spec.Properties.MaxClusterServiceNum == nil && ctx.Cluster.Spec.ServiceCIDR == nil {
 		ctx.Cluster.Spec.Properties.MaxClusterServiceNum = pointer.ToInt32(256)
 	}
+
 	if ctx.Cluster.Spec.Properties.MaxNodePodNum == nil {
 		ctx.Cluster.Spec.Properties.MaxNodePodNum = pointer.ToInt32(256)
 	}
+
 	if ctx.Cluster.Spec.Features.SkipConditions == nil {
 		ctx.Cluster.Spec.Features.SkipConditions = p.Cfg.Feature.SkipConditions
 	}

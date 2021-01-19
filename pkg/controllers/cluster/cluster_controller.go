@@ -62,7 +62,7 @@ func Add(mgr manager.Manager, pMgr *gmanager.GManager) error {
 // +kubebuilder:rbac:groups=devops.k8s.io,resources=clusters/status,verbs=get;update;patch
 
 func (r *clusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := r.Log.WithValues("req", req.String())
+	logger := r.Log.WithValues("cluster", req.Name)
 	startTime := time.Now()
 	defer func() {
 		logger.Info("reconcile finished", "time taken", fmt.Sprintf("%v", time.Since(startTime)))
@@ -72,7 +72,7 @@ func (r *clusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	err := r.Client.Get(ctx, req.NamespacedName, c)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
-			logger.V(4).Info("not find cluster")
+			logger.Info("not find cluster")
 			return reconcile.Result{}, nil
 		}
 
@@ -154,7 +154,7 @@ func (r *clusterReconciler) addClusterCheck(ctx *common.ClusterContext) error {
 	}
 
 	if extKubeconfig, ok := ctx.Credential.ExtData[pkiutil.ExternalAdminKubeConfigFileName]; ok {
-		ctx.Info("add manager extKubeconfig", "file", extKubeconfig)
+		ctx.Info("add manager extKubeconfig", "file", pkiutil.ExternalAdminKubeConfigFileName)
 		_, err := r.GManager.AddNewClusters(ctx.Cluster.Name, extKubeconfig)
 		if err != nil {
 			ctx.Error(err, "add new clusters manager cache")
@@ -165,14 +165,14 @@ func (r *clusterReconciler) addClusterCheck(ctx *common.ClusterContext) error {
 		return nil
 	}
 
-	ctx.Info("can't find  extKubeconfig", "file", pkiutil.ExternalAdminKubeConfigFileName)
+	ctx.Info("can't find extKubeconfig", "file", pkiutil.ExternalAdminKubeConfigFileName)
 	return nil
 }
 
 func (r *clusterReconciler) reconcile(ctx *common.ClusterContext) error {
 	phaseRestore := constants.GetAnnotationKey(ctx.Cluster.Annotations, constants.ClusterPhaseRestore)
 	if len(phaseRestore) > 0 {
-		ctx.Info("phase restore", "cluster", ctx.Cluster.Name, "step", phaseRestore)
+		ctx.Info("#####  restore phase", "step", phaseRestore)
 		conditions := make([]devopsv1.ClusterCondition, 0)
 		for i := range ctx.Cluster.Status.Conditions {
 			if ctx.Cluster.Status.Conditions[i].Type == phaseRestore {
@@ -210,10 +210,8 @@ func (r *clusterReconciler) reconcile(ctx *common.ClusterContext) error {
 
 	switch ctx.Cluster.Status.Phase {
 	case devopsv1.ClusterInitializing:
-		ctx.Info("onCreate")
 		r.onCreate(ctx, p)
 	case devopsv1.ClusterRunning:
-		ctx.Info("onUpdate")
 		r.addClusterCheck(ctx)
 		r.onUpdate(ctx, p)
 	default:
@@ -232,7 +230,7 @@ func (r *clusterReconciler) cleanClusterResources(ctx *common.ClusterContext) er
 		if apierrors.IsNotFound(err) {
 			ctx.Info("not find machineList")
 		} else {
-			ctx.Error(err, "failed to list machine")
+			ctx.Error(err, "failed list machine")
 			return err
 		}
 	}

@@ -20,7 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
-	"k8s.io/klog"
 )
 
 const (
@@ -37,7 +36,7 @@ const (
 --ignore-preflight-errors=FileContent--proc-sys-net-bridge-bridge-nf-call-iptables \
 --ignore-preflight-errors=DirAvailable--etc-kubernetes-manifests \
 --ignore-preflight-errors=FileAvailable--etc-kubernetes-kubelet.conf \
--v 9
+-v 4
 `
 	joinNodeCmd = `kubeadm join {{.ControlPlaneEndpoint}} \
 --node-name={{.NodeName}} \
@@ -47,38 +46,27 @@ const (
 --ignore-preflight-errors=Port-10250 \
 --ignore-preflight-errors=NumCPU \
 --ignore-preflight-errors=FileContent--proc-sys-net-bridge-bridge-nf-call-iptables \
--v 9
+-v 4
 `
 )
 
-type InitOption struct {
-	KubeadmConfigFileName string
-	NodeName              string
-	BootstrapToken        string
-	CertificateKey        string
+// ImagesPull ...
+func ImagesPull(ctx *common.ClusterContext, s ssh.Interface, k8sVersion, imagesRepository string) error {
+	cmd := fmt.Sprintf("kubeadm config images pull --kubernetes-version=%s", k8sVersion)
+	if imagesRepository != "" {
+		cmd = cmd + fmt.Sprintf(" --image-repository=%s", imagesRepository)
+	}
 
-	ETCDImageTag         string
-	CoreDNSImageTag      string
-	KubernetesVersion    string
-	ControlPlaneEndpoint string
-
-	DNSDomain             string
-	ServiceSubnet         string
-	NodeCIDRMaskSize      int32
-	ClusterCIDR           string
-	ServiceClusterIPRange string
-	CertSANs              []string
-
-	APIServerExtraArgs         map[string]string
-	ControllerManagerExtraArgs map[string]string
-	SchedulerExtraArgs         map[string]string
-
-	ImageRepository string
-	ClusterName     string
-
-	KubeProxyMode string
+	ctx.Info("ImagesPull", "node", s.HostIP(), "cmd", cmd)
+	exit, err := s.ExecStream(cmd, os.Stdout, os.Stderr)
+	if err != nil {
+		ctx.Error(err, "exit", exit, "node", s.HostIP())
+		return errors.Wrapf(err, "node: %s exec: %q", s.HostIP(), cmd)
+	}
+	return nil
 }
 
+// Init phase ...
 func Init(ctx *common.ClusterContext, s ssh.Interface, kubeadmConfig *Config, extraCmd string) error {
 	configData, err := kubeadmConfig.Marshal()
 	if err != nil {
@@ -90,17 +78,18 @@ func Init(ctx *common.ClusterContext, s ssh.Interface, kubeadmConfig *Config, ex
 		return err
 	}
 
-	cmd := fmt.Sprintf("kubeadm init phase %s --config=%s -v 9", extraCmd, constants.KubeadmConfigFileName)
-	ctx.Info("kubeadm init", "cmd", cmd)
+	cmd := fmt.Sprintf("kubeadm init phase %s --config=%s -v 4", extraCmd, constants.KubeadmConfigFileName)
+	ctx.Info("kubeadm", "cmd", cmd)
 	exit, err := s.ExecStream(cmd, os.Stdout, os.Stderr)
 	if err != nil {
-		ctx.Error(err, "exit", exit, "node", s.HostIP())
+		ctx.Error(err, "node", s.HostIP(), "exit", exit)
 		return errors.Wrapf(err, "node: %s exec: %q", s.HostIP(), cmd)
 	}
 
 	return nil
 }
 
+// InitCerts ...
 func InitCerts(ctx *common.ClusterContext, cfg *Config, isHosted bool) error {
 	var lastCACert *certs.CaAll
 	cfgMaps := make(map[string][]byte)
@@ -180,6 +169,7 @@ func InitCerts(ctx *common.ClusterContext, cfg *Config, isHosted bool) error {
 	return nil
 }
 
+// JoinControlPlaneOption ...
 type JoinControlPlaneOption struct {
 	NodeName             string
 	AdvertiseAddress     string
@@ -188,6 +178,7 @@ type JoinControlPlaneOption struct {
 	ControlPlaneEndpoint string
 }
 
+// JoinControlPlane ...
 func JoinControlPlane(ctx *common.ClusterContext, s ssh.Interface) error {
 	option := &JoinControlPlaneOption{
 		BootstrapToken:       *ctx.Credential.BootstrapToken,
@@ -199,9 +190,9 @@ func JoinControlPlane(ctx *common.ClusterContext, s ssh.Interface) error {
 
 	cmd, err := template.ParseString(joinControlPlaneCmd, option)
 	if err != nil {
-		return errors.Wrap(err, "parse joinControlePlaneCmd error")
+		return errors.Wrap(err, "template parse joinControlePlaneCmd")
 	}
-	klog.Infof("node: %s join cmd: %s", option.NodeName, cmd)
+	ctx.Info("Join ControlPlane", "node", option.NodeName, "cmd", option.NodeName, cmd)
 	exit, err := s.ExecStream(string(cmd), os.Stdout, os.Stderr)
 	if err != nil || exit != 0 {
 		return fmt.Errorf("exec %q failed:exit %d error:%v", cmd, exit, err)
@@ -307,7 +298,6 @@ func DockerFilterForControlPlane(name string) string {
 
 func RestartContainerByFilter(s ssh.Interface, filter string) error {
 	// cmd := fmt.Sprintf("docker rm -f $(docker ps -q -f '%s')", filter)
-	// klog.V(4).Infof("node: %s, cmd: %s", s.HostIP(), cmd)
 	// _, err := s.CombinedOutput(cmd)
 	// if err != nil {
 	// 	return err
@@ -315,7 +305,6 @@ func RestartContainerByFilter(s ssh.Interface, filter string) error {
 	//
 	// err = wait.PollImmediate(5*time.Second, 5*time.Minute, func() (bool, error) {
 	// 	cmd = fmt.Sprintf("docker ps -q -f '%s'", filter)
-	// 	klog.V(4).Infof("wait node: %s, cmd: %s", s.HostIP(), cmd)
 	// 	output, err := s.CombinedOutput(cmd)
 	// 	if err != nil {
 	// 		return false, nil

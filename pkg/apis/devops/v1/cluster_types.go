@@ -47,6 +47,58 @@ const (
 	ContainerdCRI CRIType = "containerd"
 )
 
+// ClusterPhase defines the phase of cluster constructor.
+type ClusterPhase string
+
+const (
+	// ClusterRunning is the normal running phase.
+	ClusterRunning ClusterPhase = "Running"
+	// ClusterInitializing is the initialize phase.
+	ClusterInitializing ClusterPhase = "Initializing"
+	// ClusterFailed is the failed phase.
+	ClusterFailed ClusterPhase = "Failed"
+	// ClusterTerminating means the cluster is undergoing graceful termination.
+	ClusterTerminating ClusterPhase = "Terminating"
+	// ClusterNotSupport is the not support phase.
+	ClusterNotSupport ClusterPhase = "NotSupport"
+)
+
+// HookType
+type HookType string
+
+const (
+	HookPreInstall  HookType = "preInstall"
+	HookPostInstall HookType = "postInstall"
+	HookCniInstall  HookType = "cniInstall"
+)
+
+// AddressType indicates the type of cluster apiserver access address.
+type AddressType string
+
+// These are valid address type of cluster.
+const (
+	// AddressPublic indicates the address of the apiserver accessed from the external network.(such as public lb)
+	AddressPublic AddressType = "Public"
+	// AddressAdvertise indicates the address of the apiserver accessed from the worker node.(such as internal lb)
+	AddressAdvertise AddressType = "Advertise"
+	// AddressReal indicates the real address of one apiserver
+	AddressReal AddressType = "Real"
+	// AddressInternal indicates the address of the apiserver accessed from TKE control plane.
+	AddressInternal AddressType = "Internal"
+	// AddressSupport used for vpc lb which bind to JNS gateway as known AddressInternal
+	AddressSupport AddressType = "Support"
+)
+
+// UpgradeMode
+type UpgradeMode string
+
+const (
+	// Upgrade nodes automatically.
+	UpgradeModeAuto = UpgradeMode("Auto")
+	// Manual upgrade nodes which means user need label node with `platform.k8s.io/need-upgrade`.
+	UpgradeModeManual = UpgradeMode("Manual")
+)
+
 // ResourceList is a set of (resource name, quantity) pairs.
 type ResourceList map[string]resource.Quantity
 
@@ -86,22 +138,6 @@ type ClusterComponentReplicas struct {
 	Updated   int32 `json:"updated"`
 }
 
-// ClusterPhase defines the phase of cluster constructor.
-type ClusterPhase string
-
-const (
-	// ClusterRunning is the normal running phase.
-	ClusterRunning ClusterPhase = "Running"
-	// ClusterInitializing is the initialize phase.
-	ClusterInitializing ClusterPhase = "Initializing"
-	// ClusterFailed is the failed phase.
-	ClusterFailed ClusterPhase = "Failed"
-	// ClusterTerminating means the cluster is undergoing graceful termination.
-	ClusterTerminating ClusterPhase = "Terminating"
-	// ClusterNotSupport is the not support phase.
-	ClusterNotSupport ClusterPhase = "NotSupport"
-)
-
 // ClusterCondition contains details for the current condition of this cluster.
 type ClusterCondition struct {
 	// Type is the type of the condition.
@@ -122,40 +158,6 @@ type ClusterCondition struct {
 	// +optional
 	Message string `json:"message,omitempty"`
 }
-
-type HookType string
-
-const (
-	HookPreInstall  HookType = "preInstall"
-	HookPostInstall HookType = "postInstall"
-	HookCniInstall  HookType = "cniInstall"
-)
-
-// AddressType indicates the type of cluster apiserver access address.
-type AddressType string
-
-// These are valid address type of cluster.
-const (
-	// AddressPublic indicates the address of the apiserver accessed from the external network.(such as public lb)
-	AddressPublic AddressType = "Public"
-	// AddressAdvertise indicates the address of the apiserver accessed from the worker node.(such as internal lb)
-	AddressAdvertise AddressType = "Advertise"
-	// AddressReal indicates the real address of one apiserver
-	AddressReal AddressType = "Real"
-	// AddressInternal indicates the address of the apiserver accessed from TKE control plane.
-	AddressInternal AddressType = "Internal"
-	// AddressSupport used for vpc lb which bind to JNS gateway as known AddressInternal
-	AddressSupport AddressType = "Support"
-)
-
-type UpgradeMode string
-
-const (
-	// Upgrade nodes automatically.
-	UpgradeModeAuto = UpgradeMode("Auto")
-	// Manual upgrade nodes which means user need label node with `platform.tkestack.io/need-upgrade`.
-	UpgradeModeManual = UpgradeMode("Manual")
-)
 
 // UpgradeStrategy used to control the upgrade process.
 type UpgradeStrategy struct {
@@ -275,7 +277,6 @@ type ExternalEtcd struct {
 
 // Etcd contains elements describing Etcd configuration.
 type Etcd struct {
-
 	// Local provides configuration knobs for configuring the local etcd instance
 	// Local and External are mutually exclusive
 	Local *LocalEtcd `json:"local,omitempty"`
@@ -285,6 +286,7 @@ type Etcd struct {
 	External *ExternalEtcd `json:"external,omitempty"`
 }
 
+// Upgrade
 type Upgrade struct {
 	// Upgrade mode, default value is Auto.
 	// +optional
@@ -292,6 +294,21 @@ type Upgrade struct {
 	// Upgrade strategy config.
 	// +optional
 	Strategy UpgradeStrategy `json:"strategy,omitempty"`
+}
+
+// Mirror contains the config related to the registry mirror
+type Mirror struct {
+	// Endpoints are endpoints for a namespace. CRI plugin will try the endpoints
+	// one by one until a working one is found. The endpoint must be a valid url
+	// with host specified.
+	// The scheme, host and path from the endpoint URL will be used.
+	Endpoints []string `json:"endpoint,omitempty"`
+}
+
+// Registry is registry settings configured
+type Registry struct {
+	// Mirrors are namespace to mirror mapping for all namespaces.
+	Mirrors map[string]Mirror `json:"mirrors,omitempty"`
 }
 
 // ClusterSpec defines the desired state of Cluster
@@ -325,7 +342,7 @@ type ClusterSpec struct {
 	// +optional
 	Machines []*ClusterMachine `json:"machines,omitempty"`
 	// +optional
-	DockerExtraArgs map[string]string `json:"dockerExtraArgs,omitempty"`
+	Registry *Registry `json:"registry,omitempty"`
 	// +optional
 	KubeletExtraArgs map[string]string `json:"kubeletExtraArgs,omitempty"`
 	// +optional

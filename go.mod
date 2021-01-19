@@ -10,6 +10,7 @@ require (
 	github.com/go-logr/logr v0.3.0
 	github.com/goph/emperror v0.17.2
 	github.com/imdario/mergo v0.3.10
+	github.com/mattn/go-colorable v0.1.2 // indirect
 	github.com/onsi/gomega v1.10.2
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/sftp v1.12.0
@@ -19,7 +20,6 @@ require (
 	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546 // indirect
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.6.1
 	github.com/thoas/go-funk v0.7.0
 	go.uber.org/zap v1.15.0
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
@@ -39,6 +39,4 @@ require (
 	k8s.io/utils v0.0.0-20201104234853-8146046b121e
 	rsc.io/letsencrypt v0.0.3 // indirect
 	sigs.k8s.io/controller-runtime v0.7.0
-	yunion.io/x/log v0.0.0-20201210064738-43181789dc74 // indirect
-	yunion.io/x/pkg v0.0.0-20201123083159-ca3aea986ff2 // indirect
 )

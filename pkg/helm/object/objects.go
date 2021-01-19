@@ -9,13 +9,12 @@ import (
 	"strings"
 
 	"github.com/ghodss/yaml"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
-
 	"github.com/wtxue/kok-operator/pkg/k8sclient"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
+	k8syaml "k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/klog"
 )
 

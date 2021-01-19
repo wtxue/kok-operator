@@ -9,13 +9,12 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/klog"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 var (
-	logger = logf.Log.WithName("controller")
+	logger = logf.Log.WithName("clustermanager")
 )
 
 // key config
@@ -116,13 +115,13 @@ func (m *ClusterManager) Delete(name string) error {
 	defer m.Unlock()
 
 	if len(m.clusters) == 0 {
-		klog.Errorf("clusters list is empty, nothing to delete")
+		logger.Info("clusters list is empty, nothing to delete")
 		return nil
 	}
 
 	index, ok := m.GetClusterIndex(name)
 	if !ok {
-		klog.Warningf("cluster:%s  is not found in the registries list, nothing to delete", name)
+		logger.Info("not found in the registries list, nothing to delete", "cluster", name)
 		return nil
 	}
 
@@ -130,7 +129,7 @@ func (m *ClusterManager) Delete(name string) error {
 	clusters := m.clusters
 	clusters = append(clusters[:index], clusters[index+1:]...)
 	m.clusters = clusters
-	klog.Infof("the cluster %s has been deleted.", name)
+	logger.Info("has been deleted.", "cluster", name)
 	return nil
 }
 
@@ -162,10 +161,9 @@ func (m *ClusterManager) Get(name string) (*Cluster, error) {
 }
 
 func (m *ClusterManager) cluterCheck() {
-	klog.V(5).Info("cluster health check.")
 	for _, c := range m.clusters {
 		if !c.healthCheck() {
-			klog.Warningf("cluster: %s healthCheck fail", c.Name)
+			logger.Info("healthCheck failed", "cluster", c.Name)
 		}
 	}
 }
@@ -177,7 +175,7 @@ func (m *ClusterManager) AddNewClusters(name string, kubeconfig string) (*Cluste
 
 	nc, err := NewCluster(name, []byte(kubeconfig), logger)
 	if err != nil {
-		klog.Errorf("cluster: %s new client err: %v", name, err)
+		logger.Error(err, "new cluster failed", "cluster", name)
 		return nil, err
 	}
 
@@ -187,18 +185,19 @@ func (m *ClusterManager) AddNewClusters(name string, kubeconfig string) (*Cluste
 	nc.StartCache(ctx)
 	err = m.Add(nc)
 	if err != nil {
-		klog.Errorf("cluster: %s add err: %+v", name, err)
+		logger.Error(err, "add new cluster failed", "cluster", name)
 		return nil, err
 	}
+
 	return nc, nil
 }
 
 // Start timer check cluster health
 func (m *ClusterManager) Start(ctx context.Context) error {
-	klog.V(4).Info("multi cluster manager start check loop ... ")
+	logger.Info("multi cluster manager start check loop ... ")
 	wait.Until(m.cluterCheck, time.Minute, ctx.Done())
 
-	klog.V(4).Info("multi cluster manager stoped ... ")
+	logger.Info("multi cluster manager stoped ... ")
 	m.Stop()
 	return nil
 }

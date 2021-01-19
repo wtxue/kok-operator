@@ -2,6 +2,7 @@ package clustermanager
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -11,7 +12,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -81,15 +81,13 @@ func (c *Cluster) initK8SClients() error {
 		return errors.Wrapf(err, "could not get rest config name: %s", c.Name)
 	}
 
-	klog.V(5).Infof("##### cluster [%s] NewClientConfig. time taken: %v. ", c.Name, time.Since(startTime))
 	c.RestConfig = cfg
-
 	kubecli, err := kubernetes.NewForConfig(c.RestConfig)
 	if err != nil {
 		return errors.Wrapf(err, "could not new kubecli name:%s", c.Name)
 	}
 
-	klog.V(5).Infof("##### cluster [%s] NewClientCli. time taken: %v. ", c.Name, time.Since(startTime))
+	c.Log.Info("new kube cli", "time taken", fmt.Sprintf("%v", time.Since(startTime)))
 	c.KubeCli = kubecli
 	opt := manager.Options{
 		Scheme:                 k8sclient.GetScheme(),
@@ -104,10 +102,10 @@ func (c *Cluster) initK8SClients() error {
 		return errors.Wrapf(err, "could not new manager name: %s", c.Name)
 	}
 
-	klog.V(5).Infof("##### cluster [%s] NewManagerCli. time taken: %v. ", c.Name, time.Since(startTime))
 	c.Mgr = mgr
 	c.Client = mgr.GetClient()
 	c.Cache = mgr.GetCache()
+	c.Log.Info("new kube manager", "time taken", fmt.Sprintf("%v", time.Since(startTime)))
 	return nil
 }
 
@@ -129,16 +127,16 @@ func (c *Cluster) healthCheck() bool {
 
 func (c *Cluster) StartCache(stopCtx context.Context) {
 	if c.Started {
-		klog.Infof("cluster name: %s cache Informers is already startd", c.Name)
+		c.Log.Info("cache informers is already startd")
 		return
 	}
 
-	klog.Infof("cluster name: %s start cache Informers ", c.Name)
+	c.Log.Info("start cache informers ... ")
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	go func() {
 		err := c.Cache.Start(ctx)
 		if err != nil {
-			klog.Warningf("cluster name: %s cache Informers quit end err: %+v", c.Name, err)
+			c.Log.Error(err, "cache Informers quit")
 		}
 	}()
 
@@ -148,6 +146,6 @@ func (c *Cluster) StartCache(stopCtx context.Context) {
 }
 
 func (c *Cluster) Stop() {
-	klog.Infof("cluster: %s start stop cache Informers", c.Name)
+	c.Log.Info("start stop cache informers")
 	c.StopperCancel()
 }

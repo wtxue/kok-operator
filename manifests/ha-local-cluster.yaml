@@ -11,15 +11,16 @@ metadata:
   name: ha-local-cluster
   namespace: ha-local-cluster
   annotations:
-    #  "k8s.io/step.restore": "EnsureSystem"
+#    "k8s.io/step.restore": "EnsurePreInstallHook"
     "k8s.io/local.dir": "bin/linux/"
     "k8s.io/apply.step": EnsureDeployCni, EnsureMetricsServer
+#    "k8s.io/apiserver.vip": 172.16.18.17
 spec:
   pause: false
   tenantID: k8s
   displayName: demo
   clusterType: baremetal
-  osType: debian
+  osType: ubuntu
   criType: containerd
   version: v1.19.6
   networkDevice: ens34
@@ -41,15 +42,15 @@ spec:
   properties:
     maxNodePodNum: 64
   machines:
-    - ip: 172.16.18.14
+    - ip: 172.16.18.17
       port: 22
       username: root
       password: "123456"
-    - ip: 172.16.18.15
+    - ip: 172.16.18.18
       port: 22
       username: root
       password: "123456"
-    - ip: 172.16.18.16
+    - ip: 172.16.18.19
       port: 22
       username: root
       password: "123456"

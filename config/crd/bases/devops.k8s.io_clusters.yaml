@@ -78,10 +78,6 @@ spec:
                 description: DNSDomain is the dns domain used by k8s services. Defaults
                   to "cluster.local".
                 type: string
-              dockerExtraArgs:
-                additionalProperties:
-                  type: string
-                type: object
               etcd:
                 description: Etcd holds configuration for etcd.
                 properties:
@@ -334,6 +330,27 @@ spec:
                 items:
                   type: string
                 type: array
+              registry:
+                description: Registry is registry settings configured
+                properties:
+                  mirrors:
+                    additionalProperties:
+                      description: Mirror contains the config related to the registry
+                        mirror
+                      properties:
+                        endpoint:
+                          description: Endpoints are endpoints for a namespace. CRI
+                            plugin will try the endpoints one by one until a working
+                            one is found. The endpoint must be a valid url with host
+                            specified. The scheme, host and path from the endpoint
+                            URL will be used.
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    description: Mirrors are namespace to mirror mapping for all namespaces.
+                    type: object
+                type: object
               schedulerExtraArgs:
                 additionalProperties:
                   type: string
