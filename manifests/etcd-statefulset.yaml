@@ -1,3 +1,5 @@
+# k8s.gcr.io/etcd:3.4.13-0
+# docker.io/wtxue/etcd:3.4.13-0
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -5,21 +7,24 @@ metadata:
   name: etcd
   labels:
     app: etcd
+    version: blue
 spec:
   serviceName: etcd
   replicas: 3
   selector:
     matchLabels:
       app: etcd
+      version: blue
   template:
     metadata:
       name: etcd
       labels:
         app: etcd
+        version: blue
     spec:
       containers:
         - name: etcd
-          image: registry.cn-hangzhou.aliyuncs.com/wtxue/kubernetes:v1.18.6
+          image: docker.io/wtxue/etcd:3.4.13-0
           ports:
             - containerPort: 2379
               name: client
@@ -32,10 +37,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
-          resources:
-            requests:
-              cpu: 100m
-              memory: 512Mi
+          #          resources:
+          #            requests:
+          #              cpu: 100m
+          #              memory: 512Mi
           volumeMounts:
             - name: datadir
               mountPath: /var/run/etcd
@@ -52,17 +57,18 @@ spec:
                 --initial-cluster-token etcd-cluster-1 \
                 --initial-cluster ${PEERS} \
                 --initial-cluster-state new \
-                --data-dir /var/run/etcd/default.etcd
+                --data-dir /var/run/etcd/default.etcd \
+                --logger=zap
   volumeClaimTemplates:
     - metadata:
         name: datadir
       spec:
-        storageClassName: local-storage
+        #        storageClassName: local-storage
         accessModes:
           - "ReadWriteOnce"
         resources:
           requests:
-            storage: 10Gi
+            storage: 2Gi
 ---
 apiVersion: v1
 kind: Service
@@ -93,81 +99,3 @@ spec:
     matchLabels:
       app: etcd
 ---
-apiVersion: storage.k8s.io/v1
-kind: StorageClass
-metadata:
-  labels:
-    createdBy: controller
-  name: local-storage
-provisioner: kubernetes.io/no-provisioner
-reclaimPolicy: Delete
-volumeBindingMode: WaitForFirstConsumer
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: etcd0-hosted-cluster-lpv
-spec:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 10Gi
-  local:
-    path: /web/hosted-cluster
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: kubernetes.io/hostname
-              operator: In
-              values:
-                - 10.248.224.183
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: local-storage
-  volumeMode: Filesystem
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: etcd1-hosted-cluster-lpv
-spec:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 10Gi
-  local:
-    path: /web/hosted-cluster
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: kubernetes.io/hostname
-              operator: In
-              values:
-                - 10.248.224.201
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: local-storage
-  volumeMode: Filesystem
----
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: etcd2-hosted-cluster-lpv
-spec:
-  accessModes:
-    - ReadWriteOnce
-  capacity:
-    storage: 10Gi
-  local:
-    path: /web/hosted-cluster
-  nodeAffinity:
-    required:
-      nodeSelectorTerms:
-        - matchExpressions:
-            - key: kubernetes.io/hostname
-              operator: In
-              values:
-                - 10.248.224.199
-  persistentVolumeReclaimPolicy: Retain
-  storageClassName: local-storage
-  volumeMode: Filesystem

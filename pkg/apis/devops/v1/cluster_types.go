@@ -302,7 +302,7 @@ type Mirror struct {
 	// one by one until a working one is found. The endpoint must be a valid url
 	// with host specified.
 	// The scheme, host and path from the endpoint URL will be used.
-	Endpoints []string `json:"endpoint,omitempty"`
+	Endpoints []string `json:"endpoints,omitempty"`
 }
 
 // Registry is registry settings configured

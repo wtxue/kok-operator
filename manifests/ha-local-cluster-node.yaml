@@ -1,0 +1,19 @@
+apiVersion: devops.k8s.io/v1
+kind: Machine
+metadata:
+  labels:
+    name: 172.16.18.20
+    clusterName: ha-local-cluster
+  name: 172.16.18.20
+  namespace: ha-local-cluster
+spec:
+  clusterName: ha-local-cluster
+  type: baremetal
+  machine:
+    ip: 172.16.18.20
+    port: 22
+    username: root
+    password: "123456"
+  feature:
+    hooks:
+      installType: kubeadm

@@ -338,7 +338,7 @@ spec:
                       description: Mirror contains the config related to the registry
                         mirror
                       properties:
-                        endpoint:
+                        endpoints:
                           description: Endpoints are endpoints for a namespace. CRI
                             plugin will try the endpoints one by one until a working
                             one is found. The endpoint must be a valid url with host

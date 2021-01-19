@@ -7,17 +7,17 @@ metadata:
   name: manager-role
 rules:
   - apiGroups:
-  - devops.k8s.io
-  resources:
-  - clusters
-  verbs:
-    - create
-  - delete
-  - get
-  - list
-  - patch
-    - update
-    - watch
+      - devops.k8s.io
+    resources:
+      - clusters
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
   - apiGroups:
       - devops.k8s.io
     resources:
