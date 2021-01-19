@@ -1,18 +1,19 @@
 # kok-operator
 
-kok-operator 是一个自动化部署高可用kubernetes的operator
+kok-operator 可以自动化完成高可用 kubernetes 部署
 
 # 特性
 
-- 启用 k3s，解决裸金属第一次部署集群没有元集群问题
+- 支持 fake-apiserver、k3s 作为 bootstrap cluster，解决第一次部署集群没有元集群问题
 - 云原生架构，crd+controller，采用声明式 api 描述一个集群的生命周期(创建，升级，删除)
-- 支持 裸金属模式 和 托管模式 两种方式部署集群
-- kubelet 自动生成证书，无坑版100年集群证书
+- 支持 baremetal 和 hosted 两种方式部署集群
+- 支持 containerd，并且支持配置 mirror
+- 自动生成集群所有证书，无坑版100年集群证书
 - 除 kubelet 外集群组件全部容器化部署，采用 static pod 方式部署高可用 etcd 集群
-- 支持 coredns, flannel, metrics-server, kube-proxy, metallb 等 addons 模板化部署
-- 支持 centos 和 debian 系统
-- 支持结点下线清理
-- 支持 helm 部署
+- 支持 coredns、kube-proxy、flannel、metrics-server、metallb、contour 等 addons 模板化部署
+- 支持 centos、ubuntu、debian 系统
+- 支持 helm v3, repo 管理
+- 支持多集群管理，支持 master 高可用
 
 # 安装部署
 
@@ -47,7 +48,7 @@ users:
     username: admin
 ```
 
-## Get a kubeconfig that uses the k3s node ip
+## Get a kubeconfig by the k3s node ip
 ```bash
 export NodeIP=xx.xx.xx.xx
 mkdir -p $HOME/.kube
@@ -58,6 +59,7 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ## 运行
 
 本地运行
+
 ```bash
 # apply crd
 $ kubectl apply -f manifests/crds/
@@ -67,8 +69,10 @@ customresourcedefinition.apiextensions.k8s.io/machines.devops.k8s.io created
 
 # 指定 kubeconfig 运行
 $ go run cmd/admin-controller/main.go ctrl -v 4 --kubeconfig={}/k3s-kubeconfig.yaml
-```
-k3s helm3 安装运行
+``` 
+
+helm v3 安装运行
+
 ```bash
 helm upgrade --install kok-operator --create-namespace --namespace kok-system --debug ./charts/kok-operator
 
@@ -90,6 +94,7 @@ $ kubectl apply -f ./manifests/example-cluster-node.yaml
 
 ### 创建托管集群
 创建托管集群时，kok-operator 需要运行在 meta 高可用集群上，这里使用集群名为 meta-cluster, 注意一个 namespace 一个托管集群
+
 ```bash
 # 创建 etcd 集群
 $ kubectl apply -f ./manifests/etcd-statefulset.yaml
@@ -101,7 +106,11 @@ kubectl apply -f ./manifests/hosted-cluster.yaml
 kubectl apply -f ./manifests/hosted-cluster-node.yaml
 ```
 
+# Development
+
+This project uses [Kubebuilder](https://github.com/kubernetes-sigs/kubebuilder)
+for CRD API generation.
+
 # 计划
 
 - [x]  打通元集群及托管集群 service 网络，以支持聚合 apiserver
-- [x]  支持 helm v3 部署 addons
