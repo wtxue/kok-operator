@@ -1,26 +1,9 @@
-/*
-Copyright 2020 wtxue.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package app
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
-
-	"context"
 
 	"github.com/spf13/cobra"
 	"github.com/wtxue/kok-operator/cmd/controller/app/app_option"
@@ -29,7 +12,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
@@ -94,6 +77,7 @@ func NewFakeApiserverCmd(opt *app_option.Options) *cobra.Command {
 		Use:   "fake",
 		Short: "Manage with a fake apiserver",
 		Run: func(cmd *cobra.Command, args []string) {
+			opt.Global.SetupLogger()
 			ctx := signals.SetupSignalHandler()
 			err := tryRun(apiServerOpt, ctx)
 			if err != nil {

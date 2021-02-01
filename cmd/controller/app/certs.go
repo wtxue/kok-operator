@@ -1,19 +1,3 @@
-/*
-Copyright 2020 wtxue.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
-
 package app
 
 import (
@@ -26,7 +10,7 @@ import (
 	"github.com/wtxue/kok-operator/cmd/controller/app/app_option"
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
 	certutil "k8s.io/client-go/util/cert"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 func writeCertificateAuthorityFilesIfNotExist(pkiDir string, baseName string, caCert *x509.Certificate, caKey crypto.Signer) error {
@@ -116,6 +100,7 @@ func NewCertCmd(opt *app_option.Options) *cobra.Command {
 		Use:   "cert",
 		Short: "Manage k8s cert demo",
 		Run: func(cmd *cobra.Command, args []string) {
+			opt.Global.SetupLogger()
 			TryRun()
 		},
 	}

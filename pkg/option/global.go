@@ -6,9 +6,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"github.com/wtxue/kok-operator/pkg/k8sclient"
+	"go.uber.org/zap/zapcore"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog"
+	ctrlrt "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 type GlobalManagerOption struct {
@@ -16,22 +19,24 @@ type GlobalManagerOption struct {
 	ConfigContext           string
 	Namespace               string
 	DefaultNamespace        string
-	LoggerDevMode           bool
 	Threadiness             int
 	GoroutineThreshold      int
 	ResyncPeriod            time.Duration
 	LeaderElectionNamespace string
 	EnableLeaderElection    bool
+	EnableDevLogging        bool
+	LogLevel                string
 }
 
 func DefaultGlobalManagetOption() *GlobalManagerOption {
 	return &GlobalManagerOption{
-		LoggerDevMode:           true,
 		Threadiness:             1,
 		GoroutineThreshold:      1000,
 		ResyncPeriod:            60 * time.Minute,
 		EnableLeaderElection:    false,
-		LeaderElectionNamespace: "onkube-admin",
+		LeaderElectionNamespace: "kok-system",
+		EnableDevLogging:        true,
+		LogLevel:                "info",
 	}
 }
 
@@ -39,9 +44,15 @@ func (o *GlobalManagerOption) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.Kubeconfig, "kubeconfig", "", "Kubernetes configuration file")
 	fs.StringVar(&o.ConfigContext, "context", "", "The name of the kubeconfig context to use")
 	fs.StringVar(&o.Namespace, "namespace", "", "Config namespace")
-	fs.BoolVar(&o.LoggerDevMode, "logger-dev-mode", o.LoggerDevMode, "Enables the Cluster controller manager")
 	fs.IntVar(&o.Threadiness, "threadiness", o.Threadiness, "Enables the Machine controller manager")
 	fs.IntVar(&o.GoroutineThreshold, "goroutine-threshold", o.GoroutineThreshold, "Enables the Machine controller manager")
+	fs.BoolVar(&o.EnableDevLogging, "enable-dev-logging", o.EnableDevLogging,
+		"Configures the logger to use a Zap development config (encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn, no sampling), "+
+			"otherwise a Zap production config will be used (encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error), sampling).")
+	fs.StringVar(
+		&o.LogLevel, "log-level", o.LogLevel,
+		"The log level. Default is info. We use logr interface which only supports info and debug level",
+	)
 }
 
 func (o *GlobalManagerOption) GetK8sConfig() (*rest.Config, error) {
@@ -80,4 +91,22 @@ func (o *GlobalManagerOption) GetKubeInterfaceOrDie() kubernetes.Interface {
 	}
 
 	return kubeCli
+}
+
+// SetupLogger initializes the logger used in the service controller
+func (o *GlobalManagerOption) SetupLogger() {
+	var lvl zapcore.LevelEnabler
+
+	switch o.LogLevel {
+	case "debug":
+		lvl = zapcore.DebugLevel
+	default:
+		lvl = zapcore.InfoLevel
+	}
+
+	zapOptions := zap.Options{
+		Development: o.EnableDevLogging,
+		Level:       lvl,
+	}
+	ctrlrt.SetLogger(zap.New(zap.UseFlagOptions(&zapOptions)))
 }
