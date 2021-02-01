@@ -230,7 +230,7 @@ func (p *Provider) EnsureAddons(ctx *common.ClusterContext) error {
 	logger := ctx.WithValues("cluster", ctx.Cluster.Name)
 	logger.Info("start apply kube-proxy")
 	for _, obj := range kubeproxyObjs {
-		err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStatePresent)
+		err = k8sutil.Reconcile(logger, clusterCtx.GetClient(), obj, k8sutil.DesiredStatePresent)
 		if err != nil {
 			return errors.Wrapf(err, "Reconcile  err: %v", err)
 		}
@@ -242,7 +242,7 @@ func (p *Provider) EnsureAddons(ctx *common.ClusterContext) error {
 		return errors.Wrapf(err, "build coredns err: %+v", err)
 	}
 	for _, obj := range corednsObjs {
-		err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStatePresent)
+		err = k8sutil.Reconcile(logger, clusterCtx.GetClient(), obj, k8sutil.DesiredStatePresent)
 		if err != nil {
 			return errors.Wrapf(err, "Reconcile  err: %v", err)
 		}
@@ -284,7 +284,7 @@ func (p *Provider) EnsureCni(ctx *common.ClusterContext) error {
 		logger := ctx.WithValues("component", "flannel")
 		logger.Info("start reconcile ...")
 		for _, obj := range objs {
-			err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStatePresent)
+			err = k8sutil.Reconcile(logger, clusterCtx.GetClient(), obj, k8sutil.DesiredStatePresent)
 			if err != nil {
 				return errors.Wrapf(err, "Reconcile  err: %v", err)
 			}
@@ -309,7 +309,7 @@ func (p *Provider) EnsureMetricsServer(ctx *common.ClusterContext) error {
 	logger := ctx.WithValues("component", "metrics-server")
 	logger.Info("start reconcile ...")
 	for _, obj := range objs {
-		err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStateAbsent)
+		err = k8sutil.Reconcile(logger, clusterCtx.GetClient(), obj, k8sutil.DesiredStateAbsent)
 		if err != nil {
 			return errors.Wrapf(err, "Reconcile  err: %v", err)
 		}

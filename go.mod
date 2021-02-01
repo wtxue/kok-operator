@@ -5,7 +5,7 @@ go 1.15
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/Masterminds/sprig v2.22.0+incompatible
-	github.com/banzaicloud/k8s-objectmatcher v1.5.0
+	github.com/banzaicloud/k8s-objectmatcher v1.5.1
 	github.com/ghodss/yaml v1.0.0
 	github.com/go-logr/logr v0.3.0
 	github.com/goph/emperror v0.17.2

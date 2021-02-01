@@ -36,8 +36,8 @@ func AddToManager(mgr manager.Manager, opt *option.ControllersManagerOption, con
 		return err
 	}
 
-	k8sMgr, _ := clustermanager.NewManager(clustermanager.MasterClient{
-		Manager: mgr,
+	k8sMgr, _ := clustermanager.NewManager(clustermanager.ControlCluster{
+		Cluster: mgr,
 	})
 
 	gMgr := &gmanager.GManager{

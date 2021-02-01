@@ -746,7 +746,7 @@ func (p *Provider) EnsureMetricsServer(ctx *common.ClusterContext) error {
 	logger := ctx.WithValues("component", "metrics-server")
 	logger.Info("start reconcile ...")
 	for _, obj := range objs {
-		err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStatePresent)
+		err = k8sutil.Reconcile(logger, clusterCtx.GetClient(), obj, k8sutil.DesiredStatePresent)
 		if err != nil {
 			return errors.Wrapf(err, "Reconcile  err: %v", err)
 		}
@@ -816,7 +816,7 @@ func (p *Provider) EnsureDeployCni(ctx *common.ClusterContext) error {
 		logger := ctx.WithValues("component", "flannel")
 		logger.Info("start reconcile ...")
 		for _, obj := range objs {
-			err = k8sutil.Reconcile(logger, clusterCtx.Client, obj, k8sutil.DesiredStatePresent)
+			err = k8sutil.Reconcile(logger, clusterCtx.GetClient(), obj, k8sutil.DesiredStatePresent)
 			if err != nil {
 				return errors.Wrapf(err, "Reconcile  err: %v", err)
 			}
@@ -837,7 +837,7 @@ func (p *Provider) EnsureMasterNode(ctx *common.ClusterContext) error {
 	node := &corev1.Node{}
 	var noReadNode *devopsv1.ClusterMachine
 	for _, machine := range ctx.Cluster.Spec.Machines {
-		err := clusterCtx.Client.Get(ctx.Ctx, types.NamespacedName{Name: machine.IP}, node)
+		err := clusterCtx.GetClient().Get(ctx.Ctx, types.NamespacedName{Name: machine.IP}, node)
 		if err != nil {
 			return errors.Wrapf(err, "failed get cluster: %s node: %s", ctx.Cluster.Name, machine.IP)
 		}

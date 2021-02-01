@@ -11,10 +11,7 @@ import (
 	"github.com/wtxue/kok-operator/pkg/k8sclient"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 )
 
 type ClusterStatusType string
@@ -37,14 +34,11 @@ type Cluster struct {
 	AliasName     string
 	RawKubeconfig []byte
 	Meta          map[string]string
-	RestConfig    *rest.Config
-	Client        client.Client
 	KubeCli       kubernetes.Interface
 
-	Log        logr.Logger
-	Mgr        manager.Manager
-	Cache      cache.Cache
+	cluster.Cluster
 	SyncPeriod time.Duration
+	Log        logr.Logger
 
 	StopperCancel context.CancelFunc
 
@@ -54,7 +48,7 @@ type Cluster struct {
 }
 
 func NewCluster(name string, kubeconfig []byte, log logr.Logger) (*Cluster, error) {
-	cluster := &Cluster{
+	c := &Cluster{
 		Name:          name,
 		RawKubeconfig: kubeconfig,
 		Log:           log.WithValues("cluster", name),
@@ -62,12 +56,12 @@ func NewCluster(name string, kubeconfig []byte, log logr.Logger) (*Cluster, erro
 		Started:       false,
 	}
 
-	err := cluster.initK8SClients()
+	err := c.initK8SClients()
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not re-init k8s clients name:%s", name)
 	}
 
-	return cluster, nil
+	return c, nil
 }
 
 func (c *Cluster) GetName() string {
@@ -81,30 +75,19 @@ func (c *Cluster) initK8SClients() error {
 		return errors.Wrapf(err, "could not get rest config name: %s", c.Name)
 	}
 
-	c.RestConfig = cfg
-	kubecli, err := kubernetes.NewForConfig(c.RestConfig)
+	kubecli, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
 		return errors.Wrapf(err, "could not new kubecli name:%s", c.Name)
 	}
 
 	c.Log.Info("new kube cli", "time taken", fmt.Sprintf("%v", time.Since(startTime)))
+	cs, err := cluster.New(cfg, func(o *cluster.Options) {
+		o.Scheme = k8sclient.GetScheme()
+		o.SyncPeriod = &c.SyncPeriod
+	})
+
+	c.Cluster = cs
 	c.KubeCli = kubecli
-	opt := manager.Options{
-		Scheme:                 k8sclient.GetScheme(),
-		SyncPeriod:             &c.SyncPeriod,
-		MetricsBindAddress:     "0",
-		HealthProbeBindAddress: "0",
-		LeaderElection:         false,
-	}
-
-	mgr, err := manager.New(c.RestConfig, opt)
-	if err != nil {
-		return errors.Wrapf(err, "could not new manager name: %s", c.Name)
-	}
-
-	c.Mgr = mgr
-	c.Client = mgr.GetClient()
-	c.Cache = mgr.GetCache()
 	c.Log.Info("new kube manager", "time taken", fmt.Sprintf("%v", time.Since(startTime)))
 	return nil
 }
@@ -134,13 +117,13 @@ func (c *Cluster) StartCache(stopCtx context.Context) {
 	c.Log.Info("start cache informers ... ")
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	go func() {
-		err := c.Cache.Start(ctx)
+		err := c.GetCache().Start(ctx)
 		if err != nil {
 			c.Log.Error(err, "cache Informers quit")
 		}
 	}()
 
-	c.Cache.WaitForCacheSync(stopCtx)
+	c.GetCache().WaitForCacheSync(stopCtx)
 	c.Started = true
 	c.StopperCancel = cancelFunc
 }

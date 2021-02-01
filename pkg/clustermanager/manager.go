@@ -9,8 +9,8 @@ import (
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/cluster"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 var (
@@ -22,25 +22,25 @@ const (
 	ClustersAll = "all"
 )
 
-// MasterClient ...
-type MasterClient struct {
+// ControlCluster ...
+type ControlCluster struct {
 	KubeCli kubernetes.Interface
-	manager.Manager
+	cluster.Cluster
 }
 
 // ClusterManager ...
 type ClusterManager struct {
-	MasterClient
+	ControlCluster
 	clusters []*Cluster
 	Started  bool
 	sync.RWMutex
 }
 
 // NewManager ...
-func NewManager(cli MasterClient) (*ClusterManager, error) {
+func NewManager(cli ControlCluster) (*ClusterManager, error) {
 	cMgr := &ClusterManager{
-		MasterClient: cli,
-		clusters:     make([]*Cluster, 0, 4),
+		ControlCluster: cli,
+		clusters:       make([]*Cluster, 0, 4),
 	}
 
 	cMgr.Started = true
@@ -206,7 +206,7 @@ func (m *ClusterManager) Stop() {
 	m.Lock()
 	defer m.Unlock()
 
-	for _, cluster := range m.clusters {
-		cluster.Stop()
+	for _, c := range m.clusters {
+		c.Stop()
 	}
 }

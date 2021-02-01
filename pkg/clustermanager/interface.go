@@ -58,8 +58,8 @@ func (m *ClusterManager) GetPod(opts types.NamespacedName, clusterNames ...strin
 	ctx := context.Background()
 	pod := &corev1.Pod{}
 
-	for _, cluster := range clusters {
-		err := cluster.Client.Get(ctx, opts, pod)
+	for _, c := range clusters {
+		err := c.GetClient().Get(ctx, opts, pod)
 		if err != nil {
 			return nil, err
 		}
@@ -73,9 +73,9 @@ func (m *ClusterManager) GetPods(opts *client.ListOptions, clusterNames ...strin
 	ctx := context.Background()
 	result := make([]*corev1.Pod, 0)
 
-	for _, cluster := range clusters {
+	for _, c := range clusters {
 		podList := &corev1.PodList{}
-		err := cluster.Client.List(ctx, podList, opts)
+		err := c.GetClient().List(ctx, podList, opts)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
@@ -96,9 +96,9 @@ func (m *ClusterManager) GetNodes(opts *client.ListOptions, clusterNames ...stri
 	ctx := context.Background()
 	result := make([]*corev1.Node, 0)
 
-	for _, cluster := range clusters {
+	for _, c := range clusters {
 		nodeList := &corev1.NodeList{}
-		err := cluster.Client.List(ctx, nodeList, opts)
+		err := c.GetClient().List(ctx, nodeList, opts)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
@@ -119,9 +119,9 @@ func (m *ClusterManager) GetDeployment(opts *client.ListOptions, clusterNames ..
 	ctx := context.Background()
 	result := make([]*appsv1.Deployment, 0)
 
-	for _, cluster := range clusters {
+	for _, c := range clusters {
 		deployList := &appsv1.DeploymentList{}
-		err := cluster.Client.List(ctx, deployList, opts)
+		err := c.GetClient().List(ctx, deployList, opts)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
@@ -142,9 +142,9 @@ func (m *ClusterManager) GetStatefulsets(opts *client.ListOptions, clusterNames 
 	ctx := context.Background()
 	result := make([]*appsv1.StatefulSet, 0)
 
-	for _, cluster := range clusters {
+	for _, c := range clusters {
 		staList := &appsv1.StatefulSetList{}
-		err := cluster.Client.List(ctx, staList, opts)
+		err := c.GetClient().List(ctx, staList, opts)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
@@ -165,9 +165,9 @@ func (m *ClusterManager) GetService(opts *client.ListOptions, clusterNames ...st
 	ctx := context.Background()
 	result := make([]*corev1.Service, 0)
 
-	for _, cluster := range clusters {
+	for _, c := range clusters {
 		serviceList := &corev1.ServiceList{}
-		err := cluster.Client.List(ctx, serviceList, opts)
+		err := c.GetClient().List(ctx, serviceList, opts)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
@@ -188,9 +188,9 @@ func (m *ClusterManager) GetEndpoints(opts *client.ListOptions, clusterNames ...
 	ctx := context.Background()
 	result := make([]*corev1.Endpoints, 0)
 
-	for _, cluster := range clusters {
+	for _, c := range clusters {
 		endpointsList := &corev1.EndpointsList{}
-		err := cluster.Client.List(ctx, endpointsList, opts)
+		err := c.GetClient().List(ctx, endpointsList, opts)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
@@ -211,9 +211,9 @@ func (m *ClusterManager) GetEvent(opts *client.ListOptions, clusterNames ...stri
 	ctx := context.Background()
 	result := make([]*corev1.Event, 0)
 
-	for _, cluster := range clusters {
+	for _, c := range clusters {
 		eventList := &corev1.EventList{}
-		err := cluster.Client.List(ctx, eventList, opts)
+		err := c.GetClient().List(ctx, eventList, opts)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
@@ -233,9 +233,9 @@ func (m *ClusterManager) DeletePods(opts *client.ListOptions, clusterNames ...st
 	clusters := m.GetAll(clusterNames...)
 	ctx := context.Background()
 
-	for _, cluster := range clusters {
+	for _, c := range clusters {
 		podList := &corev1.PodList{}
-		err := cluster.Client.List(ctx, podList, opts)
+		err := c.GetClient().List(ctx, podList, opts)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				continue
@@ -243,7 +243,7 @@ func (m *ClusterManager) DeletePods(opts *client.ListOptions, clusterNames ...st
 			return err
 		}
 		for i := range podList.Items {
-			err = cluster.Client.Delete(ctx, &podList.Items[i])
+			err = c.GetClient().Delete(ctx, &podList.Items[i])
 			if err != nil {
 				logger.Error(err, "delete pod")
 				return err
@@ -259,12 +259,12 @@ func (m *ClusterManager) DeletePod(opts types.NamespacedName, clusterNames ...st
 	ctx := context.Background()
 	pod := &corev1.Pod{}
 
-	for _, cluster := range clusters {
-		err := cluster.Client.Get(ctx, opts, pod)
+	for _, c := range clusters {
+		err := c.GetClient().Get(ctx, opts, pod)
 		if err != nil {
 			return err
 		}
-		err = cluster.Client.Delete(ctx, pod)
+		err = c.GetClient().Delete(ctx, pod)
 		if err != nil {
 			logger.Error(err, "delete pod")
 			return err
