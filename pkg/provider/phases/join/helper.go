@@ -13,7 +13,7 @@ import (
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/k8sutil"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -107,7 +107,6 @@ func GetNodeNameAndHostname(cfg *kubeadmv1beta2.NodeRegistrationOptions) (string
 }
 
 func BuildKubeletDynamicEnvFile(imageRepository string, nodeReg *kubeadmv1beta2.NodeRegistrationOptions) string {
-
 	kubeletFlags := map[string]string{}
 
 	kubeletFlags["cgroup-driver"] = "systemd"
@@ -117,6 +116,7 @@ func BuildKubeletDynamicEnvFile(imageRepository string, nodeReg *kubeadmv1beta2.
 	if err != nil {
 		klog.Warning(err)
 	}
+
 	if nodeName != hostname {
 		klog.V(1).Infof("setting kubelet hostname-override to %q", nodeName)
 		kubeletFlags["hostname-override"] = nodeName
@@ -163,14 +163,12 @@ func getKubeletConfiguration(ctx *common.ClusterContext) *kubeletv1beta1.Kubelet
 func KubeletMarshal(cfg *kubeletv1beta1.KubeletConfiguration) ([]byte, error) {
 	gvks, _, err := apis.GetScheme().ObjectKinds(cfg)
 	if err != nil {
-		klog.Errorf("kubelet config get gvks err: %v", err)
-		return nil, err
+		return nil, errors.Wrap(err, "kubelet config get gvks")
 	}
 
 	yamlData, err := apis.MarshalToYAML(cfg, gvks[0].GroupVersion())
 	if err != nil {
-		klog.Errorf("kubelet config Marshal err: %v", err)
-		return nil, err
+		return nil, errors.Wrap(err, "kubelet config marshal")
 	}
 
 	return yamlData, nil

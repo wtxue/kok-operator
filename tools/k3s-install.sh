@@ -5,11 +5,12 @@ set -xeuo pipefail
 AdvertiseIP=${1:-"10.40.0.28"}
 ContainerdVersion=${2:-"1.4.3"}
 EtcdVersion=${3:-"v3.4.14"}
-K3sVersion=${4:-"v1.20.0"}
+K3sVersion=${4:-"v1.20.2"}
+K9sVersion=${5:-"v0.24.2"}
 
 function Install_depend_software(){
     echo -e "\033[32;32m 开始安装依赖环境包 \033[0m \n"
-    apt-get update && apt-get upgrade
+    apt-get update && apt-get -y upgrade
     apt-get install -y sudo
     sudo apt-get install -y curl wget vim telnet ipvsadm tree telnet wget net-tools  \
            bash-completion sysstat chrony jq sysstat socat conntrack lsof libseccomp2 util-linux apt-transport-https
@@ -43,21 +44,25 @@ function Install_containerd_service() {
       wget https://download.fastgit.org/containerd/containerd/releases/download/v${ContainerdVersion}/cri-containerd-cni-${ContainerdVersion}-linux-amd64.tar.gz
 	  fi
 
-#    sudo tar -C / -xzf cri-containerd-cni-${ContainerdVersion}-linux-amd64.tar.gz
-    tar tf cri-containerd-cni-${ContainerdVersion}-linux-amd64.tar.gz \
-      usr/local/bin/containerd   \
-      usr/local/bin/containerd-shim  \
-      usr/local/bin/containerd-shim-runc-v1  \
-      usr/local/bin/containerd-shim-runc-v2  \
-      usr/local/bin/crictl     \
-      usr/local/bin/ctr   \
-      usr/local/sbin/runc  \
-      etc/systemd/system/containerd.service  \
-      etc/crictl.yaml
+# docker.io/rancher/pause:3.2
+    sudo tar -C / -xzf cri-containerd-cni-${ContainerdVersion}-linux-amd64.tar.gz
 
-    mkdir /etc/containerd
-    containerd config default > /etc/containerd/config.toml
+    mkdir -p  /etc/containerd
+#    containerd config default > /etc/containerd/config.toml
+    cat > /etc/containerd/config.toml <<EOF
+[plugins]
+  [plugins."io.containerd.grpc.v1.cri"]
+    sandbox_image = "docker.io/rancher/pause:3.2"
+EOF
     systemctl enable containerd && systemctl daemon-reload && systemctl restart containerd
+  fi
+
+  if [ ! -f /usr/local/bin/k9s ]; then
+    if [ ! -f k9s_Linux_x86_64.tar.gz ]; then
+      wget https://github.com/derailed/k9s/releases/download/${K9sVersion}/k9s_Linux_x86_64.tar.gz
+    fi
+
+    tar -xf k9s_Linux_x86_64.tar.gz && chmod a+x k9s && mv k9s /usr/local/bin/
   fi
 }
 

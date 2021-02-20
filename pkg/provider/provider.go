@@ -6,10 +6,10 @@ import (
 	"github.com/wtxue/kok-operator/pkg/provider/cluster"
 	clusterprovider "github.com/wtxue/kok-operator/pkg/provider/cluster"
 	"github.com/wtxue/kok-operator/pkg/provider/config"
-	hostedcluster "github.com/wtxue/kok-operator/pkg/provider/hosted/cluster"
-	hostedmachine "github.com/wtxue/kok-operator/pkg/provider/hosted/machine"
 	"github.com/wtxue/kok-operator/pkg/provider/machine"
 	machineprovider "github.com/wtxue/kok-operator/pkg/provider/machine"
+	managedcluster "github.com/wtxue/kok-operator/pkg/provider/managed/cluster"
+	managedmachine "github.com/wtxue/kok-operator/pkg/provider/managed/machine"
 )
 
 type ProviderManager struct {
@@ -23,10 +23,10 @@ var AddToMpManagerFuncs []func(*machineprovider.MpManager, *config.Config) error
 
 func NewProvider(config *config.Config) (*ProviderManager, error) {
 	AddToCpManagerFuncs = append(AddToCpManagerFuncs, baremetalcluster.Add)
-	AddToCpManagerFuncs = append(AddToCpManagerFuncs, hostedcluster.Add)
+	AddToCpManagerFuncs = append(AddToCpManagerFuncs, managedcluster.Add)
 
 	AddToMpManagerFuncs = append(AddToMpManagerFuncs, baremetalmachine.Add)
-	AddToMpManagerFuncs = append(AddToMpManagerFuncs, hostedmachine.Add)
+	AddToMpManagerFuncs = append(AddToMpManagerFuncs, managedmachine.Add)
 
 	mgr := &ProviderManager{
 		CpManager: cluster.New(),

@@ -5,6 +5,7 @@ import (
 	"github.com/wtxue/kok-operator/pkg/provider/baremetal/validation"
 	"github.com/wtxue/kok-operator/pkg/provider/config"
 	machineprovider "github.com/wtxue/kok-operator/pkg/provider/machine"
+	"github.com/wtxue/kok-operator/pkg/provider/managed"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 )
 
@@ -30,7 +31,7 @@ func NewProvider(mgr *machineprovider.MpManager, cfg *config.Config) (*Provider,
 	}
 
 	p.DelegateProvider = &machineprovider.DelegateProvider{
-		ProviderName: "Hosted",
+		ProviderName: managed.ProviderName,
 		CreateHandlers: []machineprovider.Handler{
 			p.EnsureCopyFiles,
 			p.EnsurePreInstallHook,

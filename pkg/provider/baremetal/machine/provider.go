@@ -2,6 +2,7 @@ package machine
 
 import (
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
+	"github.com/wtxue/kok-operator/pkg/provider/baremetal"
 	"github.com/wtxue/kok-operator/pkg/provider/baremetal/validation"
 	"github.com/wtxue/kok-operator/pkg/provider/config"
 	machineprovider "github.com/wtxue/kok-operator/pkg/provider/machine"
@@ -30,7 +31,7 @@ func NewProvider(mgr *machineprovider.MpManager, cfg *config.Config) (*Provider,
 	}
 
 	p.DelegateProvider = &machineprovider.DelegateProvider{
-		ProviderName: "Baremetal",
+		ProviderName: baremetal.ProviderName,
 		CreateHandlers: []machineprovider.Handler{
 			p.EnsureCopyFiles,
 			p.EnsurePreInstallHook,

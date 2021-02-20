@@ -7,6 +7,7 @@ import (
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
+	"github.com/wtxue/kok-operator/pkg/provider/baremetal"
 	"github.com/wtxue/kok-operator/pkg/provider/baremetal/validation"
 	clusterprovider "github.com/wtxue/kok-operator/pkg/provider/cluster"
 	"github.com/wtxue/kok-operator/pkg/provider/config"
@@ -39,7 +40,7 @@ func NewProvider(mgr *clusterprovider.CpManager, cfg *config.Config) (*Provider,
 	}
 
 	p.DelegateProvider = &clusterprovider.DelegateProvider{
-		ProviderName: "baremetal",
+		ProviderName: baremetal.ProviderName,
 		CreateHandlers: []clusterprovider.Handler{
 			p.EnsureCopyFiles,
 			p.EnsurePreInstallHook,

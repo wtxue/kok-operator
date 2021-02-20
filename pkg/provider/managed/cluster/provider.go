@@ -10,6 +10,7 @@ import (
 	"github.com/wtxue/kok-operator/pkg/provider/baremetal/validation"
 	clusterprovider "github.com/wtxue/kok-operator/pkg/provider/cluster"
 	"github.com/wtxue/kok-operator/pkg/provider/config"
+	"github.com/wtxue/kok-operator/pkg/provider/managed"
 	"github.com/wtxue/kok-operator/pkg/util/pointer"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/server/mux"
@@ -39,7 +40,7 @@ func NewProvider(mgr *clusterprovider.CpManager, cfg *config.Config) (*Provider,
 	}
 
 	p.DelegateProvider = &clusterprovider.DelegateProvider{
-		ProviderName: "hosted",
+		ProviderName: managed.ProviderName,
 		CreateHandlers: []clusterprovider.Handler{
 			p.EnsureCopyFiles,
 			p.EnsurePreInstallHook,

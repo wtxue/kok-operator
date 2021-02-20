@@ -125,7 +125,7 @@ data:
   auto-direct-node-routes: "false"
   enable-bandwidth-manager: "false"
   enable-local-redirect-policy: "false"
-  kube-proxy-replacement: "probe"
+  kube-proxy-replacement:  "probe"
   kube-proxy-replacement-healthz-bind-address: ""
   enable-health-check-nodeport: "true"
   node-port-bind-protection: "true"
@@ -139,7 +139,7 @@ data:
   # Enable Hubble gRPC service.
   enable-hubble: "true"
   # UNIX domain socket for Hubble server to listen to.
-  hubble-socket-path: "/var/run/cilium/hubble.sock"
+  hubble-socket-path:  "/var/run/cilium/hubble.sock"
   # An additional address for Hubble server to listen to (e.g. ":4244").
   hubble-listen-address: ":4244"
   hubble-disable-tls: "false"
@@ -147,8 +147,8 @@ data:
   hubble-tls-key-file: /var/lib/cilium/tls/hubble/server.key
   hubble-tls-client-ca-files: /var/lib/cilium/tls/hubble/client-ca.crt
   ipam: "cluster-pool"
-  cluster-pool-ipv4-cidr: "10.0.0.0/8"
-  cluster-pool-ipv4-mask-size: "24"
+  cluster-pool-ipv4-cidr: "10.41.0.0/16"
+  cluster-pool-ipv4-mask-size: "16"
   disable-cnp-status-updates: "true"
 ---
 # Source: cilium/templates/cilium-agent-clusterrole.yaml
@@ -475,7 +475,7 @@ spec:
                   key: custom-cni-conf
                   name: cilium-config
                   optional: true
-          image: quay.io/cilium/cilium:v1.9.1
+          image: quay.io/cilium/cilium:v1.9.3
           imagePullPolicy: IfNotPresent
           lifecycle:
             postStart:
@@ -541,7 +541,7 @@ spec:
                   key: wait-bpf-mount
                   name: cilium-config
                   optional: true
-          image: quay.io/cilium/cilium:v1.9.1
+          image: quay.io/cilium/cilium:v1.9.3
           imagePullPolicy: IfNotPresent
           name: clean-cilium-state
           securityContext:
@@ -579,7 +579,7 @@ spec:
           name: bpf-maps
         # To install cilium cni plugin in the host
         - hostPath:
-            path: /opt/cni/bin
+            path:  /opt/cni/bin
             type: DirectoryOrCreate
           name: cni-path
           # To install cilium cni configuration in the host
@@ -689,7 +689,7 @@ spec:
                   key: debug
                   name: cilium-config
                   optional: true
-          image: quay.io/cilium/operator-generic:v1.9.1
+          image: quay.io/cilium/operator-generic:v1.9.3
           imagePullPolicy: IfNotPresent
           name: cilium-operator
           livenessProbe:

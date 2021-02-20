@@ -15,7 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
-	"k8s.io/klog"
 )
 
 const (
@@ -87,8 +86,7 @@ func ApplyKubeletKubeconfig(ctx *common.ClusterContext, apiserver string, kubele
 	cfgMaps, err := certs.CreateKubeletKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert,
 		apiserver, kubeletNodeAddr, ctx.Cluster.Name)
 	if err != nil {
-		klog.Errorf("create kubeconfg err: %+v", err)
-		return err
+		return errors.Wrap(err, "create kubeconfg")
 	}
 
 	for noPathFile, v := range cfgMaps {
@@ -112,15 +110,14 @@ func BuildMasterMiscConfigToMap(ctx *common.ClusterContext, apiserver string) er
 	cfgMaps, err := certs.CreateMasterKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert,
 		apiserver, ctx.Cluster.Name)
 	if err != nil {
-		klog.Errorf("create kubeconfg err: %+v", err)
-		return err
+		return errors.Wrap(err, "create kubeconfg")
 	}
 
 	if ctx.Credential.KubeData == nil {
 		ctx.Credential.KubeData = make(map[string]string)
 	}
 
-	klog.Infof("[%s/%s] start build kubeconfig ...", ctx.Cluster.Namespace, ctx.Cluster.Name)
+	ctx.Info("start build kubeconfig ...")
 	for noPathFile, v := range cfgMaps {
 		by, err := certs.BuildKubeConfigByte(v)
 		if err != nil {
@@ -189,7 +186,7 @@ func CovertMasterKubeConfig(s ssh.Interface, ctx *common.ClusterContext) error {
 	}
 
 	for pathName, va := range fileMaps {
-		klog.V(4).Infof("node: %s start write [%s] ...", s.HostIP(), pathName)
+		ctx.Info("start write ...", "node", s.HostIP(), "pathName", pathName)
 		err = s.WriteFile(strings.NewReader(va), pathName)
 		if err != nil {
 			return errors.Wrapf(err, "node: %s failed to write for %s ", s.HostIP(), pathName)

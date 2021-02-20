@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap/zapcore"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 	ctrlrt "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
@@ -49,8 +49,7 @@ func (o *GlobalManagerOption) AddFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(&o.EnableDevLogging, "enable-dev-logging", o.EnableDevLogging,
 		"Configures the logger to use a Zap development config (encoder=consoleEncoder,logLevel=Debug,stackTraceLevel=Warn, no sampling), "+
 			"otherwise a Zap production config will be used (encoder=jsonEncoder,logLevel=Info,stackTraceLevel=Error), sampling).")
-	fs.StringVar(
-		&o.LogLevel, "log-level", o.LogLevel,
+	fs.StringVar(&o.LogLevel, "log-level", o.LogLevel,
 		"The log level. Default is info. We use logr interface which only supports info and debug level",
 	)
 }
@@ -58,7 +57,7 @@ func (o *GlobalManagerOption) AddFlags(fs *pflag.FlagSet) {
 func (o *GlobalManagerOption) GetK8sConfig() (*rest.Config, error) {
 	cfg, err := k8sclient.GetConfigWithContext(o.Kubeconfig, o.ConfigContext)
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get k8s config")
+		return nil, errors.Wrap(err, "failed to get k8s config")
 	}
 
 	// Adjust our client's rate limits based on the number of controllers we are running.
@@ -73,12 +72,12 @@ func (o *GlobalManagerOption) GetK8sConfig() (*rest.Config, error) {
 func (o *GlobalManagerOption) GetKubeInterface() (kubernetes.Interface, error) {
 	cfg, err := o.GetK8sConfig()
 	if err != nil {
-		return nil, errors.Wrap(err, "could not get k8s config")
+		return nil, errors.Wrap(err, "failed to get k8s config")
 	}
 
 	kubeCli, err := kubernetes.NewForConfig(cfg)
 	if err != nil {
-		klog.Fatalf("failed to get kubernetes Clientset: %v", err)
+		klog.Fatalf("failed to get kubernetes clientset: %v", err)
 	}
 
 	return kubeCli, nil
@@ -87,7 +86,7 @@ func (o *GlobalManagerOption) GetKubeInterface() (kubernetes.Interface, error) {
 func (o *GlobalManagerOption) GetKubeInterfaceOrDie() kubernetes.Interface {
 	kubeCli, err := o.GetKubeInterface()
 	if err != nil {
-		klog.Fatalf("unable to get kube interface err: %v", err)
+		klog.Fatalf("failed to get kube interface err: %v", err)
 	}
 
 	return kubeCli
@@ -104,9 +103,10 @@ func (o *GlobalManagerOption) SetupLogger() {
 		lvl = zapcore.InfoLevel
 	}
 
-	zapOptions := zap.Options{
+	zapOptions := &zap.Options{
 		Development: o.EnableDevLogging,
 		Level:       lvl,
 	}
-	ctrlrt.SetLogger(zap.New(zap.UseFlagOptions(&zapOptions)))
+	ctrlrt.SetLogger(zap.New(zap.UseFlagOptions(zapOptions)))
+	// ctrlrt.SetLogger(klogr.New())
 }

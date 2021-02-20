@@ -175,6 +175,9 @@ spec:
       hostNetwork: true
       priorityClassName: system-node-critical
       tolerations:
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+          effect: NoSchedule
         - operator: Exists
           effect: NoSchedule
       serviceAccountName: flannel

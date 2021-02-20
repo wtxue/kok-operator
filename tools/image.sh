@@ -2,7 +2,7 @@
 
 set -xeuo pipefail
 
-K8s_Version=${1:-"v1.19.6"}
+K8s_Version=${1:-"v1.20.3"}
 Etcd_Version=${2:-"3.4.13-0"}
 CoreDns_Version=${3:-"1.7.0"}
 DstImagePrefix=${4:-"docker.io/wtxue"}

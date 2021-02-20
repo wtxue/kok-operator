@@ -192,7 +192,7 @@ func JoinControlPlane(ctx *common.ClusterContext, s ssh.Interface) error {
 	if err != nil {
 		return errors.Wrap(err, "template parse joinControlePlaneCmd")
 	}
-	ctx.Info("Join ControlPlane", "node", option.NodeName, "cmd", option.NodeName, cmd)
+	ctx.Info("Join ControlPlane", "node", option.NodeName, "cmd", cmd)
 	exit, err := s.ExecStream(string(cmd), os.Stdout, os.Stderr)
 	if err != nil || exit != 0 {
 		return fmt.Errorf("exec %q failed:exit %d error:%v", cmd, exit, err)

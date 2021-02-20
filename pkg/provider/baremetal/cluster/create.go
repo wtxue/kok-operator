@@ -15,6 +15,7 @@ import (
 	"github.com/segmentio/ksuid"
 	"github.com/thoas/go-funk"
 	"github.com/wtxue/kok-operator/pkg/addons/flannel"
+	"github.com/wtxue/kok-operator/pkg/addons/kubevip"
 	"github.com/wtxue/kok-operator/pkg/addons/metricsserver"
 	"github.com/wtxue/kok-operator/pkg/addons/rawcni"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
@@ -496,7 +497,7 @@ func (p *Provider) EnsureMarkControlPlane(ctx *common.ClusterContext) error {
 		}
 		err := apiclient.MarkNode(ctx.Ctx, clientset, machine.IP, machine.Labels, machine.Taints)
 		if err != nil {
-			return errors.Wrap(err, machine.IP)
+			return errors.Wrapf(err, "mark node: %s", machine.IP)
 		}
 	}
 
@@ -676,11 +677,28 @@ func (p *Provider) EnsureRebuildEtcd(ctx *common.ClusterContext) error {
 }
 
 func (p *Provider) EnsureRebuildControlPlane(ctx *common.ClusterContext) error {
-	for _, machine := range ctx.Cluster.Spec.Machines[1:] {
+	staticPodMap := kubevip.BuildKubeVipStaticPod(ctx)
+	for idx, machine := range ctx.Cluster.Spec.Machines {
 		sh, err := machine.SSH()
 		if err != nil {
 			return err
 		}
+
+		if staticPodMap != nil {
+			for name, file := range staticPodMap {
+				pathName := constants.KubeletPodManifestDir + name
+				err := sh.WriteFile(strings.NewReader(file), constants.KubeletPodManifestDir+name)
+				if err != nil {
+					ctx.Error(err, "write kubelet static pod yaml", "pathName", pathName)
+				}
+			}
+		}
+
+		// skip first node
+		if idx < 1 {
+			continue
+		}
+
 		err = kubemisc.CovertMasterKubeConfig(sh, ctx)
 		if err != nil {
 			return err
@@ -690,18 +708,6 @@ func (p *Provider) EnsureRebuildControlPlane(ctx *common.ClusterContext) error {
 		if err != nil {
 			return err
 		}
-		// err = kubeadm.RestartContainerByFilter(sh, kubeadm.DockerFilterForControlPlane("kube-apiserver"))
-		// if err != nil {
-		// 	return err
-		// }
-		// err = kubeadm.RestartContainerByFilter(sh, kubeadm.DockerFilterForControlPlane("kube-controller-manager"))
-		// if err != nil {
-		// 	return err
-		// }
-		// err = kubeadm.RestartContainerByFilter(sh, kubeadm.DockerFilterForControlPlane("kube-scheduler"))
-		// if err != nil {
-		// 	return err
-		// }
 	}
 
 	return nil
@@ -740,7 +746,7 @@ func (p *Provider) EnsureMetricsServer(ctx *common.ClusterContext) error {
 	}
 	objs, err := metricsserver.BuildMetricsServerAddon(ctx)
 	if err != nil {
-		return errors.Wrapf(err, "build metrics-server err: %v", err)
+		return errors.Wrap(err, "build metrics-server")
 	}
 
 	logger := ctx.WithValues("component", "metrics-server")
@@ -748,7 +754,7 @@ func (p *Provider) EnsureMetricsServer(ctx *common.ClusterContext) error {
 	for _, obj := range objs {
 		err = k8sutil.Reconcile(logger, clusterCtx.GetClient(), obj, k8sutil.DesiredStatePresent)
 		if err != nil {
-			return errors.Wrapf(err, "Reconcile  err: %v", err)
+			return errors.Wrap(err, "reconcile metrics-server")
 		}
 	}
 
@@ -763,7 +769,7 @@ func (p *Provider) EnsureEth(ctx *common.ClusterContext) error {
 		return nil
 	}
 
-	if cniType != "dke-cni" {
+	if cniType != "raw-cni" {
 		return nil
 	}
 
@@ -791,7 +797,7 @@ func (p *Provider) EnsureDeployCni(ctx *common.ClusterContext) error {
 	}
 
 	switch cniType {
-	case "dke-cni":
+	case "raw-cni":
 		for _, machine := range ctx.Cluster.Spec.Machines {
 			sh, err := machine.SSH()
 			if err != nil {
@@ -810,7 +816,7 @@ func (p *Provider) EnsureDeployCni(ctx *common.ClusterContext) error {
 		}
 		objs, err := flannel.BuildFlannelAddon(p.Cfg, ctx)
 		if err != nil {
-			return errors.Wrapf(err, "build flannel err: %v", err)
+			return errors.Wrap(err, "build flannel")
 		}
 
 		logger := ctx.WithValues("component", "flannel")
@@ -818,11 +824,11 @@ func (p *Provider) EnsureDeployCni(ctx *common.ClusterContext) error {
 		for _, obj := range objs {
 			err = k8sutil.Reconcile(logger, clusterCtx.GetClient(), obj, k8sutil.DesiredStatePresent)
 			if err != nil {
-				return errors.Wrapf(err, "Reconcile  err: %v", err)
+				return errors.Wrap(err, "reconcile  flannel")
 			}
 		}
 	default:
-		return fmt.Errorf("unknown cni type: %s", cniType)
+		return errors.Errorf("unknown cni type: %s", cniType)
 	}
 
 	return nil

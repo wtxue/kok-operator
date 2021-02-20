@@ -15,7 +15,6 @@ import (
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
 	"github.com/wtxue/kok-operator/pkg/util/ssh"
 	"github.com/wtxue/kok-operator/pkg/util/template"
-	"k8s.io/klog"
 )
 
 func ApplyPodManifest(hostIP string, ctx *common.ClusterContext, cfg *config.Config, pathName string, podManifest string, fileMaps map[string]string) error {
@@ -39,16 +38,14 @@ func BuildKubeletKubeconfig(hostIP string, ctx *common.ClusterContext, apiserver
 	cfgMaps, err := certs.CreateKubeConfigFiles(ctx.Credential.CAKey, ctx.Credential.CACert,
 		apiserver, hostIP, ctx.Cluster.Name, pkiutil.KubeletKubeConfigFileName)
 	if err != nil {
-		klog.Errorf("create node: %s kubelet kubeconfg err: %+v", hostIP, err)
-		return err
+		return errors.Wrapf(err, "create node: %s kubelet kubeconfg", hostIP)
 	}
 
 	var kubeletConf []byte
 	for _, v := range cfgMaps {
 		data, err := certs.BuildKubeConfigByte(v)
 		if err != nil {
-			klog.Errorf("covert node: %s kubelet kubeconfg err: %+v", hostIP, err)
-			return err
+			return errors.Wrapf(err, "covert node: %s kubelet kubeconfg", hostIP)
 		}
 
 		kubeletConf = data
@@ -56,7 +53,7 @@ func BuildKubeletKubeconfig(hostIP string, ctx *common.ClusterContext, apiserver
 	}
 
 	if kubeletConf == nil {
-		return fmt.Errorf("node: %s can't build kubeletConf", hostIP)
+		return errors.Errorf("node: %s can't build kubeletConf", hostIP)
 	}
 
 	fileMaps[constants.KubeletKubeConfigFileName] = string(kubeletConf)
@@ -113,19 +110,18 @@ func JoinNodePhase(s ssh.Interface, cfg *config.Config, ctx *common.ClusterConte
 	fileMaps[constants.KubeletServiceRunConfig] = kubeletEnvironmentTemplate
 
 	for pathName, va := range fileMaps {
-		klog.V(4).Infof("node: %s start write [%s] ...", hostIP, pathName)
+		ctx.Info("start write ...", "node", hostIP, "pathName", pathName)
 		err = s.WriteFile(strings.NewReader(va), pathName)
 		if err != nil {
 			return errors.Wrapf(err, "node: %s failed to write for %s ", hostIP, pathName)
 		}
 	}
 
-	klog.Infof("node: %s restart kubelet ... ", hostIP)
+	ctx.Info("restart kubelet ... ", "node", hostIP)
 	cmd := fmt.Sprintf("mkdir -p /etc/kubernetes/manifests && systemctl enable kubelet && systemctl daemon-reload && systemctl restart kubelet")
-	exit, err := s.ExecStream(cmd, os.Stdout, os.Stderr)
+	_, err = s.ExecStream(cmd, os.Stdout, os.Stderr)
 	if err != nil {
-		klog.Errorf("%q %+v", exit, err)
-		return err
+		return errors.Wrapf(err, "exec cmd: %s", cmd)
 	}
 	return nil
 }

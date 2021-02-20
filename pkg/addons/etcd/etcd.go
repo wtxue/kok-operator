@@ -1,4 +1,4 @@
-package etcd_go
+package etcd
 
 const (
 	etcdTemplate = `

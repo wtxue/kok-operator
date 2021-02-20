@@ -22,7 +22,7 @@ spec:
   clusterType: baremetal
   osType: ubuntu
   criType: containerd
-  version: v1.19.6
+  version: v1.20.3
   networkDevice: ens34
   clusterCIDR: 172.16.101.0/24
   serviceCIDR: 172.16.201.0/24

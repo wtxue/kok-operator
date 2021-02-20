@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/prometheus/common/log"
 	"github.com/thoas/go-funk"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
@@ -34,14 +33,14 @@ func (p *Provider) EnsureRenewCerts(ctx *common.ClusterContext) error {
 		}
 		expirationDuration := time.Until(cts[0].NotAfter)
 		if expirationDuration > constants.RenewCertsTimeThreshold {
-			log.Infof("skip EnsureRenewCerts because expiration duration(%s) > threshold(%s)", expirationDuration, constants.RenewCertsTimeThreshold)
+			ctx.Info("skip EnsureRenewCerts because expiration duration > threshold", "duration", expirationDuration, "threshold", constants.RenewCertsTimeThreshold)
 			return nil
 		}
 
-		log.Infof("EnsureRenewCerts for %s", s.Host)
+		ctx.Info("EnsureRenewCerts", "node", s.Host)
 		err = kubeadm.RenewCerts(s)
 		if err != nil {
-			return errors.Wrap(err, machine.IP)
+			return errors.Wrapf(err, "renew certs node: %s", machine.IP)
 		}
 	}
 
@@ -78,7 +77,7 @@ func (p *Provider) EnsureAPIServerCert(ctx *common.ClusterContext) error {
 			return nil
 		}
 
-		log.Infof("EnsureAPIServerCert for %s", sh.Host)
+		ctx.Info("EnsureAPIServerCert", "node", sh.Host)
 		for _, file := range []string{constants.APIServerCertName, constants.APIServerKeyName} {
 			sh.CombinedOutput(fmt.Sprintf("rm -f %s", file))
 		}

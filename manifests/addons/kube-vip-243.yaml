@@ -26,7 +26,7 @@ spec:
       image: plndr/kube-vip:0.2.3
       imagePullPolicy: Always
       name: kube-vip
-      resources: { }
+      resources: {}
       volumeMounts:
         - mountPath: /etc/kubernetes/
           name: kubeconfig
@@ -43,4 +43,4 @@ spec:
         path: /etc/kubernetes/
         type: DirectoryOrCreate
       name: kubeconfig
-status: { }
+status: {}
