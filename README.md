@@ -6,7 +6,7 @@ kok-operator 可以自动化完成高可用 kubernetes 部署
 
 - 支持 fake-apiserver、k3s 作为 bootstrap cluster，解决第一次部署集群没有元集群问题
 - 云原生架构，crd+controller，采用声明式 api 描述一个集群的生命周期(创建，更新，升级，删除)
-- 支持 baremetal 和 hosted 两种方式部署集群
+- 支持 baremetal 和 managed 两种方式部署集群
 - 支持 containerd，并且支持配置 mirrors、私有仓库
 - 自动生成集群所有证书，无坑版100年集群证书
 - 支持 static pod 容器化部署高可用 etcd 集群，也支持外部 etcd 集群
