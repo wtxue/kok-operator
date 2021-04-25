@@ -80,7 +80,6 @@ func (r *clusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return reconcile.Result{}, err
 	}
 
-	//
 	clusterCtx := &common.ClusterContext{
 		Ctx:     ctx,
 		Key:     req.NamespacedName,

@@ -3,12 +3,12 @@ kind: Machine
 metadata:
   labels:
     name: 10.248.224.171
-    clusterName: hosted-cluster
+    clusterName: managed-cluster1
   name: 10.248.224.171
-  namespace: hosted-cluster
+  namespace: managed-cluster
 spec:
-  clusterName: hosted-cluster
-  type: hosted
+  clusterName: managed-cluster1
+  type: managed
   machine:
     ip: 10.248.224.171
     port: 22

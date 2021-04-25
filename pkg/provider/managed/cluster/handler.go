@@ -156,8 +156,8 @@ func (p *Provider) EnsureCerts(ctx *common.ClusterContext) error {
 }
 
 func (p *Provider) EnsureKubeMisc(ctx *common.ClusterContext) error {
-	apiserver := certs.BuildApiserverEndpoint(constants.KubeApiServer, kubemisc.GetBindPort(ctx.Cluster))
-	err := kubemisc.BuildMasterMiscConfigToMap(ctx, apiserver)
+	server := certs.BuildApiserverEndpoint(constants.KubeApiServer, kubemisc.GetBindPort(ctx.Cluster))
+	err := kubemisc.BuildMasterMiscConfigToMap(ctx, server)
 	if err != nil {
 		return err
 	}
@@ -198,14 +198,13 @@ func (p *Provider) EnsureExtKubeconfig(ctx *common.ClusterContext) error {
 		ctx.Credential.ExtData = make(map[string]string)
 	}
 
-	apiserver := certs.BuildApiserverEndpoint(ctx.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(ctx.Cluster))
-	ctx.Info("external apiserver url: %s", apiserver)
-	cfgMaps, err := certs.CreateApiserverKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert, apiserver, ctx.Cluster.Name)
+	server := certs.BuildApiserverEndpoint(ctx.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(ctx.Cluster))
+	cfgMaps, err := certs.CreateApiserverKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert, server, ctx.Cluster.Name)
 	if err != nil {
 		return err
 	}
 
-	ctx.Info("start build kubeconfig ...", "apiserver", apiserver)
+	ctx.Info("start build kubeconfig ...", "server", server)
 	for _, v := range cfgMaps {
 		by, err := certs.BuildKubeConfigByte(v)
 		if err != nil {
@@ -222,6 +221,7 @@ func (p *Provider) EnsureAddons(ctx *common.ClusterContext) error {
 	if err != nil {
 		return nil
 	}
+
 	kubeproxyObjs, err := kubeproxy.BuildKubeproxyAddon(p.Cfg, ctx)
 	if err != nil {
 		return errors.Wrapf(err, "build kube-proxy err: %+v", err)

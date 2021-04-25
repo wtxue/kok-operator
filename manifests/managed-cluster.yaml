@@ -2,28 +2,30 @@ apiVersion: v1
 kind: Namespace
 metadata:
   labels:
-    name: hosted-cluster
-  name: hosted-cluster
+    name: managed-cluster
+  name: managed-cluster
 ---
 apiVersion: devops.k8s.io/v1
 kind: Cluster
 metadata:
-  name: hosted-cluster
-  namespace: hosted-cluster
+  name: managed-cluster1
+  namespace: managed-cluster
   annotations:
     k8s.io/action: EnsureExtKubeconfig,EnsureAddons,EnsureFlannel
 spec:
   pause: false
   tenantID: wtxue
   displayName: demo
-  type: hosted
-  version: v1.18.12
+  clusterType: managed
+  osType: ubuntu
+  criType: containerd
+  version: v1.20.3
   networkType: eth0
   clusterCIDR: 10.97.0.0/16
   serviceCIDR: 10.96.0.0/16
   dnsDomain: cluster.local
   publicAlternativeNames:
-    - escrow-cluster.dke.k8s.io
+    - managed-cluster.vke.k8s.io
     - kube-apiserver
   features:
     ipvs: true
@@ -51,6 +53,3 @@ spec:
     "bind-address": "0.0.0.0"
   schedulerExtraArgs:
     "bind-address": "0.0.0.0"
-  dockerExtraArgs:
-    registry-mirrors: https://4xr1qpsp.mirror.aliyuncs.com
-    version: 19.03.9
