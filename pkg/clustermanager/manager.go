@@ -17,7 +17,6 @@ var (
 	logger = logf.Log.WithName("clustermanager")
 )
 
-// key config
 const (
 	ClustersAll = "all"
 )

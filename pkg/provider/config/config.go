@@ -64,7 +64,6 @@ func NewDefaultConfig() *Config {
 		},
 		CustomRegistry:     "registry.aliyuncs.com/google_containers",
 		SupportK8sVersion:  constants.K8sVersions,
-		EnableCustomCert:   false,
 		EnableCustomImages: false,
 	}
 }
@@ -118,8 +117,7 @@ func (r *Config) IsK8sSupport(version string) bool {
 }
 
 func (r *Config) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&r.Registry.Prefix, "images-profix", r.Registry.Prefix, "the image profix")
-	fs.BoolVar(&r.EnableCustomCert, "enable-custom-cert", r.EnableCustomCert, "enable custom cert")
+	fs.StringVar(&r.Registry.Prefix, "images-prefix", r.Registry.Prefix, "the images prefix")
 	fs.BoolVar(&r.EnableCustomImages, "enable-custom-images", r.EnableCustomImages, "enable custom images")
 	fs.StringArrayVar(&r.SupportK8sVersion, "support-k8s-version", r.SupportK8sVersion, "the support k8s version")
 }

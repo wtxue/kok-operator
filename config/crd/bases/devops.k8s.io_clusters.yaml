@@ -4,8 +4,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
-    "api-approved.kubernetes.io": "https://github.com/kubernetes/kubernetes/pull/78458"
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   name: clusters.devops.k8s.io
 spec:
@@ -32,8 +31,7 @@ spec:
       jsonPath: .status.phase
       name: PHASE
       type: string
-    - description: 'CreationTimestamp is a timestamp representing the server time
-        when this object was created. '
+    - description: 'CreationTimestamp is a timestamp representing the server time when this object was created. '
       jsonPath: .metadata.creationTimestamp
       name: AGE
       type: date
@@ -43,14 +41,10 @@ spec:
         description: Cluster is the Schema for the Cluster API
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
             type: string
           metadata:
             type: object
@@ -75,23 +69,19 @@ spec:
               displayName:
                 type: string
               dnsDomain:
-                description: DNSDomain is the dns domain used by k8s services. Defaults
-                  to "cluster.local".
+                description: DNSDomain is the dns domain used by k8s services. Defaults to "cluster.local".
                 type: string
               etcd:
                 description: Etcd holds configuration for etcd.
                 properties:
                   external:
-                    description: External describes how to connect to an external
-                      etcd cluster Local and External are mutually exclusive
+                    description: External describes how to connect to an external etcd cluster Local and External are mutually exclusive
                     properties:
                       caFile:
-                        description: CAFile is an SSL Certificate Authority file used
-                          to secure etcd communication. Required if using a TLS connection.
+                        description: CAFile is an SSL Certificate Authority file used to secure etcd communication. Required if using a TLS connection.
                         type: string
                       certFile:
-                        description: CertFile is an SSL certification file used to
-                          secure etcd communication. Required if using a TLS connection.
+                        description: CertFile is an SSL certification file used to secure etcd communication. Required if using a TLS connection.
                         type: string
                       endpoints:
                         description: Endpoints of etcd members. Required for ExternalEtcd.
@@ -99,8 +89,7 @@ spec:
                           type: string
                         type: array
                       keyFile:
-                        description: KeyFile is an SSL key file used to secure etcd
-                          communication. Required if using a TLS connection.
+                        description: KeyFile is an SSL key file used to secure etcd communication. Required if using a TLS connection.
                         type: string
                     required:
                     - caFile
@@ -109,28 +98,23 @@ spec:
                     - keyFile
                     type: object
                   local:
-                    description: Local provides configuration knobs for configuring
-                      the local etcd instance Local and External are mutually exclusive
+                    description: Local provides configuration knobs for configuring the local etcd instance Local and External are mutually exclusive
                     properties:
                       dataDir:
-                        description: DataDir is the directory etcd will place its
-                          data. Defaults to "/var/lib/etcd".
+                        description: DataDir is the directory etcd will place its data. Defaults to "/var/lib/etcd".
                         type: string
                       extraArgs:
                         additionalProperties:
                           type: string
-                        description: ExtraArgs are extra arguments provided to the
-                          etcd binary when run inside a static pod.
+                        description: ExtraArgs are extra arguments provided to the etcd binary when run inside a static pod.
                         type: object
                       peerCertSANs:
-                        description: PeerCertSANs sets extra Subject Alternative Names
-                          for the etcd peer signing cert.
+                        description: PeerCertSANs sets extra Subject Alternative Names for the etcd peer signing cert.
                         items:
                           type: string
                         type: array
                       serverCertSANs:
-                        description: ServerCertSANs sets extra Subject Alternative
-                          Names for the etcd server signing cert.
+                        description: ServerCertSANs sets extra Subject Alternative Names for the etcd server signing cert.
                         items:
                           type: string
                         type: array
@@ -139,8 +123,7 @@ spec:
                     type: object
                 type: object
               features:
-                description: ClusterFeature records the features that are enabled
-                  by the cluster.
+                description: ClusterFeature records the features that are enabled by the cluster.
                 properties:
                   enableMasterSchedule:
                     type: boolean
@@ -166,7 +149,7 @@ spec:
                           vip:
                             type: string
                         required:
-                          - vip
+                        - vip
                         type: object
                       thirdParty:
                         properties:
@@ -176,8 +159,8 @@ spec:
                             format: int32
                             type: integer
                         required:
-                          - vip
-                          - vport
+                        - vip
+                        - vport
                         type: object
                     type: object
                   hooks:
@@ -206,31 +189,21 @@ spec:
                         description: Upgrade strategy config.
                         properties:
                           drainNodeBeforeUpgrade:
-                            description: Whether drain node before upgrade. Draining
-                              node before upgrade is recommended. But not all pod
-                              running as cows, a few running as pets. If your pod
-                              can not accept be expelled from current node, this value
-                              should be false.
+                            description: Whether drain node before upgrade. Draining node before upgrade is recommended. But not all pod running as cows, a few running as pets. If your pod can not accept be expelled from current node, this value should be false.
                             type: boolean
                           maxUnready:
                             anyOf:
-                              - type: integer
-                              - type: string
-                            description: The maximum number of pods that can be unready
-                              during the upgrade. 0% means all pods need to be ready
-                              after evition. 100% means ignore any pods unready which
-                              may be used in one worker node, use this carefully!
-                              default value is 0%.
+                            - type: integer
+                            - type: string
+                            description: The maximum number of pods that can be unready during the upgrade. 0% means all pods need to be ready after evition. 100% means ignore any pods unready which may be used in one worker node, use this carefully! default value is 0%.
                             x-kubernetes-int-or-string: true
                         type: object
                     type: object
                 type: object
               finalizers:
-                description: Finalizers is an opaque list of values that must be empty
-                  to permanently remove object from storage.
+                description: Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
                 items:
-                  description: FinalizerName is the name identifying a finalizer during
-                    cluster lifecycle.
+                  description: FinalizerName is the name identifying a finalizer during cluster lifecycle.
                   type: string
                 type: array
               kubeletExtraArgs:
@@ -239,8 +212,7 @@ spec:
                 type: object
               machines:
                 items:
-                  description: ClusterMachine is the master machine definition of
-                    cluster.
+                  description: ClusterMachine is the master machine definition of cluster.
                   properties:
                     ip:
                       type: string
@@ -262,26 +234,20 @@ spec:
                     taints:
                       description: If specified, the node's taints.
                       items:
-                        description: The node this Taint is attached to has the "effect"
-                          on any pod that does not tolerate the Taint.
+                        description: The node this Taint is attached to has the "effect" on any pod that does not tolerate the Taint.
                         properties:
                           effect:
-                            description: Required. The effect of the taint on pods
-                              that do not tolerate the taint. Valid effects are NoSchedule,
-                              PreferNoSchedule and NoExecute.
+                            description: Required. The effect of the taint on pods that do not tolerate the taint. Valid effects are NoSchedule, PreferNoSchedule and NoExecute.
                             type: string
                           key:
-                            description: Required. The taint key to be applied to
-                              a node.
+                            description: Required. The taint key to be applied to a node.
                             type: string
                           timeAdded:
-                            description: TimeAdded represents the time at which the
-                              taint was added. It is only written for NoExecute taints.
+                            description: TimeAdded represents the time at which the taint was added. It is only written for NoExecute taints.
                             format: date-time
                             type: string
                           value:
-                            description: The taint value corresponding to the taint
-                              key.
+                            description: The taint value corresponding to the taint key.
                             type: string
                         required:
                         - effect
@@ -312,8 +278,7 @@ spec:
                 description: Pause
                 type: boolean
               properties:
-                description: ClusterProperty records the attribute information of
-                  the cluster.
+                description: ClusterProperty records the attribute information of the cluster.
                 properties:
                   maxClusterServiceNum:
                     format: int32
@@ -335,15 +300,10 @@ spec:
                 properties:
                   mirrors:
                     additionalProperties:
-                      description: Mirror contains the config related to the registry
-                        mirror
+                      description: Mirror contains the config related to the registry mirror
                       properties:
                         endpoints:
-                          description: Endpoints are endpoints for a namespace. CRI
-                            plugin will try the endpoints one by one until a working
-                            one is found. The endpoint must be a valid url with host
-                            specified. The scheme, host and path from the endpoint
-                            URL will be used.
+                          description: Endpoints are endpoints for a namespace. CRI plugin will try the endpoints one by one until a working one is found. The endpoint must be a valid url with host specified. The scheme, host and path from the endpoint URL will be used.
                           items:
                             type: string
                           type: array
@@ -356,8 +316,7 @@ spec:
                   type: string
                 type: object
               serviceCIDR:
-                description: ServiceCIDR is used to set a separated CIDR for k8s service,
-                  it's exclusive with MaxClusterServiceNum.
+                description: ServiceCIDR is used to set a separated CIDR for k8s service, it's exclusive with MaxClusterServiceNum.
                 type: string
               tenantID:
                 type: string
@@ -371,20 +330,13 @@ spec:
                     description: Upgrade strategy config.
                     properties:
                       drainNodeBeforeUpgrade:
-                        description: Whether drain node before upgrade. Draining node
-                          before upgrade is recommended. But not all pod running as
-                          cows, a few running as pets. If your pod can not accept
-                          be expelled from current node, this value should be false.
+                        description: Whether drain node before upgrade. Draining node before upgrade is recommended. But not all pod running as cows, a few running as pets. If your pod can not accept be expelled from current node, this value should be false.
                         type: boolean
                       maxUnready:
                         anyOf:
-                          - type: integer
-                          - type: string
-                        description: The maximum number of pods that can be unready
-                          during the upgrade. 0% means all pods need to be ready after
-                          evition. 100% means ignore any pods unready which may be
-                          used in one worker node, use this carefully! default value
-                          is 0%.
+                        - type: integer
+                        - type: string
+                        description: The maximum number of pods that can be unready during the upgrade. 0% means all pods need to be ready after evition. 100% means ignore any pods unready which may be used in one worker node, use this carefully! default value is 0%.
                         x-kubernetes-int-or-string: true
                     type: object
                 type: object
@@ -394,14 +346,12 @@ spec:
             - tenantID
             type: object
           status:
-            description: ClusterStatus represents information about the status of
-              a cluster.
+            description: ClusterStatus represents information about the status of a cluster.
             properties:
               addresses:
                 description: List of addresses reachable to the cluster.
                 items:
-                  description: ClusterAddress contains information for the cluster's
-                    address.
+                  description: ClusterAddress contains information for the cluster's address.
                   properties:
                     host:
                       description: The cluster address.
@@ -410,8 +360,7 @@ spec:
                       format: int32
                       type: integer
                     type:
-                      description: Cluster address type, one of Public, ExternalIP
-                        or InternalIP.
+                      description: Cluster address type, one of Public, ExternalIP or InternalIP.
                       type: string
                   required:
                   - host
@@ -423,12 +372,10 @@ spec:
                 type: string
               components:
                 items:
-                  description: ClusterComponent records the number of copies of each
-                    component of the cluster master.
+                  description: ClusterComponent records the number of copies of each component of the cluster master.
                   properties:
                     replicas:
-                      description: ClusterComponentReplicas records the number of
-                        copies of each state of each component of the cluster master.
+                      description: ClusterComponentReplicas records the number of copies of each state of each component of the cluster master.
                       properties:
                         available:
                           format: int32
@@ -457,29 +404,24 @@ spec:
                 type: array
               conditions:
                 items:
-                  description: ClusterCondition contains details for the current condition
-                    of this cluster.
+                  description: ClusterCondition contains details for the current condition of this cluster.
                   properties:
                     lastProbeTime:
                       description: Last time we probed the condition.
                       format: date-time
                       type: string
                     lastTransitionTime:
-                      description: Last time the condition transitioned from one status
-                        to another.
+                      description: Last time the condition transitioned from one status to another.
                       format: date-time
                       type: string
                     message:
-                      description: Human-readable message indicating details about
-                        last transition.
+                      description: Human-readable message indicating details about last transition.
                       type: string
                     reason:
-                      description: Unique, one-word, CamelCase reason for the condition's
-                        last transition.
+                      description: Unique, one-word, CamelCase reason for the condition's last transition.
                       type: string
                     status:
-                      description: Status is the status of the condition. Can be True,
-                        False, Unknown.
+                      description: Status is the status of the condition. Can be True, False, Unknown.
                       type: string
                     type:
                       description: Type is the type of the condition.
@@ -494,8 +436,7 @@ spec:
               locked:
                 type: boolean
               message:
-                description: A human readable message indicating details about why
-                  the cluster is in this condition.
+                description: A human readable message indicating details about why the cluster is in this condition.
                 type: string
               nodeCIDRMaskSize:
                 format: int32
@@ -510,16 +451,14 @@ spec:
                 description: ClusterPhase defines the phase of cluster constructor.
                 type: string
               reason:
-                description: A brief CamelCase message indicating details about why
-                  the cluster is in this state.
+                description: A brief CamelCase message indicating details about why the cluster is in this state.
                 type: string
               registryIPs:
                 items:
                   type: string
                 type: array
               resource:
-                description: ClusterResource records the current available and maximum
-                  resource quota information for the cluster.
+                description: ClusterResource records the current available and maximum resource quota information for the cluster.
                 properties:
                   allocatable:
                     additionalProperties:
@@ -528,8 +467,7 @@ spec:
                       - type: string
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
-                    description: Allocatable represents the resources of a cluster
-                      that are available for scheduling. Defaults to Capacity.
+                    description: Allocatable represents the resources of a cluster that are available for scheduling. Defaults to Capacity.
                     type: object
                   allocated:
                     additionalProperties:
@@ -538,8 +476,7 @@ spec:
                       - type: string
                       pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
                       x-kubernetes-int-or-string: true
-                    description: ResourceList is a set of (resource name, quantity)
-                      pairs.
+                    description: ResourceList is a set of (resource name, quantity) pairs.
                     type: object
                   capacity:
                     additionalProperties:

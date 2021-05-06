@@ -34,8 +34,6 @@ func TargetAvgCpuUtil80() []autoscalev2beta1.MetricSpec {
 	}
 }
 
-// Affinity:           Affinity,
-// Tolerations:        Tolerations,
 func ComponentAffinity(ns string, labels map[string]string) *corev1.Affinity {
 	return &corev1.Affinity{
 		PodAntiAffinity: &corev1.PodAntiAffinity{

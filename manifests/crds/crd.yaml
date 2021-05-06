@@ -2,7 +2,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   name: clustercredentials.devops.k8s.io
 spec:
@@ -102,7 +102,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   name: clusters.devops.k8s.io
 spec:
@@ -247,7 +247,7 @@ spec:
                           vip:
                             type: string
                         required:
-                          - vip
+                        - vip
                         type: object
                       thirdParty:
                         properties:
@@ -257,8 +257,8 @@ spec:
                             format: int32
                             type: integer
                         required:
-                          - vip
-                          - vport
+                        - vip
+                        - vport
                         type: object
                     type: object
                   hooks:
@@ -291,8 +291,8 @@ spec:
                             type: boolean
                           maxUnready:
                             anyOf:
-                              - type: integer
-                              - type: string
+                            - type: integer
+                            - type: string
                             description: The maximum number of pods that can be unready during the upgrade. 0% means all pods need to be ready after evition. 100% means ignore any pods unready which may be used in one worker node, use this carefully! default value is 0%.
                             x-kubernetes-int-or-string: true
                         type: object
@@ -432,8 +432,8 @@ spec:
                         type: boolean
                       maxUnready:
                         anyOf:
-                          - type: integer
-                          - type: string
+                        - type: integer
+                        - type: string
                         description: The maximum number of pods that can be unready during the upgrade. 0% means all pods need to be ready after evition. 100% means ignore any pods unready which may be used in one worker node, use this carefully! default value is 0%.
                         x-kubernetes-int-or-string: true
                     type: object
@@ -611,7 +611,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
   name: machines.devops.k8s.io
 spec:
