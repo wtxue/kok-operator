@@ -1,6 +1,6 @@
 // Package v1 contains API Schema definitions for the app v1 API group
 // +kubebuilder:object:generate=true
-// +groupName=workload.k8s.io
+// +groupName=workload.fake.io
 package v1
 
 import (

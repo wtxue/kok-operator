@@ -1,6 +1,6 @@
 // Package v1 contains API Schema definitions for the devops v1 API group
 // +kubebuilder:object:generate=true
-// +groupName=devops.k8s.io
+// +groupName=devops.fake.io
 package v1
 
 import (

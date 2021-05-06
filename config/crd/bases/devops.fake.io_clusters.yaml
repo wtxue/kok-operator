@@ -6,9 +6,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
-  name: clusters.devops.k8s.io
+  name: clusters.devops.fake.io
 spec:
-  group: devops.k8s.io
+  group: devops.fake.io
   names:
     kind: Cluster
     listKind: ClusterList

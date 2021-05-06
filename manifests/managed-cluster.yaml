@@ -5,10 +5,10 @@ metadata:
     name: managed-cluster
   name: managed-cluster
 ---
-apiVersion: devops.k8s.io/v1
+apiVersion: devops.fake.io/v1
 kind: Cluster
 metadata:
-  name: managed-cluster1
+  name: cc29pffvqtofq70ufrdb9
   namespace: managed-cluster
   annotations:
     k8s.io/action: EnsureExtKubeconfig,EnsureAddons,EnsureFlannel
@@ -25,7 +25,7 @@ spec:
   serviceCIDR: 10.96.0.0/16
   dnsDomain: cluster.local
   publicAlternativeNames:
-    - managed-cluster.vke.k8s.io
+    - managed-cluster.k8s.fake.io
     - kube-apiserver
   features:
     ipvs: true

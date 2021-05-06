@@ -1,4 +1,4 @@
-apiVersion: devops.k8s.io/v1
+apiVersion: devops.fake.io/v1
 kind: Machine
 metadata:
   labels:

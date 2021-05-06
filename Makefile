@@ -35,7 +35,6 @@ run: generate fmt vet manifests
 
 # generate crd spec and deepcopy
 crd: generate manifests
-	kustomize build config/crd > manifests/crds/crd.yaml
 
 # Deploy controller in the configured Kubernetes cluster in ~/.kube/config
 deploy: manifests
