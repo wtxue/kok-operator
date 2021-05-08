@@ -8,9 +8,7 @@ import (
 	"github.com/imdario/mergo"
 	"github.com/wtxue/kok-operator/pkg/apis"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
-	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
-	kubeletv1beta1 "github.com/wtxue/kok-operator/pkg/apis/kubelet/config/v1beta1"
-	kubeproxyv1alpha1 "github.com/wtxue/kok-operator/pkg/apis/kubeproxy/config/v1alpha1"
+
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/k8sutil"
@@ -19,6 +17,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	kubeproxyv1alpha1 "k8s.io/kube-proxy/config/v1alpha1"
+	kubeletv1beta1 "k8s.io/kubelet/config/v1beta1"
+	kubeadmv1beta2 "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta2"
 	utilsnet "k8s.io/utils/net"
 )
 

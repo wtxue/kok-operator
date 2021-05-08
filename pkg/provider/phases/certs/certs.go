@@ -5,7 +5,7 @@ import (
 	"crypto/x509"
 
 	"github.com/pkg/errors"
-	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
+	"github.com/wtxue/kok-operator/pkg/apis"
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -18,7 +18,7 @@ type CaAll struct {
 
 // CreateCACertAndKeyFiles generates and writes out a given certificate authority.
 // The certSpec should be one of the variables from this package.
-func CreateCACertAndKeyFiles(certSpec *KubeadmCert, cfg *kubeadmv1beta2.WarpperConfiguration, cfgMaps map[string][]byte) (*CaAll, error) {
+func CreateCACertAndKeyFiles(certSpec *KubeadmCert, cfg *apis.WarpperConfiguration, cfgMaps map[string][]byte) (*CaAll, error) {
 	if certSpec.CAName != "" {
 		return nil, errors.Errorf("this function should only be used for CAs, but cert %s has CA %s", certSpec.Name, certSpec.CAName)
 	}
@@ -52,7 +52,7 @@ func CreateCACertAndKeyFiles(certSpec *KubeadmCert, cfg *kubeadmv1beta2.WarpperC
 		Cfg:    certSpec}, nil
 }
 
-func CreateCertAndKeyFilesWithCA(certSpec *KubeadmCert, ca *CaAll, cfg *kubeadmv1beta2.WarpperConfiguration, certsMaps map[string][]byte) error {
+func CreateCertAndKeyFilesWithCA(certSpec *KubeadmCert, ca *CaAll, cfg *apis.WarpperConfiguration, certsMaps map[string][]byte) error {
 	if certSpec.CAName != ca.Cfg.Name {
 		return errors.Errorf("expected CAname for %s to be %q, but was %s", certSpec.Name, certSpec.CAName, ca.Cfg.Name)
 	}

@@ -31,7 +31,7 @@ import (
 
 	"github.com/wtxue/kok-operator/pkg/apiserver/internal"
 	"github.com/wtxue/kok-operator/pkg/option"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 const (
@@ -43,7 +43,7 @@ const (
 	defaultKubebuilderControlPlaneStopTimeout  = 20 * time.Second
 )
 
-// Environment creates a Kubernetes test environment that will start / stop the Kubernetes control plane and
+// ServerWarpper Environment creates a Kubernetes test environment that will start / stop the Kubernetes control plane and
 // install extension APIs
 type ServerWarpper struct {
 	// ControlPlane is the ControlPlane including the apiserver and etcd

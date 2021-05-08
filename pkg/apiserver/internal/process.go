@@ -13,7 +13,7 @@ import (
 
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 // ProcessState define the state of the process.

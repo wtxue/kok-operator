@@ -5,13 +5,13 @@ import (
 	"crypto/x509"
 
 	"github.com/pkg/errors"
-	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
+	"github.com/wtxue/kok-operator/pkg/apis"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
 	utilcert "k8s.io/client-go/util/cert"
 )
 
-type configMutatorsFunc func(*kubeadmv1beta2.WarpperConfiguration, *pkiutil.CertConfig) error
+type configMutatorsFunc func(*apis.WarpperConfiguration, *pkiutil.CertConfig) error
 
 // KubeadmCert represents a certificate that Kubeadm will create to function properly.
 type KubeadmCert struct {
@@ -26,7 +26,7 @@ type KubeadmCert struct {
 }
 
 // GetConfig returns the definition for the given cert given the provided InitConfiguration
-func (k *KubeadmCert) GetConfig(ic *kubeadmv1beta2.WarpperConfiguration) (*pkiutil.CertConfig, error) {
+func (k *KubeadmCert) GetConfig(ic *apis.WarpperConfiguration) (*pkiutil.CertConfig, error) {
 	for _, f := range k.configMutators {
 		if err := f(ic, &k.config); err != nil {
 			return nil, err
@@ -38,7 +38,7 @@ func (k *KubeadmCert) GetConfig(ic *kubeadmv1beta2.WarpperConfiguration) (*pkiut
 }
 
 // CreateFromCA makes and writes a certificate using the given CA cert and key.
-func (k *KubeadmCert) CreateFromCA(ic *kubeadmv1beta2.WarpperConfiguration, caCert *x509.Certificate, caKey crypto.Signer) error {
+func (k *KubeadmCert) CreateFromCA(ic *apis.WarpperConfiguration, caCert *x509.Certificate, caKey crypto.Signer) error {
 	cfg, err := k.GetConfig(ic)
 	if err != nil {
 		return errors.Wrapf(err, "couldn't create %q certificate", k.Name)
@@ -64,7 +64,7 @@ func (k *KubeadmCert) CreateFromCA(ic *kubeadmv1beta2.WarpperConfiguration, caCe
 }
 
 // CreateAsCA creates a certificate authority, writing the files to disk and also returning the created CA so it can be used to sign child certs.
-func (k *KubeadmCert) CreateAsCA(ic *kubeadmv1beta2.WarpperConfiguration) (*x509.Certificate, crypto.Signer, error) {
+func (k *KubeadmCert) CreateAsCA(ic *apis.WarpperConfiguration) (*x509.Certificate, crypto.Signer, error) {
 	cfg, err := k.GetConfig(ic)
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "couldn't get configuration for %q CA certificate", k.Name)
@@ -303,8 +303,8 @@ var (
 	}
 )
 
-func makeAltNamesMutator(f func(*kubeadmv1beta2.WarpperConfiguration) (*utilcert.AltNames, error)) configMutatorsFunc {
-	return func(mc *kubeadmv1beta2.WarpperConfiguration, cc *pkiutil.CertConfig) error {
+func makeAltNamesMutator(f func(*apis.WarpperConfiguration) (*utilcert.AltNames, error)) configMutatorsFunc {
+	return func(mc *apis.WarpperConfiguration, cc *pkiutil.CertConfig) error {
 		altNames, err := f(mc)
 		if err != nil {
 			return err
@@ -315,7 +315,7 @@ func makeAltNamesMutator(f func(*kubeadmv1beta2.WarpperConfiguration) (*utilcert
 }
 
 func setCommonNameToNodeName() configMutatorsFunc {
-	return func(mc *kubeadmv1beta2.WarpperConfiguration, cc *pkiutil.CertConfig) error {
+	return func(mc *apis.WarpperConfiguration, cc *pkiutil.CertConfig) error {
 		cc.CommonName = mc.NodeRegistration.Name
 		return nil
 	}

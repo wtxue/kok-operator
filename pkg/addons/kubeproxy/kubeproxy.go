@@ -6,7 +6,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/wtxue/kok-operator/pkg/apis"
-	kubeproxyv1alpha1 "github.com/wtxue/kok-operator/pkg/apis/kubeproxy/config/v1alpha1"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/provider/config"
@@ -20,7 +19,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 	componentbaseconfigv1alpha1 "k8s.io/component-base/config/v1alpha1"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
+	kubeproxyv1alpha1 "k8s.io/kube-proxy/config/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

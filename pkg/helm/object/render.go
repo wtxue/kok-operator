@@ -15,7 +15,7 @@ import (
 	"helm.sh/helm/v3/pkg/engine"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/discovery"
-	"k8s.io/klog"
+	"k8s.io/klog/v2"
 )
 
 func GetDefaultValues(fs http.FileSystem) ([]byte, error) {

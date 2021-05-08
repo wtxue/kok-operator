@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/provider/config"
@@ -15,6 +14,7 @@ import (
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
 	"github.com/wtxue/kok-operator/pkg/util/ssh"
 	"github.com/wtxue/kok-operator/pkg/util/template"
+	kubeadmv1beta2 "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta2"
 )
 
 func ApplyPodManifest(hostIP string, ctx *common.ClusterContext, cfg *config.Config, pathName string, podManifest string, fileMaps map[string]string) error {

@@ -8,11 +8,10 @@ import (
 	"net/url"
 	"strconv"
 
-	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
-
 	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/klog/v2"
+	kubeadmv1beta2 "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta2"
 )
 
 // GetControlPlaneEndpoint returns a properly formatted endpoint for the control plane built according following rules:

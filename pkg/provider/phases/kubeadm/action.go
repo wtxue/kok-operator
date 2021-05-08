@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
+	"github.com/wtxue/kok-operator/pkg/apis"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/k8sutil"
@@ -94,7 +94,7 @@ func InitCerts(ctx *common.ClusterContext, cfg *Config, isManaged bool) error {
 	var lastCACert *certs.CaAll
 	cfgMaps := make(map[string][]byte)
 
-	warp := &kubeadmv1beta2.WarpperConfiguration{
+	warp := &apis.WarpperConfiguration{
 		InitConfiguration:    cfg.InitConfiguration,
 		ClusterConfiguration: cfg.ClusterConfiguration,
 		IPs:                  ctx.IPs(),
