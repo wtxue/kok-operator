@@ -15,7 +15,6 @@ import (
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/k8sutil"
 	"github.com/wtxue/kok-operator/pkg/provider/config"
-	"github.com/wtxue/kok-operator/pkg/util/json"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -153,8 +152,6 @@ func GetClusterConfiguration(ctx *common.ClusterContext, cfg *config.Config, con
 		FeatureGates: map[string]bool{
 			"IPv6DualStack": ctx.Cluster.Spec.Features.IPv6DualStack},
 	}
-
-	utilruntime.Must(json.Merge(&kubeadmCfg.Etcd, &ctx.Cluster.Spec.Etcd))
 
 	return kubeadmCfg
 }

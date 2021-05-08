@@ -6,11 +6,12 @@ import (
 	"net/http"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // GetClientset return clientset
@@ -41,20 +42,26 @@ func CheckAPIHealthz(ctx context.Context, client rest.Interface) bool {
 }
 
 // CheckDeployment check Deployment current replicas is equal to desired and all pods are running
-func CheckDeployment(ctx context.Context, client kubernetes.Interface, namespace string, name string) (bool, error) {
-	deployment, err := client.AppsV1().Deployments(namespace).Get(ctx, name, metav1.GetOptions{})
-	if err != nil {
+func CheckDeployment(ctx context.Context, cli client.Client, namespace string, name string) (bool, error) {
+	deployment := &appsv1.Deployment{}
+	if err := cli.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, deployment); err != nil {
 		return false, err
 	}
+
 	if *deployment.Spec.Replicas != deployment.Status.Replicas {
 		return false, errors.New("deployment.Spec.Replicas != deployment.Status.Replicas")
 	}
 
-	labelSelector := metav1.FormatLabelSelector(deployment.Spec.Selector)
-	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
+	selector, err := metav1.LabelSelectorAsSelector(deployment.Spec.Selector)
 	if err != nil {
 		return false, err
 	}
+
+	pods := &corev1.PodList{}
+	if err := cli.List(ctx, pods, client.MatchingLabelsSelector{Selector: selector}); err != nil {
+		return false, err
+	}
+
 	for _, pod := range pods.Items {
 		if !IsPodReady(&pod) {
 			return false, nil
@@ -65,20 +72,26 @@ func CheckDeployment(ctx context.Context, client kubernetes.Interface, namespace
 }
 
 // CheckStatefulSet check StatefulSet current replicas is equal to desired and all pods are running
-func CheckStatefulSet(ctx context.Context, client kubernetes.Interface, namespace string, name string) (bool, error) {
-	statefulSet, err := client.AppsV1().StatefulSets(namespace).Get(ctx, name, metav1.GetOptions{})
-	if err != nil {
+func CheckStatefulSet(ctx context.Context, cli client.Client, namespace string, name string) (bool, error) {
+	statefulSet := &appsv1.StatefulSet{}
+	if err := cli.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, statefulSet); err != nil {
 		return false, err
 	}
+
 	if *statefulSet.Spec.Replicas != statefulSet.Status.Replicas {
 		return false, errors.New("statefulSet.Spec.Replicas != statefulSet.Status.Replicas")
 	}
 
-	labelSelector := metav1.FormatLabelSelector(statefulSet.Spec.Selector)
-	pods, err := client.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
+	selector, err := metav1.LabelSelectorAsSelector(statefulSet.Spec.Selector)
 	if err != nil {
 		return false, err
 	}
+
+	pods := &corev1.PodList{}
+	if err := cli.List(ctx, pods, client.MatchingLabelsSelector{Selector: selector}); err != nil {
+		return false, err
+	}
+
 	for _, pod := range pods.Items {
 		if !IsPodReady(&pod) {
 			return false, nil
@@ -89,11 +102,13 @@ func CheckStatefulSet(ctx context.Context, client kubernetes.Interface, namespac
 }
 
 // CheckDaemonset check daemonset current replicas is equal to desired and all pods are running
-func CheckDaemonset(ctx context.Context, client kubernetes.Interface, namespace string, name string) (bool, error) {
-	daemonSet, err := client.AppsV1().DaemonSets(namespace).Get(ctx, name, metav1.GetOptions{})
+func CheckDaemonset(ctx context.Context, cli client.Client, namespace string, name string) (bool, error) {
+	daemonSet := &appsv1.DaemonSet{}
+	err := cli.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, daemonSet)
 	if err != nil {
 		return false, err
 	}
+
 	if daemonSet.Status.NumberReady == 0 {
 		return false, err
 	}

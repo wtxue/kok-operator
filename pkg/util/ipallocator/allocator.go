@@ -18,7 +18,7 @@ type Interface interface {
 	Release(net.IP) error
 	ForEach(func(net.IP))
 
-	// For testing
+	// Has For testing
 	Has(ip net.IP) bool
 }
 
@@ -77,7 +77,7 @@ func NewAllocatorCIDRRange(cidr *net.IPNet, allocatorFactory allocator.Factory) 
 	return &r
 }
 
-// Helper that wraps NewAllocatorCIDRRange, for creating a range backed by an in-memory store.
+// NewCIDRRange Helper that wraps NewAllocatorCIDRRange, for creating a range backed by an in-memory store.
 func NewCIDRRange(cidr *net.IPNet) *Range {
 	return NewAllocatorCIDRRange(cidr, func(max int, rangeSpec string) allocator.Interface {
 		return allocator.NewAllocationMap(max, rangeSpec)

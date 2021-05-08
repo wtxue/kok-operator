@@ -8,8 +8,9 @@ import (
 	"net/url"
 	"strconv"
 
-	"github.com/pkg/errors"
 	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
+
+	"github.com/pkg/errors"
 	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/klog/v2"
 )

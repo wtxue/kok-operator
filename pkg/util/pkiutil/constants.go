@@ -611,8 +611,6 @@ func GetStaticPodAuditPolicyFile() string {
 // GetDNSVersion is a handy function that returns the DNS version by DNS type
 func GetDNSVersion(dnsType kubeadmv1beta2.DNSAddOnType) string {
 	switch dnsType {
-	case kubeadmv1beta2.KubeDNS:
-		return KubeDNSVersion
 	default:
 		return CoreDNSVersion
 	}
