@@ -57,15 +57,13 @@ const (
 	// APIServerEtcdClientKeyName defines apiserver's etcd client key name
 	APIServerEtcdClientKeyName = CertificatesDir + "apiserver-etcd-client.key"
 
-	KubeadmConfigFileName = KubernetesDir + "kubeadm-config.yaml"
-
 	// KubeletKubeConfigFileName defines the file name for the kubeconfig that the control-plane kubelet will use for talking
 	// to the API server
 	KubeletKubeConfigFileName    = KubernetesDir + "kubelet.conf"
 	KubeletRunDirectory          = "/var/lib/kubelet/"
 	DefaultSystemdUnitFilePath   = "/usr/lib/systemd/system/"
 	KubeletSystemdUnitFilePath   = DefaultSystemdUnitFilePath + "kubelet.service"
-	KubeletServiceRunConfig      = DefaultSystemdUnitFilePath + "kubelet.service.d/10-kubeadm.conf"
+	KubeletServiceRunConfigPath  = DefaultSystemdUnitFilePath + "kubelet.service.d/10-kubeadm.conf"
 	KubeletConfigurationFileName = KubeletRunDirectory + "config.yaml"
 	KubeletEnvFileName           = KubeletRunDirectory + "kubeadm-flags.env"
 	KubeletEnvFileVariableName   = "KUBELET_KUBEADM_ARGS"
@@ -91,9 +89,6 @@ const (
 )
 
 const (
-	// DefaultDockerCRISocket defines the default Docker CRI socket
-	DefaultDockerCRISocket = "/var/run/dockershim.sock"
-
 	// PauseVersion indicates the default pause image version for kubeadm
 	PauseVersion = "3.2"
 

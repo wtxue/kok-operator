@@ -21,7 +21,7 @@ import (
 	clientcmdlatest "k8s.io/client-go/tools/clientcmd/api/latest"
 	certutil "k8s.io/client-go/util/cert"
 	"k8s.io/client-go/util/keyutil"
-	"k8s.io/klog/v2"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // clientCertAuth struct holds info required to build a client certificate to provide authentication info in a kubeconfig object
@@ -181,7 +181,7 @@ func DecodeKubeConfigByte(data []byte, config *clientcmdapi.Config) error {
 	return runtime.DecodeInto(clientcmdlatest.Codec, data, config)
 }
 
-// createKubeConfigFiles creates all the requested kubeconfig files.
+// CreateKubeConfigFiles creates all the requested kubeconfig files.
 // If kubeconfig files already exists, they are used only if evaluated equal; otherwise an error is returned.
 func CreateKubeConfigFiles(CAKey, CACert []byte, apiserver string, kubeletNodeAddr string, clusterName string, kubeConfigFileNames ...string) (map[string]*clientcmdapi.Config, error) {
 	cfgMaps := make(map[string]*clientcmdapi.Config)
@@ -192,7 +192,7 @@ func CreateKubeConfigFiles(CAKey, CACert []byte, apiserver string, kubeletNodeAd
 	}
 
 	for _, kubeConfigFileName := range kubeConfigFileNames {
-		klog.V(1).Infof("creating kubeconfig file for %s", kubeConfigFileName)
+		logf.Log.V(2).Info("creating kubeconfig", "file", kubeConfigFileName)
 		// retrieves the KubeConfigSpec for given kubeConfigFileName
 		spec, exists := specs[kubeConfigFileName]
 		if !exists {

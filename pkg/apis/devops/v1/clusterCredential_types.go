@@ -65,7 +65,3 @@ type ClusterCredentialList struct {
 	// List of clusters
 	Items []ClusterCredential `json:"items" protobuf:"bytes,2,rep,name=items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&ClusterCredential{}, &ClusterCredentialList{})
-}

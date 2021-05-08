@@ -13,6 +13,7 @@ import (
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/certs"
+	"github.com/wtxue/kok-operator/pkg/provider/phases/cri"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/join"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/kubebin"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/kubemisc"
@@ -172,6 +173,20 @@ func (p *Provider) EnsureSystem(ctx *common.ClusterContext, machine *devopsv1.Ma
 	return nil
 }
 
+func (p *Provider) EnsureCRI(ctx *common.ClusterContext, machine *devopsv1.Machine) error {
+	sh, err := machine.Spec.SSH()
+	if err != nil {
+		return err
+	}
+
+	err = cri.InstallCRI(ctx, sh)
+	if err != nil {
+		return errors.Wrap(err, sh.HostIP())
+	}
+
+	return nil
+}
+
 func (p *Provider) EnsureK8sComponent(ctx *common.ClusterContext, machine *devopsv1.Machine) error {
 	sh, err := machine.Spec.SSH()
 	if err != nil {
@@ -291,7 +306,7 @@ func (p *Provider) EnsureEth(ctx *common.ClusterContext, machine *devopsv1.Machi
 		return nil
 	}
 
-	if cniType != "dke-cni" {
+	if cniType != "raw-cni" {
 		return nil
 	}
 
@@ -316,7 +331,7 @@ func (p *Provider) EnsureCni(ctx *common.ClusterContext, machine *devopsv1.Machi
 		return nil
 	}
 
-	if cniType != "dke-cni" {
+	if cniType != "raw-cni" {
 		return nil
 	}
 

@@ -28,8 +28,8 @@ func runHelp(cmd *cobra.Command, args []string) {
 func GetRootCmd(args []string) *cobra.Command {
 	opt := app_option.NewOptions()
 	rootCmd := &cobra.Command{
-		Use:               "ctrl-operator",
-		Short:             "Request a new ctrl operator",
+		Use:               "kok-operator",
+		Short:             "Request a new kok operator",
 		SilenceUsage:      true,
 		DisableAutoGenTag: true,
 		Run:               runHelp,

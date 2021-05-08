@@ -5,14 +5,15 @@ import (
 	"math"
 	"net"
 
-	"github.com/pkg/errors"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kok-operator/pkg/util/ipallocator"
-	"k8s.io/apimachinery/pkg/api/meta"
+
+	"github.com/pkg/errors"
+	"github.com/wtxue/kok-operator/pkg/constants"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func StrPointer(s string) *string {
@@ -117,21 +118,19 @@ func RemoveString(slice []string, s string) (result []string) {
 	return
 }
 
-func ObjectMeta(name string, labels map[string]string, obj runtime.Object) metav1.ObjectMeta {
-	dp := obj.DeepCopyObject()
-	objMeta, _ := meta.Accessor(dp)
+func ObjectMeta(name string, labels map[string]string, obj client.Object) metav1.ObjectMeta {
 	ovk := obj.GetObjectKind().GroupVersionKind()
 
 	return metav1.ObjectMeta{
 		Name:      name,
-		Namespace: objMeta.GetNamespace(),
+		Namespace: obj.GetNamespace(),
 		Labels:    labels,
 		OwnerReferences: []metav1.OwnerReference{
 			{
 				APIVersion:         ovk.GroupVersion().String(),
 				Kind:               ovk.Kind,
-				Name:               objMeta.GetName(),
-				UID:                objMeta.GetUID(),
+				Name:               obj.GetName(),
+				UID:                obj.GetUID(),
 				Controller:         BoolPointer(true),
 				BlockOwnerDeletion: BoolPointer(true),
 			},
@@ -215,9 +214,11 @@ func GetAPIServerCertSANs(c *devopsv1.Cluster) []string {
 			certSANs.Insert(c.Spec.Features.HA.ThirdPartyHA.VIP)
 		}
 	}
+
 	for _, address := range c.Status.Addresses {
 		certSANs.Insert(address.Host)
 	}
 
+	certSANs.Insert(constants.GenComponentName(c.GetName(), constants.KubeApiServer))
 	return certSANs.List()
 }

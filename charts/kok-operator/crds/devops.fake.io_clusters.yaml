@@ -1,114 +1,14 @@
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
-    "api-approved.kubernetes.io": "https://github.com/kubernetes/kubernetes/pull/78458"
-  creationTimestamp: null
-  name: clustercredentials.devops.k8s.io
-spec:
-  group: devops.k8s.io
-  names:
-    kind: ClusterCredential
-    listKind: ClusterCredentialList
-    plural: clustercredentials
-    singular: clustercredential
-  scope: Namespaced
-  versions:
-  - name: v1
-    schema:
-      openAPIV3Schema:
-        description: ClusterCredential records the credential information needed to access the cluster.
-        properties:
-          apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-            type: string
-          bootstrapToken:
-            description: For kubeadm init or join
-            type: string
-          caCert:
-            description: For connect the cluster
-            format: byte
-            type: string
-          caKey:
-            format: byte
-            type: string
-          certificateKey:
-            description: For kubeadm init or join
-            type: string
-          certsBinaryData:
-            additionalProperties:
-              format: byte
-              type: string
-            type: object
-          clientCert:
-            description: For kube-apiserver X509 auth
-            format: byte
-            type: string
-          clientKey:
-            description: For kube-apiserver X509 auth
-            format: byte
-            type: string
-          clusterName:
-            type: string
-          etcdAPIClientCert:
-            format: byte
-            type: string
-          etcdAPIClientKey:
-            format: byte
-            type: string
-          etcdCACert:
-            description: For TKE in global reuse
-            format: byte
-            type: string
-          etcdCAKey:
-            format: byte
-            type: string
-          extData:
-            additionalProperties:
-              type: string
-            type: object
-          kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-            type: string
-          kubeData:
-            additionalProperties:
-              type: string
-            type: object
-          manifestsData:
-            additionalProperties:
-              type: string
-            type: object
-          metadata:
-            type: object
-          tenantID:
-            type: string
-          token:
-            description: For kube-apiserver token auth
-            type: string
-        required:
-        - clusterName
-        - tenantID
-        type: object
-    served: true
-    storage: true
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
+
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
-    "api-approved.kubernetes.io": "https://github.com/kubernetes/kubernetes/pull/78458"
+    controller-gen.kubebuilder.io/version: v0.5.0
   creationTimestamp: null
-  name: clusters.devops.k8s.io
+  name: clusters.devops.fake.io
 spec:
-  group: devops.k8s.io
+  group: devops.fake.io
   names:
     kind: Cluster
     listKind: ClusterList
@@ -157,19 +57,20 @@ spec:
                 type: object
               clusterCIDR:
                 type: string
+              clusterType:
+                type: string
               controllerManagerExtraArgs:
                 additionalProperties:
                   type: string
                 type: object
+              criType:
+                description: RuntimeType defines the runtime of Container.
+                type: string
               displayName:
                 type: string
               dnsDomain:
                 description: DNSDomain is the dns domain used by k8s services. Defaults to "cluster.local".
                 type: string
-              dockerExtraArgs:
-                additionalProperties:
-                  type: string
-                type: object
               etcd:
                 description: Etcd holds configuration for etcd.
                 properties:
@@ -243,7 +144,7 @@ spec:
                     type: string
                   ha:
                     properties:
-                      dke:
+                      kube:
                         properties:
                           vip:
                             type: string
@@ -268,6 +169,8 @@ spec:
                     type: object
                   internalLB:
                     type: boolean
+                  ipv6DualStack:
+                    type: boolean
                   ipvs:
                     type: boolean
                   publicLB:
@@ -276,6 +179,26 @@ spec:
                     items:
                       type: string
                     type: array
+                  upgrade:
+                    description: Upgrade control upgrade process.
+                    properties:
+                      mode:
+                        description: Upgrade mode, default value is Auto.
+                        type: string
+                      strategy:
+                        description: Upgrade strategy config.
+                        properties:
+                          drainNodeBeforeUpgrade:
+                            description: Whether drain node before upgrade. Draining node before upgrade is recommended. But not all pod running as cows, a few running as pets. If your pod can not accept be expelled from current node, this value should be false.
+                            type: boolean
+                          maxUnready:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            description: The maximum number of pods that can be unready during the upgrade. 0% means all pods need to be ready after evition. 100% means ignore any pods unready which may be used in one worker node, use this carefully! default value is 0%.
+                            x-kubernetes-int-or-string: true
+                        type: object
+                    type: object
                 type: object
               finalizers:
                 description: Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
@@ -348,7 +271,7 @@ spec:
               networkType:
                 description: NetworkType defines the network type of cluster.
                 type: string
-              operatingSystem:
+              osType:
                 description: OperatingSystem defines the operating of system.
                 type: string
               pause:
@@ -372,9 +295,22 @@ spec:
                 items:
                   type: string
                 type: array
-              runtimeType:
-                description: RuntimeType defines the runtime of Container.
-                type: string
+              registry:
+                description: Registry is registry settings configured
+                properties:
+                  mirrors:
+                    additionalProperties:
+                      description: Mirror contains the config related to the registry mirror
+                      properties:
+                        endpoints:
+                          description: Endpoints are endpoints for a namespace. CRI plugin will try the endpoints one by one until a working one is found. The endpoint must be a valid url with host specified. The scheme, host and path from the endpoint URL will be used.
+                          items:
+                            type: string
+                          type: array
+                      type: object
+                    description: Mirrors are namespace to mirror mapping for all namespaces.
+                    type: object
+                type: object
               schedulerExtraArgs:
                 additionalProperties:
                   type: string
@@ -383,8 +319,6 @@ spec:
                 description: ServiceCIDR is used to set a separated CIDR for k8s service, it's exclusive with MaxClusterServiceNum.
                 type: string
               tenantID:
-                type: string
-              type:
                 type: string
               upgrade:
                 description: Upgrade control upgrade process.
@@ -395,6 +329,9 @@ spec:
                   strategy:
                     description: Upgrade strategy config.
                     properties:
+                      drainNodeBeforeUpgrade:
+                        description: Whether drain node before upgrade. Draining node before upgrade is recommended. But not all pod running as cows, a few running as pets. If your pod can not accept be expelled from current node, this value should be false.
+                        type: boolean
                       maxUnready:
                         anyOf:
                         - type: integer
@@ -407,8 +344,6 @@ spec:
                 type: string
             required:
             - tenantID
-            - type
-            - version
             type: object
           status:
             description: ClusterStatus represents information about the status of a cluster.
@@ -560,247 +495,6 @@ spec:
               serviceCIDR:
                 type: string
               version:
-                type: string
-            type: object
-        type: object
-    served: true
-    storage: true
-    subresources:
-      status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
----
-apiVersion: apiextensions.k8s.io/v1
-kind: CustomResourceDefinition
-metadata:
-  annotations:
-    controller-gen.kubebuilder.io/version: v0.4.0
-    "api-approved.kubernetes.io": "https://github.com/kubernetes/kubernetes/pull/78458"
-  creationTimestamp: null
-  name: machines.devops.k8s.io
-spec:
-  group: devops.k8s.io
-  names:
-    kind: Machine
-    listKind: MachineList
-    plural: machines
-    shortNames:
-    - mc
-    singular: machine
-  scope: Namespaced
-  versions:
-  - additionalPrinterColumns:
-    - description: The cluter phase.
-      jsonPath: .status.phase
-      name: PHASE
-      type: string
-    - description: 'CreationTimestamp is a timestamp representing the server time when this object was created. '
-      jsonPath: .metadata.creationTimestamp
-      name: AGE
-      type: date
-    name: v1
-    schema:
-      openAPIV3Schema:
-        description: Machine is the Schema for the Machine API
-        properties:
-          apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation of an object. Servers should convert recognized schemas to the latest internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-            type: string
-          kind:
-            description: 'Kind is a string value representing the REST resource this object represents. Servers may infer this from the endpoint the client submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-            type: string
-          metadata:
-            type: object
-          spec:
-            description: MachineSpec is a description of machine.
-            properties:
-              clusterName:
-                type: string
-              feature:
-                properties:
-                  files:
-                    items:
-                      properties:
-                        dst:
-                          type: string
-                        src:
-                          type: string
-                      required:
-                      - dst
-                      - src
-                      type: object
-                    type: array
-                  hooks:
-                    additionalProperties:
-                      type: string
-                    type: object
-                  skipConditions:
-                    items:
-                      type: string
-                    type: array
-                type: object
-              finalizers:
-                description: Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
-                items:
-                  description: FinalizerName is the name identifying a finalizer during cluster lifecycle.
-                  type: string
-                type: array
-              machine:
-                description: ClusterMachine is the master machine definition of cluster.
-                properties:
-                  ip:
-                    type: string
-                  labels:
-                    additionalProperties:
-                      type: string
-                    type: object
-                  passPhrase:
-                    format: byte
-                    type: string
-                  password:
-                    type: string
-                  port:
-                    format: int32
-                    type: integer
-                  privateKey:
-                    format: byte
-                    type: string
-                  taints:
-                    description: If specified, the node's taints.
-                    items:
-                      description: The node this Taint is attached to has the "effect" on any pod that does not tolerate the Taint.
-                      properties:
-                        effect:
-                          description: Required. The effect of the taint on pods that do not tolerate the taint. Valid effects are NoSchedule, PreferNoSchedule and NoExecute.
-                          type: string
-                        key:
-                          description: Required. The taint key to be applied to a node.
-                          type: string
-                        timeAdded:
-                          description: TimeAdded represents the time at which the taint was added. It is only written for NoExecute taints.
-                          format: date-time
-                          type: string
-                        value:
-                          description: The taint value corresponding to the taint key.
-                          type: string
-                      required:
-                      - effect
-                      - key
-                      type: object
-                    type: array
-                  username:
-                    type: string
-                required:
-                - ip
-                - port
-                - username
-                type: object
-              pause:
-                type: boolean
-              tenantID:
-                type: string
-              type:
-                type: string
-            required:
-            - clusterName
-            - type
-            type: object
-          status:
-            description: MachineStatus represents information about the status of an machine.
-            properties:
-              addresses:
-                description: List of addresses reachable to the machine.
-                items:
-                  description: MachineAddress contains information for the machine's address.
-                  properties:
-                    address:
-                      description: The machine address.
-                      type: string
-                    type:
-                      description: Machine address type, one of Public, ExternalIP or InternalIP.
-                      type: string
-                  required:
-                  - address
-                  - type
-                  type: object
-                type: array
-              conditions:
-                items:
-                  description: MachineCondition contains details for the current condition of this Machine.
-                  properties:
-                    lastProbeTime:
-                      description: Last time we probed the condition.
-                      format: date-time
-                      type: string
-                    lastTransitionTime:
-                      description: Last time the condition transitioned from one status to another.
-                      format: date-time
-                      type: string
-                    message:
-                      description: Human-readable message indicating details about last transition.
-                      type: string
-                    reason:
-                      description: Unique, one-word, CamelCase reason for the condition's last transition.
-                      type: string
-                    status:
-                      description: Status is the status of the condition. Can be True, False, Unknown.
-                      type: string
-                    type:
-                      description: Type is the type of the condition.
-                      type: string
-                  required:
-                  - status
-                  - type
-                  type: object
-                type: array
-              locked:
-                type: boolean
-              machineInfo:
-                description: Set of ids/uuids to uniquely identify the node.
-                properties:
-                  architecture:
-                    description: The Architecture reported by the node
-                    type: string
-                  bootID:
-                    description: Boot ID reported by the node.
-                    type: string
-                  containerRuntimeVersion:
-                    description: ContainerRuntime Version reported by the node.
-                    type: string
-                  kernelVersion:
-                    description: Kernel Version reported by the node.
-                    type: string
-                  kubeProxyVersion:
-                    description: KubeProxy Version reported by the node.
-                    type: string
-                  kubeletVersion:
-                    description: Kubelet Version reported by the node.
-                    type: string
-                  machineID:
-                    description: 'MachineID reported by the node. For unique machine identification in the cluster this field is preferred. Learn more from man(5) machine-id: http://man7.org/linux/man-pages/man5/machine-id.5.html'
-                    type: string
-                  operatingSystem:
-                    description: The Operating System reported by the node
-                    type: string
-                  osImage:
-                    description: OS Image reported by the node.
-                    type: string
-                  systemUUID:
-                    description: SystemUUID reported by the node. For unique machine identification MachineID is preferred. This field is specific to Red Hat hosts https://access.redhat.com/documentation/en-US/Red_Hat_Subscription_Management/1/html/RHSM/getting-system-uuid.html
-                    type: string
-                type: object
-              message:
-                description: A human readable message indicating details about why the machine is in this condition.
-                type: string
-              phase:
-                description: MachinePhase defines the phase of machine constructor
-                type: string
-              reason:
-                description: A brief CamelCase message indicating details about why the machine is in this state.
                 type: string
             type: object
         type: object

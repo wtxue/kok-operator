@@ -107,9 +107,9 @@ func completeCredential(ctx *common.ClusterContext) error {
 	if _, err := rand.Read(certBytes); err != nil {
 		return err
 	}
+
 	certificateKey := hex.EncodeToString(certBytes)
 	ctx.Credential.CertificateKey = &certificateKey
-
 	return nil
 }
 
@@ -117,15 +117,13 @@ func (p *Provider) ping(resp http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(resp, "pong")
 }
 
-func (p *Provider) EnsureCopyFiles(ctctx *common.ClusterContext) error {
-	return nil
-}
-
 func (p *Provider) EnsurePreInstallHook(ctx *common.ClusterContext) error {
+	ctx.Info("ingore pre install")
 	return nil
 }
 
 func (p *Provider) EnsurePostInstallHook(ctx *common.ClusterContext) error {
+	ctx.Info("ingore post install")
 	return nil
 }
 
@@ -146,7 +144,7 @@ func (p *Provider) EnsureClusterComplete(ctx *common.ClusterContext) error {
 }
 
 func (p *Provider) EnsureCerts(ctx *common.ClusterContext) error {
-	apiserver := certs.BuildApiserverEndpoint(constants.KubeApiServer, 6443)
+	apiserver := certs.BuildApiserverEndpoint(ctx.GetAPIServerName(), 6443)
 	err := kubeadm.InitCerts(ctx, kubeadm.GetKubeadmConfig(ctx, p.Cfg, apiserver), true)
 	if err != nil {
 		return err
@@ -156,8 +154,8 @@ func (p *Provider) EnsureCerts(ctx *common.ClusterContext) error {
 }
 
 func (p *Provider) EnsureKubeMisc(ctx *common.ClusterContext) error {
-	server := certs.BuildApiserverEndpoint(constants.KubeApiServer, kubemisc.GetBindPort(ctx.Cluster))
-	err := kubemisc.BuildMasterMiscConfigToMap(ctx, server)
+	apiserver := certs.BuildApiserverEndpoint(ctx.GetAPIServerName(), kubemisc.GetBindPort(ctx.Cluster))
+	err := kubemisc.BuildMasterMiscConfigToMap(ctx, apiserver)
 	if err != nil {
 		return err
 	}
@@ -166,6 +164,7 @@ func (p *Provider) EnsureKubeMisc(ctx *common.ClusterContext) error {
 }
 
 func (p *Provider) EnsureEtcd(ctx *common.ClusterContext) error {
+	ctx.Info("use exists etcd cluster")
 	return nil
 }
 
@@ -175,15 +174,14 @@ func (p *Provider) EnsureKubeMaster(ctx *common.ClusterContext) error {
 		Provider: p,
 	}
 
-	var fs []func() client.Object
-	fs = append(fs, r.apiServerDeployment)
-	fs = append(fs, r.apiServerSvc)
-	fs = append(fs, r.controllerManagerDeployment)
-	fs = append(fs, r.schedulerDeployment)
+	var objs []client.Object
+	objs = append(objs, r.apiServerDeployment())
+	objs = append(objs, r.apiServerSvc())
+	objs = append(objs, r.controllerManagerDeployment())
+	objs = append(objs, r.schedulerDeployment())
 
 	logger := ctx.WithValues("cluster", ctx.Cluster.Name)
-	for _, f := range fs {
-		obj := f()
+	for _, obj := range objs {
 		err := k8sutil.Reconcile(logger, ctx.Client, obj, k8sutil.DesiredStatePresent)
 		if err != nil {
 			return errors.Wrapf(err, "apply object err: %v", err)
@@ -198,13 +196,14 @@ func (p *Provider) EnsureExtKubeconfig(ctx *common.ClusterContext) error {
 		ctx.Credential.ExtData = make(map[string]string)
 	}
 
-	server := certs.BuildApiserverEndpoint(ctx.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(ctx.Cluster))
-	cfgMaps, err := certs.CreateApiserverKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert, server, ctx.Cluster.Name)
+	// apiserver := certs.BuildApiserverEndpoint(ctx.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(ctx.Cluster))
+	apiserver := certs.BuildApiserverEndpoint(ctx.GetAPIServerName(), kubemisc.GetBindPort(ctx.Cluster))
+	cfgMaps, err := certs.CreateApiserverKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert, apiserver, ctx.Cluster.Name)
 	if err != nil {
 		return err
 	}
 
-	ctx.Info("start build kubeconfig ...", "server", server)
+	ctx.Info("start build ext kubeconfig ...", "apiserver", apiserver)
 	for _, v := range cfgMaps {
 		by, err := certs.BuildKubeConfigByte(v)
 		if err != nil {
@@ -259,7 +258,7 @@ func (p *Provider) EnsureCni(ctx *common.ClusterContext) error {
 	}
 
 	switch cniType {
-	case "dke-cni":
+	case "raw-cni":
 		for _, machine := range ctx.Cluster.Spec.Machines {
 			sh, err := machine.SSH()
 			if err != nil {

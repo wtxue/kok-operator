@@ -1,8 +1,8 @@
 package constants
 
 const (
-	FinalizersCluster = "finalizers.k8s.io/cluster"
-	FinalizersMachine = "finalizers.k8s.io/machine"
+	FinalizersCluster = "finalizers.fake.io/cluster"
+	FinalizersMachine = "finalizers.fake.io/machine"
 )
 
 func ContainsString(slice []string, s string) bool {

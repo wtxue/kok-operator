@@ -14,6 +14,10 @@ ENV CNI_PLUGINS_VERSION v0.9.1
 RUN curl -fsSL https://github.com/containernetworking/plugins/releases/download/$CNI_PLUGINS_VERSION/cni-plugins-linux-amd64-$CNI_PLUGINS_VERSION.tgz -o cni.tgz \
     && mkdir -p /k8s/bin/ && mv cni.tgz /k8s/bin/
 
+ENV CRICTL_VERSION="v1.21.0"
+RUN curl -fsSL https://github.com/kubernetes-sigs/cri-tools/releases/download/$CRICTL_VERSION/crictl-${CRICTL_VERSION}-linux-amd64.tar.gz -o crictl-linux-amd64.tar.gz \
+    && tar zxvf crictl-linux-amd64.tar.gz -C /k8s/bin/
+
 ENV Containerd_VERSION 1.5.0
 RUN curl -fsSL https://github.com/containerd/containerd/releases/download/v${Containerd_VERSION}/cri-containerd-cni-${Containerd_VERSION}-linux-amd64.tar.gz -o containerd.tar.gz \
     && mkdir -p /k8s/bin/ && mv containerd.tar.gz /k8s/bin/

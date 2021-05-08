@@ -11,7 +11,9 @@ metadata:
   name: cc29pffvqtofq70ufrdb9
   namespace: managed-cluster
   annotations:
-    k8s.io/action: EnsureExtKubeconfig,EnsureAddons,EnsureFlannel
+    "k8s.io/step.restore": EnsureExtKubeconfig
+    "k8s.io/action": EnsureExtKubeconfig,EnsureAddons,EnsureFlannel
+    "k8s.io/apiserver.vip": 172.16.0.101
 spec:
   pause: false
   tenantID: wtxue
@@ -19,24 +21,23 @@ spec:
   clusterType: managed
   osType: ubuntu
   criType: containerd
-  version: v1.20.3
+  version: v1.20.4
   networkType: eth0
   clusterCIDR: 10.97.0.0/16
   serviceCIDR: 10.96.0.0/16
   dnsDomain: cluster.local
   publicAlternativeNames:
-    - managed-cluster.k8s.fake.io
-    - kube-apiserver
+    - cc29pffvqtofq70ufrdb9.k8s.fake.io
   features:
     ipvs: true
     internalLB: true
     enableMasterSchedule: true
     ha:
       thirdParty:
-        vip: "10.248.224.183"
+        vip: "172.16.0.101"
         vport: 30443
     files:
-      - src: "k8s/linuxbin/k9s"
+      - src: "/k8s/bin/k9s"
         dst: "/usr/local/bin/k9s"
     hooks:
       PostCniInstall: flannel

@@ -101,7 +101,7 @@ func GetInitConfiguration(ctx *common.ClusterContext, cfg *config.Config) *kubea
 		}
 	}
 
-	if ctx.Cluster.Spec.CRIType == devopsv1.ContainerdCRI {
+	if ctx.Cluster.Spec.CRIType != devopsv1.DockerCRI {
 		initCfg.NodeRegistration.CRISocket = "unix:///run/containerd/containerd.sock"
 	}
 

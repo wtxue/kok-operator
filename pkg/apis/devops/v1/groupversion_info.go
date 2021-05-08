@@ -10,7 +10,7 @@ import (
 
 var (
 	// GroupVersion is group version used to register these objects
-	GroupVersion = schema.GroupVersion{Group: "devops.k8s.io", Version: "v1"}
+	GroupVersion = schema.GroupVersion{Group: "devops.fake.io", Version: "v1"}
 
 	// SchemeBuilder is used to add go types to the GroupVersionKind scheme
 	SchemeBuilder = &scheme.Builder{GroupVersion: GroupVersion}
@@ -18,3 +18,8 @@ var (
 	// AddToScheme adds the types in this group-version to the given scheme.
 	AddToScheme = SchemeBuilder.AddToScheme
 )
+
+func init() {
+	SchemeBuilder.Register(&Machine{}, &MachineList{})
+	SchemeBuilder.Register(&ClusterCredential{}, &ClusterCredentialList{})
+}

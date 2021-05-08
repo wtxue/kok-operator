@@ -5,18 +5,20 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-logr/logr"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/gmanager"
 	"github.com/wtxue/kok-operator/pkg/provider/phases/clean"
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
+
+	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -39,7 +41,7 @@ func Add(mgr manager.Manager, pMgr *gmanager.GManager) error {
 		Client:         mgr.GetClient(),
 		Mgr:            mgr,
 		GManager:       pMgr,
-		Log:            mgr.GetLogger().WithValues("controller", controllerName),
+		Log:            logf.Log.WithName(controllerName),
 		ClusterStarted: make(map[string]bool),
 	}
 
@@ -58,8 +60,8 @@ func Add(mgr manager.Manager, pMgr *gmanager.GManager) error {
 		Complete(r)
 }
 
-// +kubebuilder:rbac:groups=devops.k8s.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=devops.k8s.io,resources=clusters/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=devops.fake.io,resources=clusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=devops.fake.io,resources=clusters/status,verbs=get;update;patch
 
 func (r *clusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := r.Log.WithValues("cluster", req.Name)
@@ -98,7 +100,7 @@ func (r *clusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if !constants.ContainsString(c.ObjectMeta.Finalizers, constants.FinalizersCluster) {
-		logger.Info("start set", "finalizers", constants.FinalizersCluster)
+		logger.Info("set", "finalizers", constants.FinalizersCluster)
 		if c.ObjectMeta.Finalizers == nil {
 			c.ObjectMeta.Finalizers = []string{}
 		}
@@ -202,8 +204,7 @@ func (r *clusterReconciler) reconcile(ctx *common.ClusterContext) error {
 		return err
 	}
 
-	err = common.FillClusterContext(ctx, r.ClusterManager)
-	if err != nil {
+	if err := common.FillClusterContext(ctx, r.ClusterManager); err != nil {
 		return err
 	}
 

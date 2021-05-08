@@ -38,6 +38,9 @@ spec:
             - ctrl
             - -v
             - "4"
+          {{- if .Values.args.imagesPrefix }}
+            - --images-prefix={{ .Values.args.imagesPrefix }}
+          {{- end }}
           ports:
             - name: http
               containerPort: 8090

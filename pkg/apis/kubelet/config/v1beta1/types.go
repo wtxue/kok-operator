@@ -60,7 +60,7 @@ const (
 	// BestEffortTopologyManagerPolicy is a mode in which kubelet will favour
 	// pods with NUMA alignment of CPU and device resources.
 	BestEffortTopologyManagerPolicy = "best-effort"
-	// NoneTopologyManager Policy is a mode in which kubelet has no knowledge
+	// NoneTopologyManagerPolicy Policy is a mode in which kubelet has no knowledge
 	// of NUMA alignment of a pod's CPU and device resources.
 	NoneTopologyManagerPolicy = "none"
 	// SingleNumaNodeTopologyManager Policy iis a mode in which kubelet only allows

@@ -3,15 +3,15 @@ package option
 import (
 	"time"
 
+	"github.com/wtxue/kok-operator/pkg/k8sclient"
+
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
-	"github.com/wtxue/kok-operator/pkg/k8sclient"
-	"go.uber.org/zap/zapcore"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/klog/v2"
+	"k8s.io/klog/v2/klogr"
 	ctrlrt "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 type GlobalManagerOption struct {
@@ -94,19 +94,19 @@ func (o *GlobalManagerOption) GetKubeInterfaceOrDie() kubernetes.Interface {
 
 // SetupLogger initializes the logger used in the service controller
 func (o *GlobalManagerOption) SetupLogger() {
-	var lvl zapcore.LevelEnabler
-
-	switch o.LogLevel {
-	case "debug":
-		lvl = zapcore.DebugLevel
-	default:
-		lvl = zapcore.InfoLevel
-	}
-
-	zapOptions := &zap.Options{
-		Development: o.EnableDevLogging,
-		Level:       lvl,
-	}
-	ctrlrt.SetLogger(zap.New(zap.UseFlagOptions(zapOptions)))
-	// ctrlrt.SetLogger(klogr.New())
+	// var lvl zapcore.LevelEnabler
+	//
+	// switch o.LogLevel {
+	// case "debug":
+	// 	lvl = zapcore.DebugLevel
+	// default:
+	// 	lvl = zapcore.InfoLevel
+	// }
+	//
+	// zapOptions := &zap.Options{
+	// 	Development: o.EnableDevLogging,
+	// 	Level:       lvl,
+	// }
+	// ctrlrt.SetLogger(zap.New(zap.UseFlagOptions(zapOptions)))
+	ctrlrt.SetLogger(klogr.New())
 }

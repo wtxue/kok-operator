@@ -6,10 +6,11 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/k8sutil"
+
+	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalev2beta1 "k8s.io/api/autoscaling/v2beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -54,6 +55,13 @@ func GetAdvertiseAddress(ctx *common.ClusterContext) string {
 	return advertiseAddress
 }
 
+func GenLabels(clusterID, component string) map[string]string {
+	return map[string]string{
+		"component": component,
+		"clusterID": clusterID,
+	}
+}
+
 // GetHPAReplicaCountOrDefault get desired replica count from HPA if exists, returns the given default otherwise
 func GetHPAReplicaCountOrDefault(client client.Client, name types.NamespacedName, defaultReplicaCount int32) int32 {
 	var hpa autoscalev2beta1.HorizontalPodAutoscaler
@@ -79,7 +87,7 @@ func ApplyCertsConfigmap(ctx *common.ClusterContext, pathCerts map[string][]byte
 	}
 
 	cm := &corev1.ConfigMap{
-		ObjectMeta: k8sutil.ObjectMeta(constants.KubeApiServerCerts, constants.CtrlLabels, ctx.Cluster),
+		ObjectMeta: k8sutil.ObjectMeta(constants.GenComponentName(ctx.Cluster.GetName(), constants.KubeApiServerCerts), constants.CtrlLabels, ctx.Cluster),
 		Data:       noPathCerts,
 	}
 
@@ -101,7 +109,7 @@ func ApplyKubeMiscConfigmap(ctx *common.ClusterContext, pathKubeMisc map[string]
 	}
 
 	cm := &corev1.ConfigMap{
-		ObjectMeta: k8sutil.ObjectMeta(constants.KubeApiServerConfig, constants.CtrlLabels, ctx.Cluster),
+		ObjectMeta: k8sutil.ObjectMeta(constants.GenComponentName(ctx.Cluster.GetName(), constants.KubeApiServerConfig), constants.CtrlLabels, ctx.Cluster),
 		Data:       noPathKubeMisc,
 	}
 
@@ -130,6 +138,7 @@ func (r *Reconciler) apiServerDeployment() client.Object {
 			MountPath: "/var/log/kubernetes",
 		},
 	}
+
 	hostPathType := corev1.HostPathDirectoryOrCreate
 	volumes := []corev1.Volume{
 		{
@@ -137,7 +146,7 @@ func (r *Reconciler) apiServerDeployment() client.Object {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: constants.KubeApiServerCerts,
+						Name: constants.GenComponentName(r.Ctx.Cluster.GetName(), constants.KubeApiServerCerts),
 					},
 					DefaultMode: k8sutil.IntPointer(420),
 				},
@@ -148,7 +157,7 @@ func (r *Reconciler) apiServerDeployment() client.Object {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: constants.KubeApiServerConfig,
+						Name: constants.GenComponentName(r.Ctx.Cluster.GetName(), constants.KubeApiServerConfig),
 					},
 					DefaultMode: k8sutil.IntPointer(420),
 				},
@@ -158,7 +167,7 @@ func (r *Reconciler) apiServerDeployment() client.Object {
 			Name: constants.KubeApiServerAudit,
 			VolumeSource: corev1.VolumeSource{
 				HostPath: &corev1.HostPathVolumeSource{
-					Path: fmt.Sprintf("/web/%s/kube-apiserver/audit", r.Ctx.Cluster.Name),
+					Path: fmt.Sprintf("/var/audit-kube-apiserver/%s", r.Ctx.Cluster.Name),
 					Type: &hostPathType,
 				},
 			},
@@ -182,10 +191,13 @@ func (r *Reconciler) apiServerDeployment() client.Object {
 		"--requestheader-extra-headers-prefix=X-Remote-Extra-",
 		"--requestheader-group-headers=X-Remote-Group",
 		"--requestheader-username-headers=X-Remote-User",
-		"--service-account-key-file=/etc/kubernetes/pki/sa.pub",
 		"--tls-cert-file=/etc/kubernetes/pki/apiserver.crt",
 		"--tls-private-key-file=/etc/kubernetes/pki/apiserver.key",
 		"--token-auth-file=/etc/kubernetes/known_tokens.csv",
+		"--service-account-issuer=https://kubernetes.default.svc.cluster.local",
+		"--service-account-signing-key-file=/etc/kubernetes/pki/sa.key",
+		"--service-account-key-file=/etc/kubernetes/pki/sa.pub",
+		"--insecure-port=0",
 	}
 
 	advertiseAddress := GetAdvertiseAddress(r.Ctx)
@@ -208,7 +220,7 @@ func (r *Reconciler) apiServerDeployment() client.Object {
 	cmds = append(cmds, fmt.Sprintf("--service-cluster-ip-range=%s", svcCidr))
 	if r.Ctx.Cluster.Spec.Etcd != nil && r.Ctx.Cluster.Spec.Etcd.External != nil {
 		cmds = append(cmds, fmt.Sprintf("--etcd-servers=%s", strings.Join(r.Ctx.Cluster.Spec.Etcd.External.Endpoints, ",")))
-		// tode check
+		// TODO check
 		if strings.Contains(r.Ctx.Cluster.Spec.Etcd.External.Endpoints[0], "https") {
 			cmds = append(cmds, fmt.Sprintf("--etcd-cafile=%s", r.Ctx.Cluster.Spec.Etcd.External.CAFile))
 			cmds = append(cmds, fmt.Sprintf("--etcd-certfile=%s", r.Ctx.Cluster.Spec.Etcd.External.CertFile))
@@ -220,7 +232,7 @@ func (r *Reconciler) apiServerDeployment() client.Object {
 
 	c := corev1.Container{
 		Name:            constants.KubeApiServer,
-		Image:           r.Provider.Cfg.KubeAllImageFullName(constants.KubernetesAllImageName, r.Ctx.Cluster.Spec.Version),
+		Image:           r.Provider.Cfg.KubeAllImageFullName(constants.KubeApiServer, r.Ctx.Cluster.Spec.Version),
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Command:         cmds,
 		Ports: []corev1.ContainerPort{
@@ -259,23 +271,24 @@ func (r *Reconciler) apiServerDeployment() client.Object {
 	}
 
 	containers = append(containers, c)
-
+	id := r.Ctx.GetClusterID()
+	lb := GenLabels(id, constants.KubeApiServer)
 	deployment := &appsv1.Deployment{
-		ObjectMeta: k8sutil.ObjectMeta(constants.KubeApiServer, constants.KubeApiServerLabels, r.Ctx.Cluster),
+		ObjectMeta: k8sutil.ObjectMeta(constants.GenComponentName(id, constants.KubeApiServer), lb, r.Ctx.Cluster),
 		Spec: appsv1.DeploymentSpec{
 			Replicas: k8sutil.IntPointer(3),
 			Strategy: common.DefaultRollingUpdateStrategy(),
 			Selector: &metav1.LabelSelector{
-				MatchLabels: constants.KubeApiServerLabels,
+				MatchLabels: lb,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: constants.KubeApiServerLabels,
+					Labels: lb,
 				},
 				Spec: corev1.PodSpec{
 					Containers:  containers,
 					Volumes:     volumes,
-					Affinity:    common.ComponentAffinity(r.Ctx.Cluster.Namespace, constants.KubeApiServerLabels),
+					Affinity:    common.ComponentAffinity(r.Ctx.Cluster.Namespace, lb),
 					Tolerations: common.ComponentTolerations(),
 				},
 			},
@@ -286,8 +299,10 @@ func (r *Reconciler) apiServerDeployment() client.Object {
 }
 
 func (r *Reconciler) apiServerSvc() client.Object {
+	id := r.Ctx.GetClusterID()
+	lb := GenLabels(id, constants.KubeApiServer)
 	svc := &corev1.Service{
-		ObjectMeta: k8sutil.ObjectMeta(constants.KubeApiServer, constants.KubeApiServerLabels, r.Ctx.Cluster),
+		ObjectMeta: k8sutil.ObjectMeta(constants.GenComponentName(r.Ctx.Cluster.GetName(), constants.KubeApiServer), lb, r.Ctx.Cluster),
 		Spec: corev1.ServiceSpec{
 			Ports: []corev1.ServicePort{
 				{
@@ -299,7 +314,7 @@ func (r *Reconciler) apiServerSvc() client.Object {
 				},
 			},
 
-			Selector: constants.KubeApiServerLabels,
+			Selector: lb,
 		},
 	}
 	svcType := corev1.ServiceTypeNodePort
@@ -331,13 +346,14 @@ func (r *Reconciler) controllerManagerDeployment() client.Object {
 			MountPath: "/etc/kubernetes/",
 		},
 	}
+
 	volumes := []corev1.Volume{
 		{
 			Name: constants.KubeApiServerCerts,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: constants.KubeApiServerCerts,
+						Name: constants.GenComponentName(r.Ctx.Cluster.GetName(), constants.KubeApiServerCerts),
 					},
 					DefaultMode: k8sutil.IntPointer(420),
 				},
@@ -348,7 +364,7 @@ func (r *Reconciler) controllerManagerDeployment() client.Object {
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: constants.KubeApiServerConfig,
+						Name: constants.GenComponentName(r.Ctx.Cluster.GetName(), constants.KubeApiServerConfig),
 					},
 					DefaultMode: k8sutil.IntPointer(420),
 				},
@@ -392,7 +408,7 @@ func (r *Reconciler) controllerManagerDeployment() client.Object {
 	healthPortName := "https-healthz"
 	c := corev1.Container{
 		Name:            constants.KubeControllerManager,
-		Image:           r.Provider.Cfg.KubeAllImageFullName(constants.KubernetesAllImageName, r.Ctx.Cluster.Spec.Version),
+		Image:           r.Provider.Cfg.KubeAllImageFullName(constants.KubeControllerManager, r.Ctx.Cluster.Spec.Version),
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Command:         cmds,
 		Ports: []corev1.ContainerPort{
@@ -437,22 +453,24 @@ func (r *Reconciler) controllerManagerDeployment() client.Object {
 
 	containers = append(containers, c)
 
+	id := r.Ctx.GetClusterID()
+	lb := GenLabels(id, constants.KubeControllerManager)
 	deployment := &appsv1.Deployment{
-		ObjectMeta: k8sutil.ObjectMeta(constants.KubeControllerManager, constants.KubeControllerManagerLabels, r.Ctx.Cluster),
+		ObjectMeta: k8sutil.ObjectMeta(constants.GenComponentName(id, constants.KubeControllerManager), lb, r.Ctx.Cluster),
 		Spec: appsv1.DeploymentSpec{
 			Replicas: k8sutil.IntPointer(3),
 			Strategy: common.DefaultRollingUpdateStrategy(),
 			Selector: &metav1.LabelSelector{
-				MatchLabels: constants.KubeControllerManagerLabels,
+				MatchLabels: lb,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: constants.KubeControllerManagerLabels,
+					Labels: lb,
 				},
 				Spec: corev1.PodSpec{
 					Containers:  containers,
 					Volumes:     volumes,
-					Affinity:    common.ComponentAffinity(r.Ctx.Cluster.Namespace, constants.KubeApiServerLabels),
+					Affinity:    common.ComponentAffinity(r.Ctx.Cluster.Namespace, lb),
 					Tolerations: common.ComponentTolerations(),
 				},
 			},
@@ -463,7 +481,6 @@ func (r *Reconciler) controllerManagerDeployment() client.Object {
 }
 
 func (r *Reconciler) schedulerDeployment() client.Object {
-	containers := []corev1.Container{}
 	vms := []corev1.VolumeMount{
 		{
 			Name:      constants.KubeApiServerConfig,
@@ -472,13 +489,12 @@ func (r *Reconciler) schedulerDeployment() client.Object {
 	}
 
 	volumes := []corev1.Volume{
-
 		{
 			Name: constants.KubeApiServerConfig,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
 					LocalObjectReference: corev1.LocalObjectReference{
-						Name: constants.KubeApiServerConfig,
+						Name: constants.GenComponentName(r.Ctx.Cluster.GetName(), constants.KubeApiServerConfig),
 					},
 					DefaultMode: k8sutil.IntPointer(420),
 				},
@@ -498,7 +514,7 @@ func (r *Reconciler) schedulerDeployment() client.Object {
 	healthPortName := "https-healthz"
 	c := corev1.Container{
 		Name:            constants.KubeKubeScheduler,
-		Image:           r.Provider.Cfg.KubeAllImageFullName(constants.KubernetesAllImageName, r.Ctx.Cluster.Spec.Version),
+		Image:           r.Provider.Cfg.KubeAllImageFullName(constants.KubeKubeScheduler, r.Ctx.Cluster.Spec.Version),
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Command:         cmds,
 		Ports: []corev1.ContainerPort{
@@ -541,24 +557,27 @@ func (r *Reconciler) schedulerDeployment() client.Object {
 		TerminationMessagePolicy: corev1.TerminationMessageReadFile,
 	}
 
+	containers := []corev1.Container{}
 	containers = append(containers, c)
 
+	id := r.Ctx.GetClusterID()
+	lb := GenLabels(id, constants.KubeKubeScheduler)
 	deployment := &appsv1.Deployment{
-		ObjectMeta: k8sutil.ObjectMeta(constants.KubeKubeScheduler, constants.KubeKubeSchedulerLabels, r.Ctx.Cluster),
+		ObjectMeta: k8sutil.ObjectMeta(constants.GenComponentName(id, constants.KubeKubeScheduler), lb, r.Ctx.Cluster),
 		Spec: appsv1.DeploymentSpec{
 			Replicas: k8sutil.IntPointer(3),
 			Strategy: common.DefaultRollingUpdateStrategy(),
 			Selector: &metav1.LabelSelector{
-				MatchLabels: constants.KubeKubeSchedulerLabels,
+				MatchLabels: lb,
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: constants.KubeKubeSchedulerLabels,
+					Labels: lb,
 				},
 				Spec: corev1.PodSpec{
 					Containers:  containers,
 					Volumes:     volumes,
-					Affinity:    common.ComponentAffinity(r.Ctx.Cluster.Namespace, constants.KubeApiServerLabels),
+					Affinity:    common.ComponentAffinity(r.Ctx.Cluster.Namespace, lb),
 					Tolerations: common.ComponentTolerations(),
 				},
 			},

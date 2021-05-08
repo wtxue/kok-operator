@@ -46,10 +46,10 @@ func Install(ctx *common.ClusterContext, s ssh.Interface) error {
 		HostIP:     s.HostIP(),
 	}
 
-	_, _, _, err := s.Execf("hostnamectl set-hostname %s", s.HostIP())
-	if err != nil {
-		return err
-	}
+	// _, _, _, err := s.Execf("hostnamectl set-hostname %s", s.HostIP())
+	// if err != nil {
+	// 	return err
+	// }
 
 	initData, err := template.ParseString(shellTemplate(ctx), option)
 	if err != nil {

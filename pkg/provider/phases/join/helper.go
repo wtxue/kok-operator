@@ -13,18 +13,7 @@ import (
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/k8sutil"
-	"k8s.io/klog/v2"
-)
-
-const (
-	kubeletEnvironmentTemplate = `
-[Service]
-Environment="KUBELET_KUBECONFIG_ARGS=--kubeconfig=/etc/kubernetes/kubelet.conf"
-Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
-EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
-EnvironmentFile=-/etc/sysconfig/kubelet
-ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
-`
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // GetGenericImage generates and returns a platform agnostic image (backed by manifest list)
@@ -38,8 +27,7 @@ func GetPauseImage(imageRepository string) string {
 }
 
 // BuildArgumentListFromMap takes two string-string maps, one with the base arguments and one
-// with optional override arguments. In the return list override arguments will precede base
-// arguments
+// with optional override arguments. In the return list override arguments will precede base arguments
 func BuildArgumentListFromMap(baseArguments map[string]string, overrideArguments map[string]string) []string {
 	var command []string
 	var keys []string
@@ -109,16 +97,18 @@ func GetNodeNameAndHostname(cfg *kubeadmv1beta2.NodeRegistrationOptions) (string
 func BuildKubeletDynamicEnvFile(imageRepository string, nodeReg *kubeadmv1beta2.NodeRegistrationOptions) string {
 	kubeletFlags := map[string]string{}
 
-	kubeletFlags["cgroup-driver"] = "systemd"
 	kubeletFlags["network-plugin"] = "cni"
+	kubeletFlags["container-runtime"] = "remote"
+	kubeletFlags["container-runtime-endpoint"] = "unix:///var/run/containerd/containerd.sock"
+
 	// Pass the "--hostname-override" flag to the kubelet only if it's different from the hostname
 	nodeName, hostname, err := GetNodeNameAndHostname(nodeReg)
 	if err != nil {
-		klog.Warning(err)
+		logf.Log.Error(err, "GetNodeNameAndHostname")
 	}
 
 	if nodeName != hostname {
-		klog.V(1).Infof("setting kubelet hostname-override to %q", nodeName)
+		logf.Log.V(2).Info("setting kubelet args", "hostname-override", nodeName)
 		kubeletFlags["hostname-override"] = nodeName
 	}
 

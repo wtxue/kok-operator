@@ -97,7 +97,7 @@ func JoinNodePhase(s ssh.Interface, cfg *config.Config, ctx *common.ClusterConte
 	nodeOpt := &kubeadmv1beta2.NodeRegistrationOptions{
 		Name: hostIP,
 	}
-	flagsEnv := BuildKubeletDynamicEnvFile(cfg.Registry.Prefix, nodeOpt)
+	flagsEnv := BuildKubeletDynamicEnvFile(cfg.CustomRegistry, nodeOpt)
 	fileMaps[constants.KubeletEnvFileName] = flagsEnv
 
 	kubeletCfg := kubeadm.GetFullKubeletConfiguration(ctx)
@@ -107,7 +107,7 @@ func JoinNodePhase(s ssh.Interface, cfg *config.Config, ctx *common.ClusterConte
 	}
 
 	fileMaps[constants.KubeletConfigurationFileName] = string(cfgYaml)
-	fileMaps[constants.KubeletServiceRunConfig] = kubeletEnvironmentTemplate
+	fileMaps[constants.KubeletServiceRunConfig] = constants.KubeletServiceRunConfig
 
 	for pathName, va := range fileMaps {
 		ctx.Info("start write ...", "node", hostIP, "pathName", pathName)

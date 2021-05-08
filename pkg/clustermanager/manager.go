@@ -178,6 +178,11 @@ func (m *ClusterManager) AddNewClusters(name string, kubeconfig string) (*Cluste
 		return nil, err
 	}
 
+	if !nc.healthCheck() {
+		logger.Error(err, "healthCheck failed", "cluster", name)
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 

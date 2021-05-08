@@ -8,7 +8,6 @@ import (
 
 	"github.com/spf13/pflag"
 	"github.com/wtxue/kok-operator/pkg/constants"
-	"k8s.io/klog/v2"
 )
 
 type Config struct {
@@ -58,11 +57,7 @@ type Scheduler struct {
 
 func NewDefaultConfig() *Config {
 	return &Config{
-		Registry: Registry{
-			// Prefix: "docker.io/wtxue",
-			Prefix: "registry.aliyuncs.com/google_containers",
-		},
-		CustomRegistry:     "registry.aliyuncs.com/google_containers",
+		CustomRegistry:     "registry.aliyuncs.com/google_containers", // "docker.io/wtxue"
 		SupportK8sVersion:  constants.K8sVersions,
 		EnableCustomImages: false,
 	}
@@ -83,7 +78,7 @@ func (r *Config) ImageFullName(name, tag string) string {
 		}
 	}
 
-	s := strings.Split(r.Registry.Prefix, "/")
+	s := strings.Split(r.CustomRegistry, "/")
 	r.Registry.Domain = s[0]
 	r.Registry.Namespace = s[1]
 	return path.Join(r.Registry.Domain, r.Registry.Namespace, b.String())
@@ -112,12 +107,11 @@ func (r *Config) IsK8sSupport(version string) bool {
 		}
 	}
 
-	klog.Errorf("k8s version only support: %#v", r.SupportK8sVersion)
 	return false
 }
 
 func (r *Config) AddFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&r.Registry.Prefix, "images-prefix", r.Registry.Prefix, "the images prefix")
+	fs.StringVar(&r.CustomRegistry, "images-prefix", r.CustomRegistry, "the images prefix")
 	fs.BoolVar(&r.EnableCustomImages, "enable-custom-images", r.EnableCustomImages, "enable custom images")
 	fs.StringArrayVar(&r.SupportK8sVersion, "support-k8s-version", r.SupportK8sVersion, "the support k8s version")
 }

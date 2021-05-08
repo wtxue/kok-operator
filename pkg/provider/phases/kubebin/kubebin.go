@@ -10,34 +10,6 @@ import (
 	"github.com/wtxue/kok-operator/pkg/util/ssh"
 )
 
-const (
-	kubeletService = `
-[Unit]
-Description=kubelet: The Kubernetes Node Agent
-Documentation=https://kubernetes.io/docs/
-
-[Service]
-User=root
-ExecStart=/usr/bin/kubelet
-Restart=always
-StartLimitInterval=0
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
-`
-
-	KubeletServiceRunConfig = `
-[Service]
-Environment="KUBELET_KUBECONFIG_ARGS=--bootstrap-kubeconfig=/etc/kubernetes/bootstrap-kubelet.conf --kubeconfig=/etc/kubernetes/kubelet.conf"
-Environment="KUBELET_CONFIG_ARGS=--config=/var/lib/kubelet/config.yaml"
-EnvironmentFile=-/var/lib/kubelet/kubeadm-flags.env
-EnvironmentFile=-/etc/sysconfig/kubelet
-ExecStart=
-ExecStart=/usr/bin/kubelet $KUBELET_KUBECONFIG_ARGS $KUBELET_CONFIG_ARGS $KUBELET_KUBEADM_ARGS $KUBELET_EXTRA_ARGS
-`
-)
-
 func Install(ctx *common.ClusterContext, s ssh.Interface) error {
 	// dir := "bin/linux/" // local debug config dir
 	k8sDir := fmt.Sprintf("/k8s-%s/bin/", ctx.Cluster.Spec.Version)
@@ -97,13 +69,13 @@ func Install(ctx *common.ClusterContext, s ssh.Interface) error {
 	}
 
 	ctx.Info("write kubelet systemd unit file", "node", s.HostIP(), "dst", constants.KubeletSystemdUnitFilePath)
-	err := s.WriteFile(strings.NewReader(kubeletService), constants.KubeletSystemdUnitFilePath)
+	err := s.WriteFile(strings.NewReader(constants.KubeletService), constants.KubeletSystemdUnitFilePath)
 	if err != nil {
 		return err
 	}
 
 	ctx.Info("write kubelet systemd service run config", "node", s.HostIP(), "path", constants.KubeletServiceRunConfig)
-	err = s.WriteFile(strings.NewReader(KubeletServiceRunConfig), constants.KubeletServiceRunConfig)
+	err = s.WriteFile(strings.NewReader(constants.KubeletServiceRunConfig), constants.KubeletServiceRunConfig)
 	if err != nil {
 		return err
 	}
@@ -127,5 +99,6 @@ func Install(ctx *common.ClusterContext, s ssh.Interface) error {
 		return err
 	}
 
+	ctx.Info("exec successfully", "node", s.HostIP(), "cmd", cmd)
 	return nil
 }

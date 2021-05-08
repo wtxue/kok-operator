@@ -1,15 +1,15 @@
 package cri
 
 import (
-	"fmt"
-
 	"bytes"
+	"fmt"
+	"strings"
+
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/util/ssh"
 	"github.com/wtxue/kok-operator/pkg/util/template"
-	"strings"
 )
 
 const ContainerdConfigTemplate = `
@@ -45,6 +45,10 @@ func InstallCRI(ctx *common.ClusterContext, s ssh.Interface) error {
 
 	var CopyList = []devopsv1.File{
 		{
+			Src: otherDir + "crictl",
+			Dst: "/usr/local/bin/crictl",
+		},
+		{
 			Src: otherDir + "containerd.tar.gz",
 			Dst: "/opt/k8s/containerd.tar.gz",
 		},
@@ -69,7 +73,6 @@ func InstallCRI(ctx *common.ClusterContext, s ssh.Interface) error {
 				"cp -rf /opt/k8s/containerd/usr/local/bin/* /usr/local/bin/ && " +
 				"cp -rf /opt/k8s/containerd/etc/crictl.yaml /etc/ && " +
 				"cp -rf /opt/k8s/containerd/etc/systemd/system/containerd.service /etc/systemd/system/ && " +
-				"rm -f /usr/local/bin/critest &&" +
 				"rm -rf /opt/k8s/containerd"
 
 			_, err := s.CombinedOutput(cmd)

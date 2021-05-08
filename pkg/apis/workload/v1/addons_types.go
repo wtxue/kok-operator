@@ -20,7 +20,7 @@ type AddonsStatus struct {
 
 // +kubebuilder:object:root=true
 
-// Machine is the Schema for the Machine API
+// Addons is the Schema for the Addon API
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="PHASE",type="string",JSONPath=".status.phase",description="The Addons phase."
@@ -35,13 +35,9 @@ type Addons struct {
 
 // +kubebuilder:object:root=true
 
-// AddonsList contains a list of ClusterAddons
+// AddonsList contains a list of Addons
 type AddonsList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Addons `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Addons{}, &AddonsList{})
 }

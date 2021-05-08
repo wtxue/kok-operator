@@ -1,5 +1,9 @@
 package constants
 
+import (
+	"fmt"
+)
+
 const (
 	ComponentNameCrd = "crds"
 	CreatedByLabel   = "k8s.io/created-by"
@@ -22,18 +26,6 @@ const (
 	ClusterAnnoLocalDebugDir = "k8s.io/local.dir"
 )
 
-var KubeApiServerLabels = map[string]string{
-	"component": KubeApiServer,
-}
-
-var KubeKubeSchedulerLabels = map[string]string{
-	"component": KubeKubeScheduler,
-}
-
-var KubeControllerManagerLabels = map[string]string{
-	"component": KubeControllerManager,
-}
-
 var CtrlLabels = map[string]string{
 	"createBy": "controller",
 }
@@ -44,4 +36,9 @@ func GetAnnotationKey(annotation map[string]string, key string) string {
 	}
 
 	return ""
+}
+
+// GenComponentName ...
+func GenComponentName(clusterID, suffix string) string {
+	return fmt.Sprintf("%s-%s", clusterID, suffix)
 }

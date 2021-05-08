@@ -67,9 +67,17 @@ func FillClusterContext(ctx *ClusterContext, multiMgr *clustermanager.ClusterMan
 	return nil
 }
 
-// func Clientset(cluster *devopsv1.Cluster, credential *devopsv1.ClusterCredential) (kubernetes.Interface, error) {
-// 	return (&Cluster{Cluster: cluster, ClusterCredential: credential}).Clientset()
-// }
+func (c *ClusterContext) GetClusterID() string {
+	return c.Cluster.GetName()
+}
+
+func (c *ClusterContext) GetAPIServerName() string {
+	return fmt.Sprintf("%s-%s", c.Cluster.GetName(), constants.KubeApiServer)
+}
+
+func (c *ClusterContext) GetNamespace() string {
+	return c.Cluster.GetNamespace()
+}
 
 func (c *ClusterContext) Clientset() (kubernetes.Interface, error) {
 	config, err := c.RESTConfig(&rest.Config{})

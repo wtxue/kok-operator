@@ -2,18 +2,18 @@ apiVersion: devops.fake.io/v1
 kind: Machine
 metadata:
   labels:
-    name: 10.248.224.171
-    clusterName: managed-cluster1
-  name: 10.248.224.171
+    name: nc29pffvqtofq70ufrdb9
+    clusterName: cc29pffvqtofq70ufrdb9
+  name: nc29pffvqtofq70ufrdb9
   namespace: managed-cluster
 spec:
-  clusterName: managed-cluster1
+  clusterName: cc29pffvqtofq70ufrdb9
   type: managed
   machine:
-    ip: 10.248.224.171
+    ip: 172.16.0.137
     port: 22
     username: root
-    password: "UVK4AfcSuEQTK-LH-Lk1Fy"
+    password: "xxxxxx"
   feature:
     hooks:
       installType: kubeadm

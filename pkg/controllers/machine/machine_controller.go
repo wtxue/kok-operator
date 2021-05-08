@@ -62,8 +62,8 @@ func (r *machineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// +kubebuilder:rbac:groups=devops.k8s.io,resources=virtulclusters,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=devops.k8s.io,resources=virtulclusters/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=devops.fake.io,resources=virtulclusters,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=devops.fake.io,resources=virtulclusters/status,verbs=get;update;patch
 
 func (r *machineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	logger := log.FromContext(ctx)

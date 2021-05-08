@@ -30,7 +30,7 @@ const (
 	GPUVirtual GPUType = "Virtual"
 )
 
-// OperatingSystem defines the operating of system.
+// OSType defines the operating of system.
 type OSType string
 
 const (
@@ -39,7 +39,7 @@ const (
 	UbuntuType OSType = "ubuntu"
 )
 
-// RuntimeType defines the runtime of Container.
+// CRIType defines the runtime of Container.
 type CRIType string
 
 const (
@@ -63,7 +63,7 @@ const (
 	ClusterNotSupport ClusterPhase = "NotSupport"
 )
 
-// HookType
+// HookType ...
 type HookType string
 
 const (
@@ -89,13 +89,13 @@ const (
 	AddressSupport AddressType = "Support"
 )
 
-// UpgradeMode
+// UpgradeMode ...
 type UpgradeMode string
 
 const (
-	// Upgrade nodes automatically.
+	// UpgradeModeAuto nodes automatically.
 	UpgradeModeAuto = UpgradeMode("Auto")
-	// Manual upgrade nodes which means user need label node with `platform.k8s.io/need-upgrade`.
+	// UpgradeModeManual Manual upgrade nodes which means user need label node with `platform.k8s.io/need-upgrade`.
 	UpgradeModeManual = UpgradeMode("Manual")
 )
 
@@ -286,7 +286,7 @@ type Etcd struct {
 	External *ExternalEtcd `json:"external,omitempty"`
 }
 
-// Upgrade
+// Upgrade ...
 type Upgrade struct {
 	// Upgrade mode, default value is Auto.
 	// +optional

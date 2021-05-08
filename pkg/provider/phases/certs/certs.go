@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 	kubeadmv1beta2 "github.com/wtxue/kok-operator/pkg/apis/kubeadm/v1beta2"
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
-	"k8s.io/klog/v2"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 type CaAll struct {
@@ -22,8 +22,8 @@ func CreateCACertAndKeyFiles(certSpec *KubeadmCert, cfg *kubeadmv1beta2.WarpperC
 	if certSpec.CAName != "" {
 		return nil, errors.Errorf("this function should only be used for CAs, but cert %s has CA %s", certSpec.Name, certSpec.CAName)
 	}
-	klog.V(1).Infof("creating a new certificate authority for %s", certSpec.Name)
 
+	logf.Log.V(2).Info("creating a new certificate authority", "name", certSpec.Name)
 	certConfig, err := certSpec.GetConfig(cfg)
 	if err != nil {
 		return nil, err
@@ -84,8 +84,7 @@ func CreateCertAndKeyFilesWithCA(certSpec *KubeadmCert, ca *CaAll, cfg *kubeadmv
 // CreateServiceAccountKeyAndPublicKeyFiles creates new public/private key files for signing service account users.
 // If the sa public/private key files already exist in the target folder, they are used only if evaluated equals; otherwise an error is returned.
 func CreateServiceAccountKeyAndPublicKeyFiles(certsDir string, keyType x509.PublicKeyAlgorithm, certsMaps map[string][]byte) error {
-	klog.V(1).Infoln("creating new public/private key files for signing service account users")
-
+	logf.Log.V(2).Info("creating new public/private key files for signing service account users")
 	// The key does NOT exist, let's generate it now
 	key, err := pkiutil.NewPrivateKey(keyType)
 	if err != nil {
@@ -93,7 +92,7 @@ func CreateServiceAccountKeyAndPublicKeyFiles(certsDir string, keyType x509.Publ
 	}
 
 	// Write .key and .pub files to remote
-	klog.Infof("[certs] Generating %q key and public key\n", pkiutil.ServiceAccountKeyBaseName)
+	logf.Log.V(2).Info("[certs] Generating key and public key", "name", pkiutil.ServiceAccountKeyBaseName)
 	keyPath, keyByte, err := pkiutil.BuildKeyByte(certsDir, pkiutil.ServiceAccountKeyBaseName, key)
 	if err != nil {
 		return err

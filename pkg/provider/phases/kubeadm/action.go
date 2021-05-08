@@ -90,7 +90,7 @@ func Init(ctx *common.ClusterContext, s ssh.Interface, kubeadmConfig *Config, ex
 }
 
 // InitCerts ...
-func InitCerts(ctx *common.ClusterContext, cfg *Config, isHosted bool) error {
+func InitCerts(ctx *common.ClusterContext, cfg *Config, isManaged bool) error {
 	var lastCACert *certs.CaAll
 	cfgMaps := make(map[string][]byte)
 
@@ -101,7 +101,7 @@ func InitCerts(ctx *common.ClusterContext, cfg *Config, isHosted bool) error {
 	}
 
 	var certList certs.Certificates
-	if !isHosted {
+	if !isManaged {
 		certList = certs.GetDefaultCertList()
 	} else {
 		certList = certs.GetCertsWithoutEtcd()
