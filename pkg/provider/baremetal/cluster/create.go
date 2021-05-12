@@ -11,9 +11,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
-	"github.com/segmentio/ksuid"
-	"github.com/thoas/go-funk"
 	"github.com/wtxue/kok-operator/pkg/addons/flannel"
 	"github.com/wtxue/kok-operator/pkg/addons/kubevip"
 	"github.com/wtxue/kok-operator/pkg/addons/metricsserver"
@@ -33,6 +30,10 @@ import (
 	"github.com/wtxue/kok-operator/pkg/util/hosts"
 	"github.com/wtxue/kok-operator/pkg/util/pkiutil"
 	"github.com/wtxue/kok-operator/pkg/util/ssh"
+
+	"github.com/pkg/errors"
+	"github.com/segmentio/ksuid"
+	"github.com/thoas/go-funk"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -824,7 +825,7 @@ func (p *Provider) EnsureDeployCni(ctx *common.ClusterContext) error {
 		for _, obj := range objs {
 			err = k8sutil.Reconcile(logger, clusterCtx.GetClient(), obj, k8sutil.DesiredStatePresent)
 			if err != nil {
-				return errors.Wrap(err, "reconcile  flannel")
+				return errors.Wrap(err, "reconcile flannel")
 			}
 		}
 	default:

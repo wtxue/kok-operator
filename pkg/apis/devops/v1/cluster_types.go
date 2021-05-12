@@ -188,7 +188,7 @@ type ClusterAddress struct {
 type LocalEtcd struct {
 	// DataDir is the directory etcd will place its data.
 	// Defaults to "/var/lib/etcd".
-	DataDir string `json:"dataDir"`
+	DataDir string `json:"dataDir,omitempty"`
 
 	// ExtraArgs are extra arguments provided to the etcd binary
 	// when run inside a static pod.
@@ -264,15 +264,15 @@ type ExternalEtcd struct {
 
 	// CAFile is an SSL Certificate Authority file used to secure etcd communication.
 	// Required if using a TLS connection.
-	CAFile string `json:"caFile"`
+	CAFile string `json:"caFile,omitempty"`
 
 	// CertFile is an SSL certification file used to secure etcd communication.
 	// Required if using a TLS connection.
-	CertFile string `json:"certFile"`
+	CertFile string `json:"certFile,omitempty"`
 
 	// KeyFile is an SSL key file used to secure etcd communication.
 	// Required if using a TLS connection.
-	KeyFile string `json:"keyFile"`
+	KeyFile string `json:"keyFile,omitempty"`
 }
 
 // Etcd contains elements describing Etcd configuration.
@@ -440,8 +440,4 @@ type ClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Cluster `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Cluster{}, &ClusterList{})
 }

@@ -88,25 +88,22 @@ type MachineCondition struct {
 }
 
 type MachineFeature struct {
-	// +optional
-	SkipConditions []string `json:"skipConditions,omitempty"`
-	// +optional
-	Files []File `json:"files,omitempty"`
-	// +optional
-	Hooks map[string]string `json:"hooks,omitempty"`
+	SkipConditions []string          `json:"skipConditions,omitempty"`
+	Files          []File            `json:"files,omitempty"`
+	Hooks          map[string]string `json:"hooks,omitempty"`
 }
 
 // MachineSpec is a description of machine.
 type MachineSpec struct {
 	// Finalizers is an opaque list of values that must be empty to permanently remove object from storage.
-	// +optional
-	Finalizers  []FinalizerName `json:"finalizers,omitempty"`
-	TenantID    string          `json:"tenantID,omitempty"`
-	ClusterName string          `json:"clusterName"`
-	Type        string          `json:"type"`
-	Machine     *ClusterMachine `json:"machine,omitempty"`
-	Feature     *MachineFeature `json:"feature,omitempty"`
-	Pause       bool            `json:"pause,omitempty"`
+	Finalizers       []FinalizerName   `json:"finalizers,omitempty"`
+	TenantID         string            `json:"tenantID,omitempty"`
+	ClusterName      string            `json:"clusterName"`
+	Type             string            `json:"type"`
+	Machine          *ClusterMachine   `json:"machine,omitempty"`
+	Feature          *MachineFeature   `json:"feature,omitempty"`
+	KubeletExtraArgs map[string]string `json:"kubeletExtraArgs,omitempty"`
+	Pause            bool              `json:"pause,omitempty"`
 }
 
 // MachineStatus represents information about the status of an machine.

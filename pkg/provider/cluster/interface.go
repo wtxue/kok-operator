@@ -115,9 +115,9 @@ func (p *DelegateProvider) OnCreate(ctx *common.ClusterContext) error {
 		}
 
 		handlerName := f.Name()
-		ctx.Info("onCreate handler start ... ", "handlerName", handlerName)
+		ctx.Info("onCreate", "handlerName", handlerName)
 		if err = f(ctx); err != nil {
-			ctx.Error(err, "OnCreate handler", "handlerName", handlerName)
+			ctx.Error(err, "OnCreate err", "handlerName", handlerName)
 			ctx.Cluster.SetCondition(devopsv1.ClusterCondition{
 				Type:          condition.Type,
 				Status:        devopsv1.ConditionFalse,
@@ -173,7 +173,7 @@ func (p *DelegateProvider) OnUpdate(ctx *common.ClusterContext) error {
 
 	var key string
 	var ok bool
-	if key, ok = ctx.Cluster.Annotations[constants.ClusterAnnoApplySep]; !ok {
+	if key, ok = ctx.Cluster.Annotations[constants.ClusterUpdateStep]; !ok {
 		return nil
 	}
 
@@ -184,10 +184,10 @@ func (p *DelegateProvider) OnUpdate(ctx *common.ClusterContext) error {
 			continue
 		}
 
-		ctx.Info("onUpdate handler start ... ", "handlerName", handlerName)
+		ctx.Info("onUpdate", "handlerName", handlerName)
 		now := metav1.Now()
 		if err := f(ctx); err != nil {
-			ctx.Error(err, "onUpdate handler", "handlerName", handlerName)
+			ctx.Error(err, "onUpdate err", "handlerName", handlerName)
 			ctx.Cluster.SetCondition(devopsv1.ClusterCondition{
 				Type:          handlerName,
 				Status:        devopsv1.ConditionFalse,
@@ -214,9 +214,11 @@ func (p *DelegateProvider) OnUpdate(ctx *common.ClusterContext) error {
 
 func (p *DelegateProvider) OnDelete(ctx *common.ClusterContext) error {
 	for _, f := range p.DeleteHandlers {
-		ctx.Info("OnDelete handler ... ", "handlerName", f.Name())
+		handlerName := f.Name()
+		ctx.Info("OnDelete", "handlerName", handlerName)
 		err := f(ctx)
 		if err != nil {
+			ctx.Error(err, "OnDelete err", "handlerName", handlerName)
 			return err
 		}
 	}

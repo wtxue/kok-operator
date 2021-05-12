@@ -5,16 +5,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-logr/logr"
-	"github.com/pkg/errors"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kok-operator/pkg/gmanager"
+
+	"github.com/go-logr/logr"
+	"github.com/pkg/errors"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -28,6 +29,7 @@ type machineReconciler struct {
 	client.Client
 	Mgr    manager.Manager
 	Scheme *runtime.Scheme
+	Log    logr.Logger
 	*gmanager.GManager
 }
 
@@ -45,6 +47,7 @@ func Add(mgr manager.Manager, pMgr *gmanager.GManager) error {
 		Client:   mgr.GetClient(),
 		Mgr:      mgr,
 		Scheme:   mgr.GetScheme(),
+		Log:      logf.Log.WithName(controllerName),
 		GManager: pMgr,
 	}
 
@@ -66,7 +69,7 @@ func (r *machineReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // +kubebuilder:rbac:groups=devops.fake.io,resources=virtulclusters/status,verbs=get;update;patch
 
 func (r *machineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	logger := log.FromContext(ctx)
+	logger := r.Log.WithValues("machine", req.Name)
 	startTime := time.Now()
 	defer func() {
 		diffTime := time.Since(startTime)
@@ -93,6 +96,7 @@ func (r *machineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return reconcile.Result{}, err
 	}
 
+	logger = logger.WithValues("cluster", m.Spec.ClusterName)
 	if m.Spec.Pause == true {
 		logger.Info("machine is Pause")
 		return reconcile.Result{}, nil
@@ -141,7 +145,7 @@ func (r *machineReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	r.reconcile(&manchineContext{
 		Ctx:               ctx,
 		Key:               req.NamespacedName,
-		Logger:            logger.WithValues("cluster", cluster.Name),
+		Logger:            logger,
 		Machine:           m,
 		Cluster:           cluster,
 		ClusterCredential: credential,

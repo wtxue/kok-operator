@@ -3,16 +3,16 @@ package k8sutil
 import (
 	"context"
 	"encoding/json"
-	"reflect"
-
 	"github.com/banzaicloud/k8s-objectmatcher/patch"
 	"github.com/go-logr/logr"
 	"github.com/goph/emperror"
+	"github.com/wtxue/kok-operator/pkg/k8sclient"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 type DesiredState string
@@ -27,37 +27,38 @@ func Reconcile(log logr.Logger, cli client.Client, desired client.Object, desire
 		desiredState = DesiredStatePresent
 	}
 
-	desiredType := reflect.TypeOf(desired)
 	current := desired.DeepCopyObject().(client.Object)
 	desiredCopy := desired.DeepCopyObject().(client.Object)
 	key := client.ObjectKeyFromObject(current)
 
-	log = log.WithValues("kind", desiredType, "name", key.Name)
+	gvk, _ := apiutil.GVKForObject(desired, k8sclient.GetScheme())
+	desiredType := gvk.Kind
+	logger := log.WithValues("kind", desiredType, "key", key.String())
 
 	err := cli.Get(context.TODO(), key, current)
 	if err != nil && !apierrors.IsNotFound(err) {
-		return emperror.WrapWith(err, "getting resource failed", "kind", desiredType, "name", key.Name)
+		return emperror.WrapWith(err, "getting resource failed", "kind", desiredType, "key", key.String())
 	}
 	if apierrors.IsNotFound(err) {
 		if desiredState == DesiredStatePresent {
 			if err := patch.DefaultAnnotator.SetLastAppliedAnnotation(desired); err != nil {
-				log.Error(err, "Failed to set last applied annotation", "desired", desired)
+				logger.Error(err, "Failed to set last applied annotation", "desired", desired)
 			}
 			if err := cli.Create(context.TODO(), desired); err != nil {
-				return emperror.WrapWith(err, "creating resource failed", "kind", desiredType, "name", key.Name)
+				return emperror.WrapWith(err, "creating resource failed", "kind", desiredType, "key", key.String())
 			}
-			log.Info("resource created")
+			logger.Info("resource created")
 		}
 	} else {
 		if desiredState == DesiredStatePresent {
 			patchResult, err := patch.DefaultPatchMaker.Calculate(current, desired, patch.IgnoreStatusFields())
 			if err != nil {
-				log.Error(err, "could not match objects", "kind", desiredType, "name", key.Name)
+				logger.Error(err, "could not match objects", "kind", desiredType, "key", key.String())
 			} else if patchResult.IsEmpty() {
-				log.V(1).Info("resource is in sync")
+				logger.Info("resource is in sync")
 				return nil
 			} else {
-				log.V(1).Info("resource diffs",
+				logger.Info("resource diffs",
 					"patch", string(patchResult.Patch),
 					"current", string(patchResult.Current),
 					"modified", string(patchResult.Modified),
@@ -66,7 +67,7 @@ func Reconcile(log logr.Logger, cli client.Client, desired client.Object, desire
 
 			// Need to set this before resourceversion is set, as it would constantly change otherwise
 			if err := patch.DefaultAnnotator.SetLastAppliedAnnotation(desired); err != nil {
-				log.Error(err, "Failed to set last applied annotation", "desired", desired)
+				logger.Error(err, "Failed to set last applied annotation", "key", key.String())
 			}
 
 			metaAccessor := meta.NewAccessor()
@@ -80,27 +81,27 @@ func Reconcile(log logr.Logger, cli client.Client, desired client.Object, desire
 
 			if err := cli.Update(context.TODO(), desired); err != nil {
 				if apierrors.IsConflict(err) || apierrors.IsInvalid(err) {
-					log.Info("resource needs to be re-created", "error", err)
+					logger.Error(err, "resource needs to be re-created")
 					err := cli.Delete(context.TODO(), current)
 					if err != nil {
-						return emperror.WrapWith(err, "could not delete resource", "kind", desiredType, "name", key.Name)
+						return emperror.WrapWith(err, "could not delete resource", "kind", desiredType, "key", key.String())
 					}
-					log.Info("resource deleted")
+					logger.Info("resource deleted")
 					if err := cli.Create(context.TODO(), desiredCopy); err != nil {
-						return emperror.WrapWith(err, "creating resource failed", "kind", desiredType, "name", key.Name)
+						return emperror.WrapWith(err, "creating resource failed", "kind", desiredType, "key", key.String())
 					}
-					log.Info("resource created")
+					logger.Info("resource created")
 					return nil
 				}
 
-				return emperror.WrapWith(err, "updating resource failed", "kind", desiredType, "name", key.Name)
+				return emperror.WrapWith(err, "updating resource failed", "kind", desiredType, "key", key.String())
 			}
-			log.Info("resource updated")
+			logger.Info("resource updated")
 		} else if desiredState == DesiredStateAbsent {
 			if err := cli.Delete(context.TODO(), current); err != nil {
-				return emperror.WrapWith(err, "deleting resource failed", "kind", desiredType, "name", key.Name)
+				return emperror.WrapWith(err, "deleting resource failed", "kind", desiredType, "key", key.String())
 			}
-			log.Info("resource deleted")
+			logger.Info("resource deleted")
 		}
 	}
 	return nil

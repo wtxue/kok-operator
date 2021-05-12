@@ -19,7 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	clientsetscheme "k8s.io/client-go/kubernetes/scheme"
 	componentbaseconfigv1alpha1 "k8s.io/component-base/config/v1alpha1"
-	"k8s.io/klog/v2"
 	kubeproxyv1alpha1 "k8s.io/kube-proxy/config/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -169,14 +168,12 @@ func getKubeProxyConfiguration(ctx *common.ClusterContext) *kubeproxyv1alpha1.Ku
 func kubeproxyMarshal(cfg *kubeproxyv1alpha1.KubeProxyConfiguration) ([]byte, error) {
 	gvks, _, err := apis.GetScheme().ObjectKinds(cfg)
 	if err != nil {
-		klog.Errorf("kubeproxy config get gvks err: %v", err)
-		return nil, err
+		return nil, errors.Wrapf(err, "kubeproxy config get gvks")
 	}
 
 	yamlData, err := apis.MarshalToYAML(cfg, gvks[0].GroupVersion())
 	if err != nil {
-		klog.Errorf("kubeproxy config Marshal err: %v", err)
-		return nil, err
+		return nil, errors.Wrapf(err, "kubeproxy config Marshal")
 	}
 
 	return yamlData, nil
@@ -187,7 +184,7 @@ func BuildKubeproxyAddon(cfg *config.Config, ctx *common.ClusterContext) ([]clie
 
 	kubeproxyBytes, err := kubeproxyMarshal(getKubeProxyConfiguration(ctx))
 	if err != nil {
-		return nil, errors.Wrap(err, "error when kubeproxyMarshal")
+		return nil, err
 	}
 	apiserver := certs.BuildApiserverEndpoint(ctx.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(ctx.Cluster))
 	proxyConfigMapBytes, err := template.ParseString(KubeProxyConfigMap19,
@@ -203,10 +200,12 @@ func BuildKubeproxyAddon(cfg *config.Config, ctx *common.ClusterContext) ([]clie
 	if err != nil {
 		return nil, errors.Wrap(err, "error when parsing kube-proxy configmap template")
 	}
+
 	kubeproxyConfigMap := &corev1.ConfigMap{}
 	if err := runtime.DecodeInto(clientsetscheme.Codecs.UniversalDecoder(), proxyConfigMapBytes, kubeproxyConfigMap); err != nil {
 		return nil, errors.Wrap(err, "unable to decode kube-proxy configmap")
 	}
+
 	if kubeproxyConfigMap.Data == nil {
 		kubeproxyConfigMap.Data = map[string]string{}
 	}

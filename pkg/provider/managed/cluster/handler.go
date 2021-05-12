@@ -191,24 +191,37 @@ func (p *Provider) EnsureKubeMaster(ctx *common.ClusterContext) error {
 	return nil
 }
 
-func (p *Provider) EnsureExtKubeconfig(ctx *common.ClusterContext) error {
+func (p *Provider) EnsureKubeconfig(ctx *common.ClusterContext) error {
 	if ctx.Credential.ExtData == nil {
 		ctx.Credential.ExtData = make(map[string]string)
 	}
 
-	// apiserver := certs.BuildApiserverEndpoint(ctx.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(ctx.Cluster))
-	apiserver := certs.BuildApiserverEndpoint(ctx.GetAPIServerName(), kubemisc.GetBindPort(ctx.Cluster))
-	cfgMaps, err := certs.CreateApiserverKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert, apiserver, ctx.Cluster.Name)
+	onKubeApiserver := certs.BuildApiserverEndpoint(ctx.GetOnKubeAPIServerName(), kubemisc.GetBindPort(ctx.Cluster))
+	cfgMaps, err := certs.CreateApiserverKubeConfigFile(ctx.Credential.CAKey, ctx.Credential.CACert, onKubeApiserver, ctx.Cluster.Name)
 	if err != nil {
 		return err
 	}
 
-	ctx.Info("start build ext kubeconfig ...", "apiserver", apiserver)
-	for _, v := range cfgMaps {
-		by, err := certs.BuildKubeConfigByte(v)
+	for _, cfg := range cfgMaps {
+		ctx.Info("start build onkube kubeconfig ...", "apiserver", onKubeApiserver)
+		by, err := certs.BuildKubeConfigByte(cfg)
 		if err != nil {
 			return err
 		}
+
+		ctx.Credential.ExtData[pkiutil.OnKubeAdminKubeConfigFileName] = string(by)
+
+		extApiserver := certs.BuildApiserverEndpoint(ctx.Cluster.Spec.PublicAlternativeNames[0], kubemisc.GetBindPort(ctx.Cluster))
+		ctx.Info("start build ext kubeconfig ...", "apiserver", onKubeApiserver)
+
+		for _, c := range cfg.Clusters {
+			c.Server = extApiserver
+		}
+		by, err = certs.BuildKubeConfigByte(cfg)
+		if err != nil {
+			return err
+		}
+
 		ctx.Credential.ExtData[pkiutil.ExternalAdminKubeConfigFileName] = string(by)
 	}
 
@@ -223,7 +236,7 @@ func (p *Provider) EnsureAddons(ctx *common.ClusterContext) error {
 
 	kubeproxyObjs, err := kubeproxy.BuildKubeproxyAddon(p.Cfg, ctx)
 	if err != nil {
-		return errors.Wrapf(err, "build kube-proxy err: %+v", err)
+		return errors.Wrapf(err, "build kube-proxy")
 	}
 
 	logger := ctx.WithValues("cluster", ctx.Cluster.Name)
@@ -231,30 +244,28 @@ func (p *Provider) EnsureAddons(ctx *common.ClusterContext) error {
 	for _, obj := range kubeproxyObjs {
 		err = k8sutil.Reconcile(logger, clusterCtx.GetClient(), obj, k8sutil.DesiredStatePresent)
 		if err != nil {
-			return errors.Wrapf(err, "Reconcile  err: %v", err)
+			return errors.Wrapf(err, "reconcile")
 		}
 	}
 
 	logger.Info("start apply coredns")
 	corednsObjs, err := coredns.BuildCoreDNSAddon(p.Cfg, ctx)
 	if err != nil {
-		return errors.Wrapf(err, "build coredns err: %+v", err)
+		return errors.Wrapf(err, "build coredns")
 	}
 	for _, obj := range corednsObjs {
 		err = k8sutil.Reconcile(logger, clusterCtx.GetClient(), obj, k8sutil.DesiredStatePresent)
 		if err != nil {
-			return errors.Wrapf(err, "Reconcile  err: %v", err)
+			return errors.Wrapf(err, "reconcile")
 		}
 	}
 	return nil
 }
 
 func (p *Provider) EnsureCni(ctx *common.ClusterContext) error {
-	var cniType string
-	var ok bool
-
-	if cniType, ok = ctx.Cluster.Spec.Features.Hooks[devopsv1.HookCniInstall]; !ok {
-		return nil
+	cniType := "flannel"
+	if findCNIType, ok := ctx.Cluster.Spec.Features.Hooks[devopsv1.HookCniInstall]; ok {
+		cniType = findCNIType
 	}
 
 	switch cniType {
@@ -271,13 +282,13 @@ func (p *Provider) EnsureCni(ctx *common.ClusterContext) error {
 			}
 		}
 	case "flannel":
-		clusterCtx, err := ctx.ClusterManager.Get(ctx.Cluster.Name)
+		clusterCtx, err := ctx.ClusterManager.Get(ctx.GetClusterID())
 		if err != nil {
-			return nil
+			return err
 		}
 		objs, err := flannel.BuildFlannelAddon(p.Cfg, ctx)
 		if err != nil {
-			return errors.Wrapf(err, "build flannel err: %v", err)
+			return errors.Wrapf(err, "build flannel")
 		}
 
 		logger := ctx.WithValues("component", "flannel")
@@ -285,7 +296,7 @@ func (p *Provider) EnsureCni(ctx *common.ClusterContext) error {
 		for _, obj := range objs {
 			err = k8sutil.Reconcile(logger, clusterCtx.GetClient(), obj, k8sutil.DesiredStatePresent)
 			if err != nil {
-				return errors.Wrapf(err, "Reconcile  err: %v", err)
+				return errors.Wrapf(err, "reconcile")
 			}
 		}
 	default:
@@ -296,21 +307,21 @@ func (p *Provider) EnsureCni(ctx *common.ClusterContext) error {
 }
 
 func (p *Provider) EnsureMetricsServer(ctx *common.ClusterContext) error {
-	clusterCtx, err := ctx.ClusterManager.Get(ctx.Cluster.Name)
+	clusterCtx, err := ctx.ClusterManager.Get(ctx.GetClusterID())
 	if err != nil {
-		return nil
+		return err
 	}
 	objs, err := metricsserver.BuildMetricsServerAddon(ctx)
 	if err != nil {
-		return errors.Wrapf(err, "build metrics-server err: %v", err)
+		return errors.Wrapf(err, "build metrics-server")
 	}
 
 	logger := ctx.WithValues("component", "metrics-server")
 	logger.Info("start reconcile ...")
 	for _, obj := range objs {
-		err = k8sutil.Reconcile(logger, clusterCtx.GetClient(), obj, k8sutil.DesiredStateAbsent)
+		err = k8sutil.Reconcile(logger, clusterCtx.GetClient(), obj, k8sutil.DesiredStatePresent)
 		if err != nil {
-			return errors.Wrapf(err, "Reconcile  err: %v", err)
+			return errors.Wrapf(err, "reconcile")
 		}
 	}
 

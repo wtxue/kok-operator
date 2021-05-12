@@ -22,6 +22,8 @@ type Config struct {
 	CustomRegistry     string
 	EnableCustomCert   bool
 	EnableCustomImages bool
+	EnableOnKube       bool
+	EnableHostNetwork  bool
 }
 
 type Registry struct {
@@ -59,7 +61,9 @@ func NewDefaultConfig() *Config {
 	return &Config{
 		CustomRegistry:     "registry.aliyuncs.com/google_containers", // "docker.io/wtxue"
 		SupportK8sVersion:  constants.K8sVersions,
+		EnableOnKube:       true,
 		EnableCustomImages: false,
+		EnableHostNetwork:  false,
 	}
 }
 
@@ -112,6 +116,8 @@ func (r *Config) IsK8sSupport(version string) bool {
 
 func (r *Config) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&r.CustomRegistry, "images-prefix", r.CustomRegistry, "the images prefix")
+	fs.BoolVar(&r.EnableOnKube, "enable-onkube", r.EnableOnKube, "if true, the cluster manager will use on kube apiserver")
+	fs.BoolVar(&r.EnableHostNetwork, "enable-host-network", r.EnableHostNetwork, "if true, the kube-apiserver pod use hostNetwork")
 	fs.BoolVar(&r.EnableCustomImages, "enable-custom-images", r.EnableCustomImages, "enable custom images")
 	fs.StringArrayVar(&r.SupportK8sVersion, "support-k8s-version", r.SupportK8sVersion, "the support k8s version")
 }

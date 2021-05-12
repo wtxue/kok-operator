@@ -209,6 +209,7 @@ func BuildMetricsServerAddon(ctx *common.ClusterContext) ([]client.Object, error
 	opt := &Option{
 		ImageName: "",
 	}
+
 	data, err := template.ParseString(metricsServerTemplate, opt)
 	if err != nil {
 		return nil, err

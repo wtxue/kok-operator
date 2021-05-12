@@ -118,10 +118,10 @@ func (p *DelegateProvider) OnCreate(ctx *common.ClusterContext, machine *devopsv
 			return fmt.Errorf("can't get handler by %s", condition.Type)
 		}
 		handlerName := f.Name()
-		ctx.Info("OnCreate", "machineName", machine.Name, "handlerName", handlerName)
+		ctx.Info("OnCreate", "handlerName", handlerName)
 		err = f(ctx, machine)
 		if err != nil {
-			ctx.Error(err, " OnCreate ", "handlerName", handlerName)
+			ctx.Error(err, " OnCreate", "handlerName", handlerName)
 			machine.SetCondition(devopsv1.MachineCondition{
 				Type:          condition.Type,
 				Status:        devopsv1.ConditionFalse,
@@ -159,7 +159,7 @@ func (p *DelegateProvider) OnCreate(ctx *common.ClusterContext, machine *devopsv
 
 func (p *DelegateProvider) OnUpdate(ctx *common.ClusterContext, machine *devopsv1.Machine) error {
 	for _, f := range p.UpdateHandlers {
-		ctx.Info("OnUpdate", "machineName", machine.Name, "handlerName", f.Name())
+		ctx.Info("OnUpdate", "handlerName", f.Name())
 		err := f(ctx, machine)
 		if err != nil {
 			return err
@@ -173,7 +173,7 @@ func (p *DelegateProvider) OnUpdate(ctx *common.ClusterContext, machine *devopsv
 
 func (p *DelegateProvider) OnDelete(ctx *common.ClusterContext, machine *devopsv1.Machine) error {
 	for _, f := range p.DeleteHandlers {
-		ctx.Info("OnDelete", "machineName", machine.Name, "handlerName", f.Name())
+		ctx.Info("OnDelete", "handlerName", f.Name())
 		err := f(ctx, machine)
 		if err != nil {
 			return err

@@ -33,7 +33,8 @@ func (p *Provider) EnsureRenewCerts(ctx *common.ClusterContext) error {
 		}
 		expirationDuration := time.Until(cts[0].NotAfter)
 		if expirationDuration > constants.RenewCertsTimeThreshold {
-			ctx.Info("skip EnsureRenewCerts because expiration duration > threshold", "duration", expirationDuration, "threshold", constants.RenewCertsTimeThreshold)
+			ctx.Info("skip EnsureRenewCerts because expiration duration > threshold",
+				"duration", expirationDuration, "threshold", constants.RenewCertsTimeThreshold)
 			return nil
 		}
 

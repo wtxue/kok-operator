@@ -11,10 +11,10 @@ metadata:
   name: ha-local-cluster
   namespace: ha-local-cluster
   annotations:
-#    "k8s.io/step.restore": "EnsurePreInstallHook"
-    "k8s.io/local.dir": "bin/linux/"
-    "k8s.io/apply.step": EnsureDeployCni, EnsureMetricsServer
-#    "k8s.io/apiserver.vip": 172.16.18.17
+#    "fake.io/restore.step": "EnsurePreInstallHook"
+    "fake.io/debug.localdir": "bin/linux/"
+    "fake.io/update.step": EnsureDeployCni, EnsureMetricsServer
+#    "fake.io/apiserver.vip": 172.16.18.17
 spec:
   pause: false
   tenantID: k8s
@@ -28,7 +28,7 @@ spec:
   serviceCIDR: 172.16.201.0/24
   dnsDomain: cluster.local
   publicAlternativeNames:
-    - ha-local.vip.k8s.io
+    - ha-local.vip.fake.io
   features:
     ipvs: true
     internalLB: true

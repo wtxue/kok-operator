@@ -214,7 +214,7 @@ func CreateKubeConfigFiles(CAKey, CACert []byte, apiserver string, kubeletNodeAd
 func BuildExternalApiserverEndpoint(ctx *common.ClusterContext) string {
 	var vip string
 	port := "6443"
-	vipMasterKey := constants.GetAnnotationKey(ctx.Cluster.Annotations, constants.ClusterApiSvcVip)
+	vipMasterKey := constants.GetMapKey(ctx.Cluster.Annotations, constants.ClusterApiserverVip)
 	if vipMasterKey != "" {
 		vip = vipMasterKey
 	}

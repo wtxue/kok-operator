@@ -1,6 +1,8 @@
 package constants
 
 const (
+	ManagedNodeLabelsKey = "fake.io/managed-apiserver"
+
 	KubeadmConfigFileName = KubernetesDir + "kubeadm-config.yaml"
 
 	KubeletService = `

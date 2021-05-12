@@ -7,7 +7,7 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - devops.k8s.io
+  - devops.fake.io
   resources:
   - clusters
   verbs:
@@ -19,7 +19,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - devops.k8s.io
+  - devops.fake.io
   resources:
   - clusters/status
   verbs:
@@ -27,7 +27,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - devops.k8s.io
+  - devops.fake.io
   resources:
   - virtulclusters
   verbs:
@@ -39,7 +39,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - devops.k8s.io
+  - devops.fake.io
   resources:
   - virtulclusters/status
   verbs:

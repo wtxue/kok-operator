@@ -1,6 +1,7 @@
 package common
 
 import (
+	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/k8sutil"
 	appsv1 "k8s.io/api/apps/v1"
 	autoscalev2beta1 "k8s.io/api/autoscaling/v2beta1"
@@ -53,8 +54,58 @@ func ComponentAffinity(ns string, labels map[string]string) *corev1.Affinity {
 	}
 }
 
+func KubeAPIServerAffinity(ns, clusterID string, labels map[string]string) *corev1.Affinity {
+	return &corev1.Affinity{
+		PodAntiAffinity: &corev1.PodAntiAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: []corev1.PodAffinityTerm{
+				{
+					LabelSelector: &metav1.LabelSelector{
+						MatchLabels: labels,
+					},
+					Namespaces:  []string{ns},
+					TopologyKey: "kubernetes.io/hostname",
+				},
+			},
+		},
+		NodeAffinity: &corev1.NodeAffinity{
+			RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+				NodeSelectorTerms: []corev1.NodeSelectorTerm{
+					{
+						MatchExpressions: []corev1.NodeSelectorRequirement{
+							{
+								Key:      constants.ManagedNodeLabelsKey,
+								Operator: corev1.NodeSelectorOpIn,
+								Values:   []string{clusterID},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+}
+
 func ComponentTolerations() []corev1.Toleration {
 	return []corev1.Toleration{
+		{
+			Operator: corev1.TolerationOpExists,
+			Effect:   corev1.TaintEffectNoSchedule,
+		},
+		{
+			Operator: corev1.TolerationOpExists,
+			Effect:   corev1.TaintEffectNoExecute,
+		},
+	}
+}
+
+func KubeAPIServerTolerations(clusterID string) []corev1.Toleration {
+	return []corev1.Toleration{
+		{
+			Key:      constants.ManagedNodeLabelsKey,
+			Operator: corev1.TolerationOpEqual,
+			Value:    clusterID,
+			Effect:   corev1.TaintEffectNoExecute,
+		},
 		{
 			Operator: corev1.TolerationOpExists,
 			Effect:   corev1.TaintEffectNoSchedule,

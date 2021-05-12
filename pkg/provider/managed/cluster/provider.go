@@ -49,11 +49,11 @@ func NewProvider(mgr *clusterprovider.CpManager, cfg *config.Config) (*Provider,
 			p.EnsureKubeMisc,
 			p.EnsureKubeMaster,
 
-			p.EnsureExtKubeconfig,
+			p.EnsureKubeconfig,
 			p.EnsurePostInstallHook,
 		},
 		UpdateHandlers: []clusterprovider.Handler{
-			p.EnsureExtKubeconfig,
+			p.EnsureKubeconfig,
 			p.EnsureKubeMaster,
 			p.EnsureAddons,
 			p.EnsureCni,

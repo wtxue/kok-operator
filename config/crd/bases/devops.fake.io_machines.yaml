@@ -74,6 +74,10 @@ spec:
                   description: FinalizerName is the name identifying a finalizer during cluster lifecycle.
                   type: string
                 type: array
+              kubeletExtraArgs:
+                additionalProperties:
+                  type: string
+                type: object
               machine:
                 description: ClusterMachine is the master machine definition of cluster.
                 properties:

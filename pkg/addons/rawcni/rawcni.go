@@ -15,7 +15,6 @@ import (
 	"github.com/wtxue/kok-operator/pkg/util/template"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/klog/v2"
 )
 
 const (
@@ -118,24 +117,22 @@ func ApplyEth(s ssh.Interface, ctx *common.ClusterContext) error {
 	}
 
 	if exist, _ := s.Exist(Cni0CfgPath); exist {
-		klog.Warningf("node: %s file: %s always exist", s.HostIP(), Cni0CfgPath)
+		ctx.Info("exist", "node", s.HostIP(), "file", Cni0CfgPath)
 		return nil
 	}
 
 	if exist, _ := s.Exist(Eth1CfgPath); !exist {
-		klog.Warningf("node: %s file: %s not exist", s.HostIP(), Eth1CfgPath)
+		ctx.Info("not exist", "node", s.HostIP(), "file", Eth1CfgPath)
 		return nil
 	}
 
-	klog.Infof("node: %s start exec init eth ... ", s.HostIP())
 	cmd := fmt.Sprintf("chmod a+x %s && %s", constants.SystemInitCniFile, constants.SystemInitCniFile)
 	exit, err := s.ExecStream(cmd, os.Stdout, os.Stderr)
 	if err != nil {
-		klog.Errorf("%q %+v", exit, err)
+		ctx.Error(err, "exit", "exit code", exit)
 		return errors.Wrapf(err, "node: %s exec cmd: %s", s.HostIP(), cmd)
 	}
 
-	klog.Infof("node: %s restart network", s.HostIP())
 	_, _ = s.CombinedOutput("systemctl restart network")
 	return nil
 }
@@ -144,25 +141,24 @@ func ApplyCniCfg(s ssh.Interface, ctx *common.ClusterContext) error {
 	cfgMap := &corev1.ConfigMap{}
 	err := ctx.Client.Get(context.TODO(), types.NamespacedName{Namespace: ctx.Cluster.Namespace, Name: CniHostLocalConfig}, cfgMap)
 	if err != nil {
-		klog.Warningf("cluster: %s get cni cfgMap err: %v", ctx.Cluster.Name, err)
+		ctx.Error(err, "get cni cfgMap")
 		return nil
 	}
 
 	var objDate string
 	var ok bool
 	if objDate, ok = cfgMap.Data[s.HostIP()]; !ok {
-		klog.Warningf("cluster: %s can't find node: %s cni config ", ctx.Cluster.Name, s.HostIP())
+		ctx.Info("can't find cni config", "node", s.HostIP())
 		return nil
 	}
 
 	opt := &Option{}
 	jerr := json.Unmarshal([]byte(objDate), &opt)
 	if jerr != nil {
-		klog.Warningf("node: %s failed to Unmarshal cni cfg, err: %s", s.HostIP(), jerr)
+		ctx.Error(jerr, "failed to Unmarshal cni cfg", "node", s.HostIP())
 		return nil
 	}
 
-	klog.Infof("node: %s cni cfg: %v", s.HostIP(), opt)
 	localByte, err := template.ParseString(hostLocalTemplate, opt)
 	if err != nil {
 		return err

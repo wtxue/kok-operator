@@ -6,7 +6,7 @@ import (
 
 const (
 	ComponentNameCrd = "crds"
-	CreatedByLabel   = "k8s.io/created-by"
+	CreatedByLabel   = "fake.io/created-by"
 	CreatedBy        = "operator"
 
 	KubeApiServer         = "kube-apiserver"
@@ -15,22 +15,21 @@ const (
 	KubeApiServerCerts    = "kube-apiserver-certs"
 	KubeApiServerConfig   = "kube-apiserver-config"
 	KubeApiServerAudit    = "kube-apiserver-audit"
-	KubeMasterManifests   = "kube-master-manifests"
 )
 
 const (
-	ClusterAnnoApplySep      = "k8s.io/apply.step"
-	ClusterPhaseRestore      = "k8s.io/step.restore"
-	ClusterApiSvcType        = "k8s.io/apiserver.type"
-	ClusterApiSvcVip         = "k8s.io/apiserver.vip"
-	ClusterAnnoLocalDebugDir = "k8s.io/local.dir"
+	ClusterUpdateStep    = "fake.io/update.step"
+	ClusterRestoreStep   = "fake.io/restore.step"
+	ClusterApiserverType = "fake.io/apiserver.type"
+	ClusterApiserverVip  = "fake.io/apiserver.vip"
+	ClusterDebugLocalDir = "fake.io/debug.localdir"
 )
 
 var CtrlLabels = map[string]string{
 	"createBy": "controller",
 }
 
-func GetAnnotationKey(annotation map[string]string, key string) string {
+func GetMapKey(annotation map[string]string, key string) string {
 	if k, ok := annotation[key]; ok {
 		return k
 	}

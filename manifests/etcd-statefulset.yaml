@@ -63,7 +63,7 @@ spec:
     - metadata:
         name: datadir
       spec:
-        #        storageClassName: local-storage
+#        storageClassName: local-storage
         accessModes:
           - "ReadWriteOnce"
         resources:

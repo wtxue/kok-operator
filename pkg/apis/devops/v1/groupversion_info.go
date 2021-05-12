@@ -20,6 +20,7 @@ var (
 )
 
 func init() {
+	SchemeBuilder.Register(&Cluster{}, &ClusterList{})
 	SchemeBuilder.Register(&Machine{}, &MachineList{})
 	SchemeBuilder.Register(&ClusterCredential{}, &ClusterCredentialList{})
 }

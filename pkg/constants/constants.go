@@ -90,7 +90,7 @@ const (
 
 const (
 	// PauseVersion indicates the default pause image version for kubeadm
-	PauseVersion = "3.2"
+	PauseVersion = "3.5"
 
 	// CoreDNSConfigMap specifies in what ConfigMap in the kube-system namespace the CoreDNS config should be stored
 	CoreDNSConfigMap = "coredns"
@@ -102,7 +102,7 @@ const (
 	CoreDNSImageName = "coredns"
 
 	// CoreDNSVersion is the version of CoreDNS to be deployed if it is used
-	CoreDNSVersion = "1.6.7"
+	CoreDNSVersion = "1.7.0"
 
 	KubeProxyImageName = "kube-proxy"
 

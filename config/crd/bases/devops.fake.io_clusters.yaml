@@ -64,7 +64,7 @@ spec:
                   type: string
                 type: object
               criType:
-                description: RuntimeType defines the runtime of Container.
+                description: CRIType defines the runtime of Container.
                 type: string
               displayName:
                 type: string
@@ -92,10 +92,7 @@ spec:
                         description: KeyFile is an SSL key file used to secure etcd communication. Required if using a TLS connection.
                         type: string
                     required:
-                    - caFile
-                    - certFile
                     - endpoints
-                    - keyFile
                     type: object
                   local:
                     description: Local provides configuration knobs for configuring the local etcd instance Local and External are mutually exclusive
@@ -118,8 +115,6 @@ spec:
                         items:
                           type: string
                         type: array
-                    required:
-                    - dataDir
                     type: object
                 type: object
               features:
@@ -272,7 +267,7 @@ spec:
                 description: NetworkType defines the network type of cluster.
                 type: string
               osType:
-                description: OperatingSystem defines the operating of system.
+                description: OSType defines the operating of system.
                 type: string
               pause:
                 description: Pause

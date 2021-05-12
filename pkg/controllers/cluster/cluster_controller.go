@@ -154,24 +154,29 @@ func (r *clusterReconciler) addClusterCheck(ctx *common.ClusterContext) error {
 		return nil
 	}
 
-	if extKubeconfig, ok := ctx.Credential.ExtData[pkiutil.ExternalAdminKubeConfigFileName]; ok {
-		ctx.Info("add manager extKubeconfig", "file", pkiutil.ExternalAdminKubeConfigFileName)
-		_, err := r.GManager.AddNewClusters(ctx.Cluster.Name, extKubeconfig)
+	adminKey := pkiutil.OnKubeAdminKubeConfigFileName
+	if !r.GManager.EnableOnKube {
+		adminKey = pkiutil.ExternalAdminKubeConfigFileName
+	}
+
+	if extKubeconfig, ok := ctx.Credential.ExtData[adminKey]; ok {
+		_, err := r.GManager.AddNewClusters(ctx.GetClusterID(), extKubeconfig)
 		if err != nil {
-			ctx.Error(err, "add new clusters manager cache")
+			ctx.Error(err, "add new clusters manager cache", "file", adminKey)
 			return nil
 		}
-		ctx.Info("add cluster manager successfully")
+
+		ctx.Info("add cluster manager successfully", "file", adminKey)
 		r.ClusterStarted[ctx.Cluster.Name] = true
 		return nil
 	}
 
-	ctx.Info("can't find extKubeconfig", "file", pkiutil.ExternalAdminKubeConfigFileName)
+	ctx.Info("can't find kubeconfig", "file", adminKey)
 	return nil
 }
 
 func (r *clusterReconciler) reconcile(ctx *common.ClusterContext) error {
-	phaseRestore := constants.GetAnnotationKey(ctx.Cluster.Annotations, constants.ClusterPhaseRestore)
+	phaseRestore := constants.GetMapKey(ctx.Cluster.Annotations, constants.ClusterRestoreStep)
 	if len(phaseRestore) > 0 {
 		ctx.Info("#####  restore phase", "step", phaseRestore)
 		conditions := make([]devopsv1.ClusterCondition, 0)
@@ -191,7 +196,7 @@ func (r *clusterReconciler) reconcile(ctx *common.ClusterContext) error {
 
 		objBak := &devopsv1.Cluster{}
 		r.Client.Get(ctx.Ctx, ctx.Key, objBak)
-		delete(objBak.Annotations, constants.ClusterPhaseRestore)
+		delete(objBak.Annotations, constants.ClusterRestoreStep)
 		err = r.Client.Update(ctx.Ctx, objBak)
 		if err != nil {
 			return err
@@ -212,8 +217,8 @@ func (r *clusterReconciler) reconcile(ctx *common.ClusterContext) error {
 	case devopsv1.ClusterInitializing:
 		r.onCreate(ctx, p)
 	case devopsv1.ClusterRunning:
-		r.addClusterCheck(ctx)
 		r.onUpdate(ctx, p)
+		r.addClusterCheck(ctx)
 	default:
 		ctx.Info("unknown cluster status", "phase", ctx.Cluster.Status.Phase)
 		return fmt.Errorf("no handler for status %q", ctx.Cluster.Status.Phase)

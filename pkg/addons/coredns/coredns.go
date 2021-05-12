@@ -229,7 +229,7 @@ func BuildCoreDNSAddon(cfg *config.Config, ctx *common.ClusterContext) ([]client
 		Replicas                                    string
 	}{
 		DeploymentName:       constants.CoreDNSDeploymentName,
-		Image:                constants.GetGenericImage(cfg.Registry.Prefix, constants.CoreDNSImageName, constants.CoreDNSVersion),
+		Image:                constants.GetGenericImage(cfg.CustomRegistry, constants.CoreDNSImageName, constants.CoreDNSVersion),
 		ControlPlaneTaintKey: constants.LabelNodeRoleMaster,
 		Replicas:             fmt.Sprintf("%d", coreDNSReplicas),
 	})

@@ -203,22 +203,28 @@ func GetIndexedIP(subnet string, index int) (net.IP, error) {
 }
 
 // GetAPIServerCertSANs returns extra APIServer's certSANs need to pass kubeadm
-func GetAPIServerCertSANs(c *devopsv1.Cluster) []string {
+func GetAPIServerCertSANs(cls *devopsv1.Cluster) []string {
 	certSANs := sets.NewString("127.0.0.1", "localhost")
-	certSANs = certSANs.Insert(c.Spec.PublicAlternativeNames...)
-	if c.Spec.Features.HA != nil {
-		if c.Spec.Features.HA.KubeHA != nil {
-			certSANs.Insert(c.Spec.Features.HA.KubeHA.VIP)
+
+	if cls.Spec.Features.HA != nil {
+		if cls.Spec.Features.HA.KubeHA != nil {
+			certSANs.Insert(cls.Spec.Features.HA.KubeHA.VIP)
 		}
-		if c.Spec.Features.HA.ThirdPartyHA != nil {
-			certSANs.Insert(c.Spec.Features.HA.ThirdPartyHA.VIP)
+		if cls.Spec.Features.HA.ThirdPartyHA != nil {
+			certSANs.Insert(cls.Spec.Features.HA.ThirdPartyHA.VIP)
 		}
 	}
 
-	for _, address := range c.Status.Addresses {
+	for _, address := range cls.Status.Addresses {
 		certSANs.Insert(address.Host)
 	}
 
-	certSANs.Insert(constants.GenComponentName(c.GetName(), constants.KubeApiServer))
+	svcName := constants.GenComponentName(cls.GetName(), constants.KubeApiServer)
+	certSANs.Insert(svcName)
+
+	svcNameWithNs := fmt.Sprintf("%s.%s", svcName, cls.GetNamespace())
+	certSANs.Insert(svcNameWithNs)
+
+	certSANs = certSANs.Insert(cls.Spec.PublicAlternativeNames...)
 	return certSANs.List()
 }

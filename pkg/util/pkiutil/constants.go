@@ -129,6 +129,7 @@ const (
 	// AdminKubeConfigFileName defines name for the kubeconfig aimed to be used by the superuser/admin of the cluster
 	AdminKubeConfigFileName         = "admin.conf"
 	ExternalAdminKubeConfigFileName = "external-admin.conf"
+	OnKubeAdminKubeConfigFileName   = "onkube-admin.conf"
 
 	// KubeletBootstrapKubeConfigFileName defines the file name for the kubeconfig that the kubelet will use to do
 	// the TLS bootstrap to get itself an unique credential

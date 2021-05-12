@@ -6,11 +6,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/wtxue/kok-operator/pkg/apis"
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/k8sutil"
+
+	"github.com/pkg/errors"
 	kubeletv1beta1 "k8s.io/kubelet/config/v1beta1"
 	kubeadmv1beta2 "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta2"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"

@@ -18,8 +18,7 @@ func New() *MpManager {
 }
 
 // Register makes a provider available by the provided name.
-// If Register is called twice with the same name or if provider is nil,
-// it panics.
+// If Register is called twice with the same name or if provider is nil, it panics.
 func (p *MpManager) Register(name string, provider Provider) {
 	p.Lock()
 	defer p.Unlock()

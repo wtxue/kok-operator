@@ -17,7 +17,7 @@ const ContainerdConfigTemplate = `
   [plugins."io.containerd.internal.v1.opt"]
     path = "/opt/containerd"
   [plugins."io.containerd.grpc.v1.cri"]
-    sandbox_image = {{ default "k8s.gcr.io/pause:3.2" .PauseImage }}
+    sandbox_image = {{ default "k8s.gcr.io/pause:3.5" .PauseImage }}
     [plugins."io.containerd.grpc.v1.cri".containerd]
       snapshotter = {{ default "overlayfs" .Snapshotter }}
 {{ if .PrivateRegistryConfig }}
@@ -39,7 +39,7 @@ type ContainerdConfig struct {
 func InstallCRI(ctx *common.ClusterContext, s ssh.Interface) error {
 	// dir := "bin/linux/" // local debug config dir
 	otherDir := "/k8s/bin/"
-	if dir := constants.GetAnnotationKey(ctx.Cluster.Annotations, constants.ClusterAnnoLocalDebugDir); len(dir) > 0 {
+	if dir := constants.GetMapKey(ctx.Cluster.Annotations, constants.ClusterDebugLocalDir); len(dir) > 0 {
 		otherDir = dir + otherDir
 	}
 

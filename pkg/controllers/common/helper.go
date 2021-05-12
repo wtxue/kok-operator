@@ -75,6 +75,10 @@ func (c *ClusterContext) GetAPIServerName() string {
 	return fmt.Sprintf("%s-%s", c.Cluster.GetName(), constants.KubeApiServer)
 }
 
+func (c *ClusterContext) GetOnKubeAPIServerName() string {
+	return fmt.Sprintf("%s-%s.%s", c.Cluster.GetName(), constants.KubeApiServer, c.GetNamespace())
+}
+
 func (c *ClusterContext) GetNamespace() string {
 	return c.Cluster.GetNamespace()
 }

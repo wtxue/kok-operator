@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -37,7 +38,7 @@ func Add(mgr manager.Manager, pMgr *gmanager.GManager) error {
 	r := &addonsReconciler{
 		Client: mgr.GetClient(),
 		Mgr:    mgr,
-		Log:    ctrl.Log.WithName("controller").WithName(controllerName),
+		Log:    logf.Log.WithName(controllerName),
 		Scheme: mgr.GetScheme(),
 	}
 

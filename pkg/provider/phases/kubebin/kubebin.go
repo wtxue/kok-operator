@@ -14,7 +14,7 @@ func Install(ctx *common.ClusterContext, s ssh.Interface) error {
 	// dir := "bin/linux/" // local debug config dir
 	k8sDir := fmt.Sprintf("/k8s-%s/bin/", ctx.Cluster.Spec.Version)
 	otherDir := "/k8s/bin/"
-	if dir := constants.GetAnnotationKey(ctx.Cluster.Annotations, constants.ClusterAnnoLocalDebugDir); len(dir) > 0 {
+	if dir := constants.GetMapKey(ctx.Cluster.Annotations, constants.ClusterDebugLocalDir); len(dir) > 0 {
 		k8sDir = dir + k8sDir
 		otherDir = dir + otherDir
 	}
@@ -93,7 +93,7 @@ func Install(ctx *common.ClusterContext, s ssh.Interface) error {
 	}
 	ctx.Info("exec successfully", "node", s.HostIP(), "cmd", cmd)
 
-	cmd = fmt.Sprintf("kubectl completion bash > /etc/bash_completion.d/kubectl")
+	cmd = fmt.Sprintf("echo 'source <(kubectl completion bash)' >>~/.bashrc && kubectl completion bash > /etc/bash_completion.d/kubectl")
 	_, err = s.CombinedOutput(cmd)
 	if err != nil {
 		return err

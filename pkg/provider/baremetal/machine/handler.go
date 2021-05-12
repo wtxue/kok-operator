@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
 	"github.com/wtxue/kok-operator/pkg/addons/rawcni"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
 	"github.com/wtxue/kok-operator/pkg/constants"
@@ -20,6 +19,8 @@ import (
 	"github.com/wtxue/kok-operator/pkg/provider/preflight"
 	"github.com/wtxue/kok-operator/pkg/util/apiclient"
 	"github.com/wtxue/kok-operator/pkg/util/hosts"
+
+	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -118,8 +119,8 @@ func (p *Provider) EnsurePreflight(ctx *common.ClusterContext, machine *devopsv1
 
 func (p *Provider) EnsureRegistryHosts(ctx *common.ClusterContext, machine *devopsv1.Machine) error {
 	var vip string
-	vipNodeKey := constants.GetAnnotationKey(machine.Annotations, constants.ClusterApiSvcVip)
-	vipMasterKey := constants.GetAnnotationKey(ctx.Cluster.Annotations, constants.ClusterApiSvcVip)
+	vipNodeKey := constants.GetMapKey(machine.Annotations, constants.ClusterApiserverVip)
+	vipMasterKey := constants.GetMapKey(ctx.Cluster.Annotations, constants.ClusterApiserverVip)
 	if vipMasterKey != "" {
 		vip = vipMasterKey
 	} else {
@@ -156,7 +157,7 @@ func (p *Provider) EnsureRegistryHosts(ctx *common.ClusterContext, machine *devo
 		machine.Annotations = map[string]string{}
 	}
 
-	machine.Annotations[constants.ClusterApiSvcVip] = vip
+	machine.Annotations[constants.ClusterApiserverVip] = vip
 	err = ctx.Client.Update(context.TODO(), machine)
 	if err != nil {
 		return err
