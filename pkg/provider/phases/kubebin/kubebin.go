@@ -75,7 +75,7 @@ func Install(ctx *common.ClusterContext, s ssh.Interface) error {
 	}
 
 	ctx.Info("write kubelet systemd service run config", "node", s.HostIP(), "path", constants.KubeletServiceRunConfig)
-	err = s.WriteFile(strings.NewReader(constants.KubeletServiceRunConfig), constants.KubeletServiceRunConfig)
+	err = s.WriteFile(strings.NewReader(constants.KubeletServiceRunConfig), constants.KubeletServiceRunConfigPath)
 	if err != nil {
 		return err
 	}

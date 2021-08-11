@@ -232,8 +232,7 @@ func bigForIP(ip net.IP) *big.Int {
 	return big.NewInt(0).SetBytes(b)
 }
 
-// addIPOffset adds the provided integer offset to a base big.Int representing a
-// net.IP
+// addIPOffset adds the provided integer offset to a base big.Int representing a net.IP
 func addIPOffset(base *big.Int, offset int) net.IP {
 	return net.IP(big.NewInt(0).Add(base, big.NewInt(int64(offset))).Bytes())
 }
