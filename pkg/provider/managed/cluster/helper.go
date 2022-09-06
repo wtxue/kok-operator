@@ -256,7 +256,7 @@ func (r *Reconciler) apiServerDeployment() client.Object {
 			},
 		},
 		ReadinessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path:   "/readyz",
 					Host:   "127.0.0.1",
@@ -272,7 +272,7 @@ func (r *Reconciler) apiServerDeployment() client.Object {
 			SuccessThreshold:    1,
 		},
 		LivenessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path:   "/livez",
 					Host:   "127.0.0.1",
@@ -288,7 +288,7 @@ func (r *Reconciler) apiServerDeployment() client.Object {
 			SuccessThreshold:    1,
 		},
 		StartupProbe: &corev1.Probe{
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path:   "/livez",
 					Host:   "127.0.0.1",
@@ -463,7 +463,7 @@ func (r *Reconciler) controllerManagerDeployment() client.Object {
 			},
 		},
 		LivenessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path:   "/healthz",
 					Port:   intstr.FromString(healthPortName),
@@ -569,7 +569,7 @@ func (r *Reconciler) schedulerDeployment() client.Object {
 			},
 		},
 		LivenessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
+			ProbeHandler: corev1.ProbeHandler{
 				HTTPGet: &corev1.HTTPGetAction{
 					Path:   "/healthz",
 					Port:   intstr.FromString(healthPortName),
