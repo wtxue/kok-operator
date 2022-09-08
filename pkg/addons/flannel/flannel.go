@@ -13,81 +13,37 @@ import (
 const (
 	flannelTemplate = `
 ---
-apiVersion: policy/v1beta1
-kind: PodSecurityPolicy
+kind: Namespace
+apiVersion: v1
 metadata:
-  name: psp.flannel.unprivileged
-  annotations:
-    seccomp.security.alpha.kubernetes.io/allowedProfileNames: docker/default
-    seccomp.security.alpha.kubernetes.io/defaultProfileName: docker/default
-    apparmor.security.beta.kubernetes.io/allowedProfileNames: runtime/default
-    apparmor.security.beta.kubernetes.io/defaultProfileName: runtime/default
-spec:
-  privileged: false
-  volumes:
-    - configMap
-    - secret
-    - emptyDir
-    - hostPath
-  allowedHostPaths:
-    - pathPrefix: "/etc/cni/net.d"
-    - pathPrefix: "/etc/kube-flannel"
-    - pathPrefix: "/run/flannel"
-  readOnlyRootFilesystem: false
-  # Users and groups
-  runAsUser:
-    rule: RunAsAny
-  supplementalGroups:
-    rule: RunAsAny
-  fsGroup:
-    rule: RunAsAny
-  # Privilege Escalation
-  allowPrivilegeEscalation: false
-  defaultAllowPrivilegeEscalation: false
-  # Capabilities
-  allowedCapabilities: ['NET_ADMIN', 'NET_RAW']
-  defaultAddCapabilities: []
-  requiredDropCapabilities: []
-  # Host namespaces
-  hostPID: false
-  hostIPC: false
-  hostNetwork: true
-  hostPorts:
-    - min: 0
-      max: 65535
-  # SELinux
-  seLinux:
-    # SELinux is unused in CaaSP
-    rule: 'RunAsAny'
+  name: kube-flannel
+  labels:
+    pod-security.kubernetes.io/enforce: privileged
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: flannel
 rules:
-  - apiGroups: ['extensions']
-    resources: ['podsecuritypolicies']
-    verbs: ['use']
-    resourceNames: ['psp.flannel.unprivileged']
-  - apiGroups:
-      - ""
-    resources:
-      - pods
-    verbs:
-      - get
-  - apiGroups:
-      - ""
-    resources:
-      - nodes
-    verbs:
-      - list
-      - watch
-  - apiGroups:
-      - ""
-    resources:
-      - nodes/status
-    verbs:
-      - patch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - nodes/status
+  verbs:
+  - patch
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
@@ -98,21 +54,21 @@ roleRef:
   kind: ClusterRole
   name: flannel
 subjects:
-  - kind: ServiceAccount
-    name: flannel
-    namespace: kube-system
+- kind: ServiceAccount
+  name: flannel
+  namespace: kube-flannel
 ---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: flannel
-  namespace: kube-system
+  namespace: kube-flannel
 ---
 kind: ConfigMap
 apiVersion: v1
 metadata:
   name: kube-flannel-cfg
-  namespace: kube-system
+  namespace: kube-flannel
   labels:
     tier: node
     app: flannel
@@ -141,7 +97,7 @@ data:
     {
       "Network": "{{ default "10.244.0.0/16" .ClusterPodCidr }}",
       "Backend": {
-        "Type": "{{ default "vxlan" .BackendType }}"
+        "Type": "{{ default "alloc" .BackendType }}"
       }
     }
 ---
@@ -149,7 +105,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: kube-flannel-ds
-  namespace: kube-system
+  namespace: kube-flannel
   labels:
     tier: node
     app: flannel
@@ -167,77 +123,96 @@ spec:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
-              - matchExpressions:
-                  - key: kubernetes.io/os
-                    operator: In
-                    values:
-                      - linux
+            - matchExpressions:
+              - key: kubernetes.io/os
+                operator: In
+                values:
+                - linux
       hostNetwork: true
       priorityClassName: system-node-critical
       tolerations:
-        - key: node.kubernetes.io/not-ready
-          operator: Exists
-          effect: NoSchedule
-        - operator: Exists
-          effect: NoSchedule
+      - operator: Exists
+        effect: NoSchedule
       serviceAccountName: flannel
       initContainers:
-        - name: install-cni
-          image: "{{ default "quay.io/coreos/flannel:v0.13.0" .ImageName }}"
-          command:
-            - cp
-          args:
-            - -f
-            - /etc/kube-flannel/cni-conf.json
-            - /etc/cni/net.d/10-flannel.conflist
-          volumeMounts:
-            - name: cni
-              mountPath: /etc/cni/net.d
-            - name: flannel-cfg
-              mountPath: /etc/kube-flannel/
-      containers:
-        - name: kube-flannel
-          image: "{{ default "quay.io/coreos/flannel:v0.13.0" .ImageName }}"
-          command:
-            - /opt/bin/flanneld
-          args:
-            - --ip-masq
-            - --kube-subnet-mgr
-          resources:
-            requests:
-              cpu: "100m"
-              memory: "50Mi"
-            limits:
-              cpu: "100m"
-              memory: "50Mi"
-          securityContext:
-            privileged: false
-            capabilities:
-              add: ["NET_ADMIN", "NET_RAW"]
-          env:
-            - name: POD_NAME
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.name
-            - name: POD_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
-          volumeMounts:
-            - name: run
-              mountPath: /run/flannel
-            - name: flannel-cfg
-              mountPath: /etc/kube-flannel/
-      volumes:
-        - name: run
-          hostPath:
-            path: /run/flannel
+      - name: install-cni-plugin
+        image: "{{ .CNIImageName }}"
+        command:
+        - cp
+        args:
+        - -f
+        - /flannel
+        - /opt/cni/bin/flannel
+        volumeMounts:
+        - name: cni-plugin
+          mountPath: /opt/cni/bin
+      - name: install-cni
+        image: "{{ .ImageName }}"
+        command:
+        - cp
+        args:
+        - -f
+        - /etc/kube-flannel/cni-conf.json
+        - /etc/cni/net.d/10-flannel.conflist
+        volumeMounts:
         - name: cni
-          hostPath:
-            path: /etc/cni/net.d
+          mountPath: /etc/cni/net.d
         - name: flannel-cfg
-          configMap:
-            name: kube-flannel-cfg
+          mountPath: /etc/kube-flannel/
+      containers:
+      - name: kube-flannel
+        image: "{{ .ImageName }}"
+        command:
+        - /opt/bin/flanneld
+        args:
+        - --ip-masq
+        - --kube-subnet-mgr
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "50Mi"
+          limits:
+            cpu: "100m"
+            memory: "50Mi"
+        securityContext:
+          privileged: false
+          capabilities:
+            add: ["NET_ADMIN", "NET_RAW"]
+        env:
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: EVENT_QUEUE_DEPTH
+          value: "5000"
+        volumeMounts:
+        - name: run
+          mountPath: /run/flannel
+        - name: flannel-cfg
+          mountPath: /etc/kube-flannel/
+        - name: xtables-lock
+          mountPath: /run/xtables.lock
+      volumes:
+      - name: run
+        hostPath:
+          path: /run/flannel
+      - name: cni-plugin
+        hostPath:
+          path: /opt/cni/bin
+      - name: cni
+        hostPath:
+          path: /etc/cni/net.d
+      - name: flannel-cfg
+        configMap:
+          name: kube-flannel-cfg
+      - name: xtables-lock
+        hostPath:
+          path: /run/xtables.lock
+          type: FileOrCreate
 `
 )
 
@@ -245,13 +220,15 @@ type Option struct {
 	ClusterPodCidr string
 	BackendType    string
 	ImageName      string
+	CNIImageName   string
 }
 
 func BuildFlannelAddon(cfg *config.Config, ctx *common.ClusterContext) ([]client.Object, error) {
 	opt := &Option{
 		ClusterPodCidr: ctx.Cluster.Spec.ClusterCIDR,
 		BackendType:    "vxlan",
-		ImageName:      "",
+		ImageName:      cfg.KubeAllImageFullName("flannel", "v0.19.2"),
+		CNIImageName:   cfg.KubeAllImageFullName("cniplugin", "v1.1.0"),
 	}
 
 	data, err := template.ParseString(flannelTemplate, opt)

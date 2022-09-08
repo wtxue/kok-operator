@@ -19,14 +19,15 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	kubeproxyv1alpha1 "k8s.io/kube-proxy/config/v1alpha1"
 	kubeletv1beta1 "k8s.io/kubelet/config/v1beta1"
-	kubeadmv1beta2 "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta2"
+	bootstraptokenv1 "k8s.io/kubernetes/cmd/kubeadm/app/apis/bootstraptoken/v1"
+	kubeadmv1beta3 "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta3"
 	utilsnet "k8s.io/utils/net"
 )
 
 type Config struct {
-	InitConfiguration      *kubeadmv1beta2.InitConfiguration
-	ClusterConfiguration   *kubeadmv1beta2.ClusterConfiguration
-	JoinConfiguration      *kubeadmv1beta2.JoinConfiguration
+	InitConfiguration      *kubeadmv1beta3.InitConfiguration
+	ClusterConfiguration   *kubeadmv1beta3.ClusterConfiguration
+	JoinConfiguration      *kubeadmv1beta3.JoinConfiguration
 	KubeletConfiguration   *kubeletv1beta1.KubeletConfiguration
 	KubeProxyConfiguration *kubeproxyv1alpha1.KubeProxyConfiguration
 }
@@ -67,16 +68,16 @@ func GetKubeadmConfig(ctx *common.ClusterContext, cfg *config.Config, controlPla
 	return &Config{
 		InitConfiguration:      GetInitConfiguration(ctx, cfg),
 		ClusterConfiguration:   GetClusterConfiguration(ctx, cfg, controlPlaneEndpoint),
-		KubeletConfiguration:   GetKubeletConfiguration(ctx),
+		KubeletConfiguration:   GetFullKubeletConfiguration(ctx),
 		KubeProxyConfiguration: GetKubeProxyConfiguration(ctx),
 	}
 }
 
-func GetInitConfiguration(ctx *common.ClusterContext, cfg *config.Config) *kubeadmv1beta2.InitConfiguration {
-	token, _ := kubeadmv1beta2.NewBootstrapTokenString(*ctx.Credential.BootstrapToken)
+func GetInitConfiguration(ctx *common.ClusterContext, cfg *config.Config) *kubeadmv1beta3.InitConfiguration {
+	token, _ := bootstraptokenv1.NewBootstrapTokenString(*ctx.Credential.BootstrapToken)
 
-	initCfg := &kubeadmv1beta2.InitConfiguration{
-		BootstrapTokens: []kubeadmv1beta2.BootstrapToken{
+	initCfg := &kubeadmv1beta3.InitConfiguration{
+		BootstrapTokens: []bootstraptokenv1.BootstrapToken{
 			{
 				Token:       token,
 				Description: "kubeadm bootstrap token",
@@ -91,11 +92,11 @@ func GetInitConfiguration(ctx *common.ClusterContext, cfg *config.Config) *kubea
 	utilruntime.Must(mergo.Merge(&kubeletExtraArgs, cfg.Kubelet.ExtraArgs))
 
 	if len(ctx.Cluster.Spec.Machines) > 0 {
-		initCfg.NodeRegistration = kubeadmv1beta2.NodeRegistrationOptions{
+		initCfg.NodeRegistration = kubeadmv1beta3.NodeRegistrationOptions{
 			Name: ctx.Cluster.Spec.Machines[0].IP,
 		}
 
-		initCfg.LocalAPIEndpoint = kubeadmv1beta2.APIEndpoint{
+		initCfg.LocalAPIEndpoint = kubeadmv1beta3.APIEndpoint{
 			AdvertiseAddress: ctx.Cluster.Spec.Machines[0].IP,
 			BindPort:         6443,
 		}
@@ -108,50 +109,50 @@ func GetInitConfiguration(ctx *common.ClusterContext, cfg *config.Config) *kubea
 	return initCfg
 }
 
-func GetClusterConfiguration(ctx *common.ClusterContext, cfg *config.Config, controlPlaneEndpoint string) *kubeadmv1beta2.ClusterConfiguration {
-	kubernetesVolume := kubeadmv1beta2.HostPathMount{
+func GetClusterConfiguration(ctx *common.ClusterContext, cfg *config.Config, controlPlaneEndpoint string) *kubeadmv1beta3.ClusterConfiguration {
+	ctx.Logger.Info("GetClusterConfiguration", "CustomRegistry", cfg.CustomRegistry)
+
+	kubernetesVolume := kubeadmv1beta3.HostPathMount{
 		Name:      "vol-dir-0",
 		HostPath:  "/etc/kubernetes",
 		MountPath: "/etc/kubernetes",
 	}
 
-	auditVolume := kubeadmv1beta2.HostPathMount{
+	auditVolume := kubeadmv1beta3.HostPathMount{
 		Name:      "audit-dir-0",
 		HostPath:  "/var/log/kubernetes",
 		MountPath: "/var/log/kubernetes",
 		PathType:  corev1.HostPathDirectoryOrCreate,
 	}
 
-	kubeadmCfg := &kubeadmv1beta2.ClusterConfiguration{
+	kubeadmCfg := &kubeadmv1beta3.ClusterConfiguration{
 		CertificatesDir: constants.CertificatesDir,
-		Networking: kubeadmv1beta2.Networking{
+		Networking: kubeadmv1beta3.Networking{
 			DNSDomain:     ctx.Cluster.Spec.DNSDomain,
 			ServiceSubnet: ctx.Cluster.Status.ServiceCIDR,
 		},
 		KubernetesVersion:    ctx.Cluster.Spec.Version,
 		ControlPlaneEndpoint: controlPlaneEndpoint,
-		APIServer: kubeadmv1beta2.APIServer{
-			ControlPlaneComponent: kubeadmv1beta2.ControlPlaneComponent{
+		APIServer: kubeadmv1beta3.APIServer{
+			ControlPlaneComponent: kubeadmv1beta3.ControlPlaneComponent{
 				ExtraArgs:    GetAPIServerExtraArgs(ctx),
-				ExtraVolumes: []kubeadmv1beta2.HostPathMount{kubernetesVolume, auditVolume},
+				ExtraVolumes: []kubeadmv1beta3.HostPathMount{kubernetesVolume, auditVolume},
 			},
 			CertSANs: k8sutil.GetAPIServerCertSANs(ctx.Cluster),
 		},
-		ControllerManager: kubeadmv1beta2.ControlPlaneComponent{
+		ControllerManager: kubeadmv1beta3.ControlPlaneComponent{
 			ExtraArgs:    GetControllerManagerExtraArgs(ctx),
-			ExtraVolumes: []kubeadmv1beta2.HostPathMount{kubernetesVolume},
+			ExtraVolumes: []kubeadmv1beta3.HostPathMount{kubernetesVolume},
 		},
-		Scheduler: kubeadmv1beta2.ControlPlaneComponent{
+		Scheduler: kubeadmv1beta3.ControlPlaneComponent{
 			ExtraArgs:    GetSchedulerExtraArgs(ctx),
-			ExtraVolumes: []kubeadmv1beta2.HostPathMount{kubernetesVolume},
+			ExtraVolumes: []kubeadmv1beta3.HostPathMount{kubernetesVolume},
 		},
-		DNS: kubeadmv1beta2.DNS{
-			Type: kubeadmv1beta2.CoreDNS,
+		DNS: kubeadmv1beta3.DNS{
+			// Type: kubeadmv1beta3.CoreDNS,
 		},
-		ImageRepository: cfg.Registry.Prefix,
+		ImageRepository: cfg.CustomRegistry,
 		ClusterName:     ctx.Cluster.Name,
-		FeatureGates: map[string]bool{
-			"IPv6DualStack": ctx.Cluster.Spec.Features.IPv6DualStack},
 	}
 
 	return kubeadmCfg
@@ -179,22 +180,9 @@ func GetKubeProxyConfiguration(ctx *common.ClusterContext) *kubeproxyv1alpha1.Ku
 	return c
 }
 
-func GetKubeletConfiguration(ctx *common.ClusterContext) *kubeletv1beta1.KubeletConfiguration {
-	return &kubeletv1beta1.KubeletConfiguration{
-		KubeReserved: map[string]string{
-			"cpu":    "100m",
-			"memory": "500Mi",
-		},
-		SystemReserved: map[string]string{
-			"cpu":    "100m",
-			"memory": "500Mi",
-		},
-		MaxPods: *ctx.Cluster.Spec.Properties.MaxNodePodNum,
-	}
-}
-
 func GetFullKubeletConfiguration(ctx *common.ClusterContext) *kubeletv1beta1.KubeletConfiguration {
 	containerLogMaxFiles := int32(5)
+
 	return &kubeletv1beta1.KubeletConfiguration{
 		StaticPodPath: constants.KubeletPodManifestDir,
 		Authentication: kubeletv1beta1.KubeletAuthentication{

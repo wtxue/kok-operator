@@ -110,7 +110,7 @@ func (s *SSH) CombinedOutput(cmd string) ([]byte, error) {
 		return nil, err
 	}
 	if exit != 0 {
-		return nil, fmt.Errorf("exit error %d:%s", exit, stderr)
+		return nil, fmt.Errorf("cmd: %s exit error %d:%s", cmd, exit, stderr)
 	}
 	return []byte(stdout), nil
 }

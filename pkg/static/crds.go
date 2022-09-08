@@ -3,17 +3,21 @@ package static
 import (
 	"bufio"
 	"bytes"
+	"embed"
+	"fmt"
 	"io"
 	"strings"
 
 	"github.com/wtxue/kok-operator/pkg/constants"
 	"github.com/wtxue/kok-operator/pkg/k8sclient"
-	crdgenerated "github.com/wtxue/kok-operator/pkg/static/crds/generated"
 
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/json"
 )
+
+//go:embed crds/*
+var fcrds embed.FS
 
 func load(f io.Reader) ([]*apiextensionsv1.CustomResourceDefinition, error) {
 	var b bytes.Buffer
@@ -69,22 +73,22 @@ func load(f io.Reader) ([]*apiextensionsv1.CustomResourceDefinition, error) {
 
 func LoadCRDs() ([]*apiextensionsv1.CustomResourceDefinition, error) {
 	crds := make([]*apiextensionsv1.CustomResourceDefinition, 0)
-	dir, err := crdgenerated.CRDs.Open("/")
+	dirEntrys, err := fcrds.ReadDir("crds")
 	if err != nil {
-		return crds, err
+		return nil, err
 	}
 
-	dirFiles, err := dir.Readdir(-1)
-	if err != nil {
-		return crds, err
-	}
-	for _, file := range dirFiles {
-		f, err := crdgenerated.CRDs.Open(file.Name())
-		if err != nil {
-			return crds, err
+	for _, entry := range dirEntrys {
+		if entry.IsDir() {
+			continue
 		}
 
-		tmp, err := load(f)
+		rawByte, err := fcrds.ReadFile(fmt.Sprintf("crds/%s", entry.Name()))
+		if err != nil {
+			return nil, err
+		}
+
+		tmp, err := load(bytes.NewReader(rawByte))
 		if err != nil {
 			return crds, err
 		}

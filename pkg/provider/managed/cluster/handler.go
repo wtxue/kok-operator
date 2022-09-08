@@ -311,7 +311,7 @@ func (p *Provider) EnsureMetricsServer(ctx *common.ClusterContext) error {
 	if err != nil {
 		return err
 	}
-	objs, err := metricsserver.BuildMetricsServerAddon(ctx)
+	objs, err := metricsserver.BuildMetricsServerAddon(p.Cfg, ctx)
 	if err != nil {
 		return errors.Wrapf(err, "build metrics-server")
 	}

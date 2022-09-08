@@ -251,7 +251,7 @@ func (fcc FileContentCheck) Check() (warnings, errorList []error) {
 	}
 
 	if !bytes.Equal(data[:len(fcc.Content)], fcc.Content) {
-		return nil, []error{errors.Errorf("%s contents are not set to %s", fcc.Path, fcc.Content)}
+		return nil, []error{errors.Errorf("%s contents are not set to %s, raw: %s", fcc.Path, fcc.Content, data)}
 	}
 	return nil, []error{}
 }

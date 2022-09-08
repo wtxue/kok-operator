@@ -43,12 +43,14 @@ func NewControllerCmd(opt *app_option.Options) *cobra.Command {
 			cfg.Burst = 2 * cfg.Burst
 
 			mgr, err := manager.New(cfg, manager.Options{
-				Scheme:                  k8sclient.GetScheme(),
-				LeaderElection:          opt.Global.EnableLeaderElection,
-				LeaderElectionNamespace: opt.Global.LeaderElectionNamespace,
-				SyncPeriod:              &opt.Global.ResyncPeriod,
-				MetricsBindAddress:      "0", // disable metrics with manager, use our observe
-				HealthProbeBindAddress:  "0", // disable health probe with manager, use our observe
+				Scheme:                     k8sclient.GetScheme(),
+				LeaderElection:             opt.Global.EnableLeaderElection,
+				LeaderElectionResourceLock: "leases",
+				LeaderElectionNamespace:    opt.Global.LeaderElectionNamespace,
+				LeaderElectionID:           "kok-operator",
+				SyncPeriod:                 &opt.Global.ResyncPeriod,
+				MetricsBindAddress:         "0", // disable metrics with manager, use our observe
+				HealthProbeBindAddress:     "0", // disable health probe with manager, use our observe
 			})
 			if err != nil {
 				klog.Fatalf("unable to new manager err: %v", err)

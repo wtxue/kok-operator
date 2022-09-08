@@ -8,8 +8,9 @@ set -xue pipefail
 
 function Install_depend_software(){
     echo -e "\033[32;32m 开始安装依赖环境包 \033[0m \n"
-    apt-get install -y curl wget vim telnet ipvsadm tree telnet wget net-tools  \
-           bash-completion sysstat chrony jq sysstat socat conntrack lsof libseccomp2 util-linux apt-transport-https 
+    apt-get update
+    apt-get install -y true curl wget vim telnet ipvsadm tree telnet wget net-tools  \
+           bash-completion sysstat chrony jq sysstat socat conntrack lsof libseccomp2 libseccomp-dev util-linux apt-transport-https 
 }
 
 function Firewalld_process(){
@@ -34,7 +35,7 @@ function Install_ipvs(){
     echo -e "\033[32;32m 开始配置系统ipvs \033[0m \n"
     cat > /etc/modules-load.d/ipvs.conf <<EOF 
 #!/bin/bash
-ipvs_modules="ip_vs ip_vs_lc ip_vs_wlc ip_vs_rr ip_vs_wrr ip_vs_lblc ip_vs_lblcr ip_vs_dh ip_vs_sh ip_vs_fo ip_vs_nq ip_vs_sed ip_vs_ftp nf_conntrack"
+ipvs_modules="ip_vs ip_vs_lc ip_vs_wlc ip_vs_rr ip_vs_wrr ip_vs_lblc ip_vs_lblcr ip_vs_dh ip_vs_sh ip_vs_fo ip_vs_nq ip_vs_sed ip_vs_ftp nf_conntrack ip_conntrack"
 for kernel_module in \${ipvs_modules}; do
     /sbin/modinfo -F filename \${kernel_module} > /dev/null 2>&1
    if [ \$? -eq 0 ]; then

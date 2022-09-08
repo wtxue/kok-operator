@@ -5,12 +5,14 @@ import (
 
 	"github.com/wtxue/kok-operator/pkg/controllers/common"
 	"github.com/wtxue/kok-operator/pkg/k8sutil"
+	"github.com/wtxue/kok-operator/pkg/provider/config"
 	"github.com/wtxue/kok-operator/pkg/util/template"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
 	metricsServerTemplate = `
+---
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -49,11 +51,14 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - nodes/metrics
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
   - pods
   - nodes
-  - nodes/stats
-  - namespaces
-  - configmaps
   verbs:
   - get
   - list
@@ -129,17 +134,27 @@ metadata:
   name: metrics-server
   namespace: kube-system
 spec:
+  replicas: 1
   selector:
     matchLabels:
       k8s-app: metrics-server
   strategy:
     rollingUpdate:
-      maxUnavailable: 0
+      maxUnavailable: 1
   template:
     metadata:
       labels:
         k8s-app: metrics-server
     spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                k8s-app: metrics-server
+            namespaces:
+            - kube-system
+            topologyKey: kubernetes.io/hostname
       containers:
       - args:
         - --cert-dir=/tmp
@@ -147,7 +162,8 @@ spec:
         - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
         - --kubelet-use-node-status-port
         - --kubelet-insecure-tls
-        image: {{ default "k8s.gcr.io/metrics-server/metrics-server:v0.4.1" .ImageName }}  
+        - --metric-resolution=15s
+        image: {{ default "k8s.gcr.io/metrics-server/metrics-server:v0.6.1" .ImageName }}  
         imagePullPolicy: IfNotPresent
         livenessProbe:
           failureThreshold: 3
@@ -167,8 +183,14 @@ spec:
             path: /readyz
             port: https
             scheme: HTTPS
+          initialDelaySeconds: 20
           periodSeconds: 10
+        resources:
+          requests:
+            cpu: 100m
+            memory: 200Mi
         securityContext:
+          allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
           runAsNonRoot: true
           runAsUser: 1000
@@ -182,6 +204,17 @@ spec:
       volumes:
       - emptyDir: {}
         name: tmp-dir
+---
+apiVersion: policy/v1beta1
+kind: PodDisruptionBudget
+metadata:
+  name: metrics-server
+  namespace: kube-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      k8s-app: metrics-server
 ---
 apiVersion: apiregistration.k8s.io/v1
 kind: APIService
@@ -205,9 +238,9 @@ type Option struct {
 	ImageName string
 }
 
-func BuildMetricsServerAddon(ctx *common.ClusterContext) ([]client.Object, error) {
+func BuildMetricsServerAddon(cfg *config.Config, ctx *common.ClusterContext) ([]client.Object, error) {
 	opt := &Option{
-		ImageName: "",
+		ImageName: cfg.KubeAllImageFullName("metrics-server", "v0.6.1"),
 	}
 
 	data, err := template.ParseString(metricsServerTemplate, opt)

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/wtxue/kok-operator/pkg/addons/flannel"
-	"github.com/wtxue/kok-operator/pkg/addons/kubevip"
 	"github.com/wtxue/kok-operator/pkg/addons/metricsserver"
 	"github.com/wtxue/kok-operator/pkg/addons/rawcni"
 	devopsv1 "github.com/wtxue/kok-operator/pkg/apis/devops/v1"
@@ -204,7 +203,7 @@ func (p *Provider) EnsureImagesPull(ctx *common.ClusterContext) error {
 			return err
 		}
 
-		err = kubeadm.ImagesPull(ctx, sh, ctx.Cluster.Spec.Version, p.Cfg.Registry.Prefix)
+		err = kubeadm.ImagesPull(ctx, sh, ctx.Cluster.Spec.Version, p.Cfg.CustomRegistry)
 		if err != nil {
 			return err
 		}
@@ -463,7 +462,9 @@ func (p *Provider) EnsureKubeadmInitWaitControlPlanePhase(ctx *common.ClusterCon
 			return false, nil
 		}
 
-		res := clientset.Discovery().RESTClient().Get().AbsPath("/healthz").Do(ctx.Ctx)
+		reqCtx, reqCancel := context.WithTimeout(ctx.Ctx, 30*time.Second)
+		defer reqCancel()
+		res := clientset.Discovery().RESTClient().Get().AbsPath("/healthz").Do(reqCtx)
 		res.StatusCode(&healthStatus)
 		if healthStatus != http.StatusOK {
 			ctx.Error(res.Error(), "Discovery healthz")
@@ -678,22 +679,22 @@ func (p *Provider) EnsureRebuildEtcd(ctx *common.ClusterContext) error {
 }
 
 func (p *Provider) EnsureRebuildControlPlane(ctx *common.ClusterContext) error {
-	staticPodMap := kubevip.BuildKubeVipStaticPod(ctx)
+	// staticPodMap := kubevip.BuildKubeVipStaticPod(ctx)
 	for idx, machine := range ctx.Cluster.Spec.Machines {
 		sh, err := machine.SSH()
 		if err != nil {
 			return err
 		}
 
-		if staticPodMap != nil {
-			for name, file := range staticPodMap {
-				pathName := constants.KubeletPodManifestDir + name
-				err := sh.WriteFile(strings.NewReader(file), constants.KubeletPodManifestDir+name)
-				if err != nil {
-					ctx.Error(err, "write kubelet static pod yaml", "pathName", pathName)
-				}
-			}
-		}
+		// if staticPodMap != nil {
+		// 	for name, file := range staticPodMap {
+		// 		pathName := constants.KubeletPodManifestDir + name
+		// 		err := sh.WriteFile(strings.NewReader(file), constants.KubeletPodManifestDir+name)
+		// 		if err != nil {
+		// 			ctx.Error(err, "write kubelet static pod yaml", "pathName", pathName)
+		// 		}
+		// 	}
+		// }
 
 		// skip first node
 		if idx < 1 {
@@ -743,9 +744,9 @@ func (p *Provider) EnsureExtKubeconfig(ctx *common.ClusterContext) error {
 func (p *Provider) EnsureMetricsServer(ctx *common.ClusterContext) error {
 	clusterCtx, err := ctx.ClusterManager.Get(ctx.Cluster.Name)
 	if err != nil {
-		return nil
+		return err
 	}
-	objs, err := metricsserver.BuildMetricsServerAddon(ctx)
+	objs, err := metricsserver.BuildMetricsServerAddon(p.Cfg, ctx)
 	if err != nil {
 		return errors.Wrap(err, "build metrics-server")
 	}
@@ -813,7 +814,7 @@ func (p *Provider) EnsureDeployCni(ctx *common.ClusterContext) error {
 	case "flannel":
 		clusterCtx, err := ctx.ClusterManager.Get(ctx.Cluster.Name)
 		if err != nil {
-			return nil
+			return err
 		}
 		objs, err := flannel.BuildFlannelAddon(p.Cfg, ctx)
 		if err != nil {

@@ -154,12 +154,12 @@ func (r *clusterReconciler) addClusterCheck(ctx *common.ClusterContext) error {
 		return nil
 	}
 
-	adminKey := pkiutil.OnKubeAdminKubeConfigFileName
+	adminKey := "/etc/kubernetes/admin.conf"
 	if !r.GManager.EnableOnKube {
 		adminKey = pkiutil.ExternalAdminKubeConfigFileName
 	}
 
-	if extKubeconfig, ok := ctx.Credential.ExtData[adminKey]; ok {
+	if extKubeconfig, ok := ctx.Credential.KubeData[adminKey]; ok {
 		_, err := r.GManager.AddNewClusters(ctx.GetClusterID(), extKubeconfig)
 		if err != nil {
 			ctx.Error(err, "add new clusters manager cache", "file", adminKey)

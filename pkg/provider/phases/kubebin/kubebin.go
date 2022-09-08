@@ -29,6 +29,10 @@ func Install(ctx *common.ClusterContext, s ssh.Interface) error {
 			Dst: "/usr/local/bin/kubeadm",
 		},
 		{
+			Src: otherDir + "k9s",
+			Dst: "/usr/local/bin/k9s",
+		},
+		{
 			Src: k8sDir + "kubelet",
 			Dst: "/usr/bin/kubelet",
 		},
@@ -39,10 +43,10 @@ func Install(ctx *common.ClusterContext, s ssh.Interface) error {
 	}
 
 	for _, ls := range CopyList {
-		// if ok, err := s.Exist(ls.Dst); err == nil && ok {
-		// 	ctx.Info("file exist ignoring", "node", s.HostIP(), "dst", ls.Dst)
-		// 	continue
-		// }
+		if ok, err := s.Exist(ls.Dst); err == nil && ok {
+			ctx.Info("file exist ignoring", "node", s.HostIP(), "dst", ls.Dst)
+			continue
+		}
 
 		err := s.CopyFile(ls.Src, ls.Dst)
 		if err != nil {

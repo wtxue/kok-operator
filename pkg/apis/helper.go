@@ -9,6 +9,7 @@ import (
 	kubeproxyv1alpha1 "k8s.io/kube-proxy/config/v1alpha1"
 	kubeletv1beta1 "k8s.io/kubelet/config/v1beta1"
 	kubeadmv1beta2 "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta2"
+	kubeadmv1beta3 "k8s.io/kubernetes/cmd/kubeadm/app/apis/kubeadm/v1beta3"
 )
 
 var Scheme = runtime.NewScheme()
@@ -17,6 +18,7 @@ var Codecs = serializer.NewCodecFactory(Scheme)
 
 var localSchemeBuilder = runtime.SchemeBuilder{
 	kubeadmv1beta2.AddToScheme,
+	kubeadmv1beta3.AddToScheme,
 	kubeletv1beta1.AddToScheme,
 	kubeproxyv1alpha1.AddToScheme,
 }

@@ -2,7 +2,7 @@ package constants
 
 var (
 	OSs                = []string{"linux"}
-	K8sVersions        = []string{"v1.18.16", "v1.20.4"}
-	CNIPluginsVersions = []string{"v0.9.0"}
-	ContainerdVersions = []string{"1.5.0"}
+	K8sVersions        = []string{"v1.24.4"}
+	CNIPluginsVersions = []string{"v1.1.1"}
+	ContainerdVersions = []string{"1.6.8"}
 )

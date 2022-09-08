@@ -109,6 +109,7 @@ func (c *ClusterContext) RESTConfigForBootstrap(config *rest.Config) (*rest.Conf
 
 	return c.RESTConfig(config)
 }
+
 func (c *ClusterContext) RESTConfig(config *rest.Config) (*rest.Config, error) {
 	if config.Host == "" {
 		host, err := c.Host()
