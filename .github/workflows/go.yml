@@ -31,7 +31,7 @@ jobs:
         fi
 
     - name: Build
-      run: make build-controller
+      run: make build-local
 
 #    - name: Test
 #      run: go test -v ./...
