@@ -60,7 +60,7 @@ generate: controller-gen
 docker-build:
 	docker run --rm -v "$$PWD":/go/src/${ROOT} -v ${GOPATH}/pkg/mod:/go/pkg/mod -w /go/src/${ROOT} golang:${GO_VERSION} make build-local
 
-build: build-local
+build: build-local build-linux-ctl
 
 build-local:
 	$(GO) -v -o bin/kok-operator -ldflags "-s -w -X $(ROOT)/pkg/version.Release=$(VERSION) -X  $(ROOT)/pkg/version.Commit=$(COMMIT)   \
@@ -71,11 +71,18 @@ build-linux:
 	go build -tags=jsoniter -v -o bin/kok-operator -ldflags "-s -w -X $(ROOT)/pkg/version.Release=$(VERSION) -X  $(ROOT)/pkg/version.Commit=$(COMMIT)   \
     -X  $(ROOT)/pkg/version.BuildDate=$(BUILD_DATE)" cmd/controller/main.go
 
+build-linux-ctl:
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64  go build -v -o bin/ctl cmd/ctl/mian.go
 
 # Push the docker image
 push:
-	docker build -t ${IMG_CTL}:${VERSION} -f ./docker/kok-operator/Dockerfile .
+	docker build -t ${IMG_CTL}:${VERSION} -f ./docker/kok-ctl/Dockerfile .
 	docker push ${IMG_CTL}:${VERSION}
+
+# Push the docker image
+push-ctl: build-linux-ctl
+	docker build -t xxx/tools/kubectl:ctl.v2 -f ./docker/ctl/Dockerfile .
+	docker push xxx/tools/kubectl:ctl.v2
 
 # find or download controller-gen
 # download controller-gen if necessary

@@ -1,0 +1,67 @@
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: tools-test
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: tools-test
+    namespace: kube-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: tools-test
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tools-test
+  namespace: kube-system
+  labels:
+    tier: node
+    app: tools-test
+spec:
+  replicas: 100
+  selector:
+    matchLabels:
+      app: tools-test
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        tier: node
+        app: tools-test
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/os
+                    operator: In
+                    values:
+                      - linux
+      priorityClassName: system-node-critical
+      serviceAccountName: tools-test
+      containers:
+        - name: tools
+          image: xxxx/tools/kubectl:ctl.v2
+          imagePullPolicy: Always
+          command:
+            - ctl
+          args:
+            - tools
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "50Mi"
